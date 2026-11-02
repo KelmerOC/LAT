@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" width="100%" height="100%">
+  <!-- Estilo: Monograma vectorial profesional "LAT"
+       Blanco puro como protagonista (leche fresca y bloque/cuña de queso),
+       sobre fondo transparente o adaptable, con versión demostrativa sobre fondo de contraste lácteo suave y versión plana.
+  -->
+  <defs>
+    <!-- Sombra sutil de precisión para destacar volúmenes blancos sin recurrir a efectos artificiales -->
+    <filter id="cleanShadow" x="-10%" y="-10%" width="125%" height="125%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#001F3F" flood-opacity="0.12"/>
+    </filter>
+  </defs>
+
+  <!-- FONDO DE CONTRASTE SUAVE (Gris pizarra / azul profundo muy elegante para resaltar el blanco puro del logo) -->
+  <rect width="100%" height="100%" rx="16" fill="#0B1E36"/>
+
+  <!-- GRUPO PRINCIPAL DEL LOGO "LAT" -->
+  <g transform="translate(100, 70)">
+    
+    <!-- ISOTIPO COMBINADO: CUÑA DE QUESO + GOTA DE LECHE BLANCA -->
+    <g transform="translate(0, 30)" filter="url(#cleanShadow)">
+      <!-- Cuña de Queso estilizada en blanco puro -->
+      <path d="M 20,160 L 140,50 L 175,95 L 45,190 Z" fill="#FFFFFF"/>
+      <path d="M 45,190 L 175,95 L 175,150 L 45,225 Z" fill="#E8F1F8"/>
+      <path d="M 20,160 L 45,190 L 45,225 L 20,195 Z" fill="#D0E3F0"/>
+
+      <!-- Ojos / agujeros del queso en espacio negativo -->
+      <circle cx="115" cy="115" r="14" fill="#0B1E36"/>
+      <circle cx="145" cy="135" r="9" fill="#0B1E36"/>
+      <circle cx="85" cy="140" r="11" fill="#0B1E36"/>
+      
+      <!-- Gota de leche pura emergiendo en la cúspide -->
+      <path d="M 80,10 C 80,10 102,40 102,54 C 102,66 92,76 80,76 C 68,76 58,66 58,54 C 58,40 80,10 80,10 Z" fill="#FFFFFF"/>
+    </g>
+
+    <!-- TIPOGRAFÍA VECTORIAL "LAT" (BLANCO PURO) -->
+    <g transform="translate(230, 160)">
+      <text x="0" y="0" 
+            font-family="'Montserrat', 'Inter', 'Helvetica Neue', Arial, sans-serif" 
+            font-weight="900" 
+            font-size="115" 
+            letter-spacing="6px" 
+            fill="#FFFFFF">
+        LAT
+      </text>
+
+      <!-- Subtítulo complementario que refuerza el sector lácteo -->
+      <text x="4" y="42" 
+            font-family="'Montserrat', 'Inter', 'Helvetica Neue', Arial, sans-serif" 
+            font-weight="600" 
+            font-size="18" 
+            letter-spacing="9px" 
+            fill="#8EB5D8">
+        LECHE &amp; QUESO
+      </text>
+
+      <!-- Línea minimalista de soporte -->
+      <line x1="4" y1="58" x2="310" y2="58" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" opacity="0.8"/>
+    </g>
+
+  </g>
+</svg>

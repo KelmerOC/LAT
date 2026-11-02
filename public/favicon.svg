@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="100%" height="100%">
+  <!-- FAVICON LAT: FRASCO DE LECHE + CUÑA DE QUESO -->
+  <defs>
+    <linearGradient id="grad-celeste" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0284c7" />
+      <stop offset="100%" stop-color="#0369a1" />
+    </linearGradient>
+  </defs>
+
+  <!-- Fondo sutil redondeado para contraste en cualquier navegador -->
+  <rect width="64" height="64" rx="14" fill="#f0f7fb" />
+
+  <!-- 1. Frasco de Leche (Celeste Acuarela) -->
+  <path d="M 12,24 
+           L 16,16 
+           C 16,14 16,13 16,12 
+           L 16,8 
+           L 24,8 
+           L 24,12 
+           C 24,13 24,14 24,16 
+           L 28,24 
+           C 30,27 31,30 31,33 
+           L 31,48 
+           C 31,52 28,54 25,54 
+           L 15,54 
+           C 12,54 9,52 9,48 
+           L 9,33 
+           C 9,30 10,27 12,24 Z" 
+        fill="url(#grad-celeste)" />
+
+  <!-- Nivel blanco de leche fresca en el frasco -->
+  <path d="M 12,32 
+           Q 20,35 28,32 
+           L 28,47 
+           C 28,50 26,51 24,51 
+           L 16,51 
+           C 14,51 12,50 12,47 Z" 
+        fill="#ffffff" />
+
+  <!-- Borde boca de frasco -->
+  <rect x="15" y="7" width="10" height="2" rx="1" fill="#0284c7" />
+
+  <!-- 2. Cuña de Queso (Azul Pizarra) -->
+  <path d="M 28,34 
+           L 46,18 
+           L 57,25 
+           L 37,42 Z" 
+        fill="#0a2f4d" />
+
+  <path d="M 37,42 
+           L 57,25 
+           L 57,39 
+           C 57,41 56,43 54,44 
+           L 37,54 
+           Z" 
+        fill="#0c3a5e" />
+
+  <!-- Agujeros del queso -->
+  <circle cx="43" cy="45" r="3.2" fill="#f0f7fb" />
+  <circle cx="51" cy="35" r="2.2" fill="#f0f7fb" />
+  <circle cx="49" cy="45" r="1.5" fill="#f0f7fb" />
+</svg>

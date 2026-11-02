@@ -1,0 +1,935 @@
+/* ==============================================================================
+   LAT: SISTEMA DE DISEÑO VISUAL Y ACCESIBILIDAD (FLAT FILL CONTRAST)
+   Fusión Brex Style Reference + Identidad Agroindustrial Andina (Cusco / Anta)
+   Reglas Estrictas: CERO Sombras, CERO Bordes en Tarjetas y Botones.
+   Diferenciación exclusiva por contraste de color de relleno (background-color) y espaciado.
+   ============================================================================== */
+
+@font-face {
+  font-family: 'Gloock';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/gloock-400-latin.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400 600;
+  font-display: swap;
+  src: url('/fonts/inter-var-latin.woff2') format('woff2');
+}
+
+:root {
+  /* Lienzos y Superficies Claras (Paleta Acuarela) */
+  --color-paper: #ffffff;
+  --color-fog: #f2f7fb;             /* Niebla azul celeste acuarela */
+  --color-sky-wash: #e1f0fa;        /* Lavado celeste suave para tarjetas alternadas */
+  --color-sky-light: #ecf6fd;       /* Tinte celeste muy sutil */
+
+  /* Superficies de Identidad y Contraste (Cero Negro Absoluto) */
+  --color-ocean: #0d4068;           /* Azul profundo acuarela para footer y monitores */
+  --color-slate-deep: #0a2f4d;      /* Azul pizarra marino para barra superior y encabezados */
+  --color-carbon: #0a2f4d;          /* Sustituto del antiguo carbón #15191e */
+  --color-abyss: #0d4068;           /* Sustituto del antiguo abyss #000710 */
+
+  /* Rellenos de Acción e Identidad */
+  --color-ember: #ff5900;
+  --color-ember-hover: #e04e00;
+  --color-celeste: #0284c7;         /* Celeste cerúleo vivo */
+  --color-celeste-hover: #0369a1;
+  --color-celeste-suave: #e0f2fe;
+  --color-celeste-acuarela: #0284c7;
+  --color-celeste-marino: #0a2f4d;
+
+  /* Tipografía y Textos */
+  --color-ink: #0a2f4d;             /* Azul pizarra profundo en lugar de negro puro */
+  --color-graphite: #4b6276;        /* Grafito azulado */
+  --color-pewter: #688094;
+  --color-white: #ffffff;
+
+  /* Rellenos Semánticos por Opción/Estado (Sin Bordes) */
+  --verde-fill: #dcfce7;
+  --verde-text: #15803d;
+  --rojo-fill: #fee2e2;
+  --rojo-text: #b91c1c;
+  --amarillo-fill: #fef3c7;
+  --amarillo-text: #b45309;
+  --celeste-fill: #e0f2fe;
+  --celeste-text: #0284c7;
+
+  /* Geometría Anti-IA Estricta */
+  --radius-xl: 12px; /* Tarjetas, botones, inputs */
+  --radius-md: 6px;  /* Chips y etiquetas funcionales */
+
+  /* Fuentes Oficiales */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Gloock', 'Flecha', Georgia, serif;
+}
+
+/* Reset y Base */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  line-height: 1.5;
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  scroll-behavior: smooth;
+}
+
+body {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--color-paper);
+}
+
+/* Selección de texto temática */
+::selection {
+  background-color: var(--color-ember);
+  color: var(--color-white);
+}
+
+/* Salto accesible de navegación (WCAG 2.4.1) */
+.skip-link {
+  position: absolute;
+  top: -999px;
+  left: 1rem;
+  z-index: 9999;
+  padding: 0.75rem 1.25rem;
+  background-color: var(--color-ember);
+  color: var(--color-white);
+  font-weight: 600;
+  text-decoration: none;
+  border-radius: var(--radius-xl);
+}
+
+.skip-link:focus {
+  top: 1rem;
+  outline: 3px solid var(--color-white);
+  outline-offset: 2px;
+}
+
+/* Tipografía con Tracking Calibrado */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 600;
+  color: var(--color-ink);
+  letter-spacing: -0.025em;
+  line-height: 1.2;
+}
+
+h1 { font-size: 2.25rem; letter-spacing: -0.03em; }
+h2 { font-size: 1.75rem; letter-spacing: -0.02em; }
+h3 { font-size: 1.25rem; letter-spacing: -0.015em; }
+
+p {
+  color: var(--color-graphite);
+  letter-spacing: -0.01em;
+  line-height: 1.6;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* Cifras Numéricas Tabulares */
+.num-tabular {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+/* Contenedores */
+.contenedor {
+  width: 100%;
+  max-width: 1200px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+}
+
+/* ==============================================================================
+   CABECERA EN 2 NIVELES (INVARIABLE)
+   Nivel 1: Carbon #15191e (Lema humanitario + selector trilingüe ES / QU / EN)
+   Nivel 2: Paper #ffffff (Logo LAT + navegación pública + CTAs)
+   ============================================================================== */
+.header-sitio {
+  width: 100%;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  background-color: var(--color-paper);
+}
+
+/* Nivel 1: Barra Superior Azul Pizarra Marino (Cero Negro) */
+.top-bar-carbon {
+  background-color: var(--color-slate-deep);
+  color: var(--color-white);
+  padding: 0.5rem 0;
+  font-size: 0.8125rem;
+}
+
+.top-bar-inner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.top-bar-lema {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: #e0f2fe;
+}
+
+.top-bar-idiomas {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.btn-idioma {
+  border: none;
+  outline: none;
+  background-color: transparent;
+  color: #bae6fd;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.25rem 0.6rem;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+}
+
+.btn-idioma:hover {
+  background-color: rgba(255, 255, 255, 0.16);
+  color: var(--color-white);
+}
+  color: var(--color-white);
+}
+
+.btn-idioma.activo {
+  background-color: var(--color-ember);
+  color: var(--color-white);
+}
+
+.btn-idioma:focus-visible {
+  outline: 2px solid var(--color-ember);
+  outline-offset: 2px;
+}
+
+/* Nivel 2: Barra Principal */
+.nav-principal-bar {
+  background-color: var(--color-paper);
+  padding: 0.875rem 0;
+}
+
+.nav-principal-inner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.logo-lat-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.logo-lat-img {
+  height: 40px;
+  width: auto;
+  display: block;
+}
+
+.logo-badge-rural {
+  background-color: var(--color-fog);
+  color: var(--color-graphite);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  padding: 0.2rem 0.5rem;
+  border-radius: var(--radius-md);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.menu-publico-links {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  list-style: none;
+}
+
+.enlace-nav {
+  color: var(--color-graphite);
+  font-weight: 500;
+  font-size: 0.9375rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius-xl);
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.enlace-nav:hover {
+  background-color: var(--color-fog);
+  color: var(--color-ink);
+}
+
+.enlace-nav.activo {
+  background-color: var(--color-fog);
+  color: var(--color-ink);
+  font-weight: 600;
+}
+
+.enlace-nav:focus-visible {
+  outline: 2px solid var(--color-ember);
+  outline-offset: 2px;
+}
+
+.acciones-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+/* ==============================================================================
+   SISTEMA DE BOTONES (CERO BORDES, CERO SOMBRAS - FLAT FILL)
+   ============================================================================== */
+.btn-lat {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.35rem;
+  font-family: var(--font-sans);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  border-radius: var(--radius-xl);
+  border: none;
+  outline: none;
+  box-shadow: none;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background-color 0.15s ease, transform 0.05s ease;
+  min-height: 48px;
+}
+
+.btn-lat:active {
+  transform: scale(0.98);
+}
+
+.btn-lat:focus-visible {
+  outline: 3px solid var(--color-ember);
+  outline-offset: 2px;
+}
+
+/* Botón Ember: Principal de Acción/Conversión en cada vista */
+.btn-ember {
+  background-color: var(--color-ember);
+  color: var(--color-white);
+}
+
+.btn-ember:hover {
+  background-color: var(--color-ember-hover);
+  color: var(--color-white);
+}
+
+/* Botón Celeste: Secundario Institucional */
+.btn-celeste {
+  background-color: var(--color-celeste);
+  color: var(--color-white);
+}
+
+.btn-celeste:hover {
+  background-color: var(--color-celeste-hover);
+  color: var(--color-white);
+}
+
+/* Botón Fog: Relleno claro sobre lienzo blanco */
+.btn-fog {
+  background-color: var(--color-fog);
+  color: var(--color-ink);
+}
+
+.btn-fog:hover {
+  background-color: #e6e6ed;
+}
+
+/* Botón Paper: Relleno blanco puro sobre sección fog */
+.btn-paper {
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+}
+
+.btn-paper:hover {
+  background-color: #f7f7fa;
+}
+
+/* Botones Semánticos */
+.btn-verde {
+  background-color: var(--verde-fill);
+  color: var(--verde-text);
+}
+.btn-verde:hover {
+  background-color: #bbf7d0;
+}
+
+.btn-rojo {
+  background-color: var(--rojo-fill);
+  color: var(--rojo-text);
+}
+.btn-rojo:hover {
+  background-color: #fecaca;
+}
+
+/* Botón táctil grande de ruta (>= 52px de altura para guantes húmedos) */
+.btn-dictar-ruta {
+  min-height: 64px;
+  padding: 1rem 1.75rem;
+  font-size: 1.125rem;
+  border-radius: var(--radius-xl);
+  background-color: var(--color-ember);
+  color: var(--color-white);
+  width: 100%;
+}
+
+/* ==============================================================================
+   TARJETAS SIN BORDES NI SOMBRAS (FLAT FILL CONTRAST)
+   ============================================================================== */
+.tarjeta-fog {
+  background-color: var(--color-fog);
+  border: none;
+  box-shadow: none;
+  border-radius: var(--radius-xl);
+  padding: 1.5rem;
+}
+
+.tarjeta-paper {
+  background-color: var(--color-paper);
+  border: none;
+  box-shadow: none;
+  border-radius: var(--radius-xl);
+  padding: 1.5rem;
+}
+
+/* Contenedor Acuarela Oceánico para Monitor Térmico y Cabeceras Especiales */
+.tarjeta-abyss,
+.tarjeta-acuarela,
+.tarjeta-oceanica {
+  background: linear-gradient(135deg, #0d4068 0%, #115383 55%, #0a3353 100%);
+  color: var(--color-white);
+  border: none;
+  box-shadow: none;
+  border-radius: var(--radius-xl);
+  padding: 2rem;
+}
+
+/* Tarjeta en Lavado Celeste Acuarela Suave */
+.tarjeta-acuarela-suave {
+  background-color: var(--color-sky-wash);
+  color: var(--color-slate-deep);
+  border: none;
+  box-shadow: none;
+  border-radius: var(--radius-xl);
+  padding: 1.5rem;
+}
+
+/* Números y Cifras Estilizadas Delgadas (font-weight: 300 - Regla Global) */
+.num-tabular,
+.metric-number,
+.kpi-numero,
+.tabla-lat td.num-tabular,
+.tabla-lat td strong.num-tabular,
+strong.num-tabular,
+span.num-tabular,
+p.num-tabular {
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+  font-weight: 300 !important;
+  letter-spacing: -0.01em;
+}
+
+/* En caso de inputs numéricos */
+input.num-tabular {
+  font-weight: 400 !important;
+}
+
+/* Etiquetas y Chips de Estado (Radio exacto 6px, sin bordes) */
+.chip-lat {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.3rem 0.65rem;
+  border-radius: var(--radius-md);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  border: none;
+  outline: none;
+}
+
+.chip-verde {
+  background-color: var(--verde-fill);
+  color: var(--verde-text);
+}
+
+.chip-rojo {
+  background-color: var(--rojo-fill);
+  color: var(--rojo-text);
+}
+
+.chip-amarillo {
+  background-color: var(--amarillo-fill);
+  color: var(--amarillo-text);
+}
+
+.chip-celeste {
+  background-color: var(--celeste-fill);
+  color: var(--celeste-text);
+}
+
+.chip-fog {
+  background-color: var(--color-fog);
+  color: var(--color-graphite);
+}
+
+/* Formularios e Inputs (Cero bordes, cero sombras) */
+.form-grupo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.form-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+.input-lat, .select-lat, .textarea-lat {
+  width: 100%;
+  min-height: 48px;
+  padding: 0.75rem 1rem;
+  font-family: var(--font-sans);
+  font-size: 0.9375rem;
+  background-color: var(--color-fog);
+  color: var(--color-ink);
+  border: none;
+  outline: none;
+  box-shadow: none;
+  border-radius: var(--radius-xl);
+  transition: background-color 0.15s ease;
+}
+
+.input-lat:focus, .select-lat:focus, .textarea-lat:focus {
+  background-color: #ebebef;
+  outline: 3px solid var(--color-ember);
+  outline-offset: 1px;
+}
+
+.textarea-lat {
+  min-height: 100px;
+  resize: vertical;
+}
+
+/* Checkbox accesible */
+.checkbox-lat-wrap {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  cursor: pointer;
+}
+
+.checkbox-lat-wrap input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--color-ember);
+  margin-top: 0.2rem;
+  cursor: pointer;
+}
+
+/* Alertas de Notificación */
+.alerta-lat {
+  padding: 1rem 1.25rem;
+  border-radius: var(--radius-xl);
+  margin-bottom: 1.5rem;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  border: none;
+}
+
+.alerta-verde {
+  background-color: var(--verde-fill);
+  color: var(--verde-text);
+}
+
+.alerta-roja {
+  background-color: var(--rojo-fill);
+  color: var(--rojo-text);
+}
+
+.alerta-amarilla {
+  background-color: var(--amarillo-fill);
+  color: var(--amarillo-text);
+}
+
+/* ==============================================================================
+   SUB-NAVEGACIÓN MI PANEL (TABS SIN BORDES)
+   ============================================================================== */
+.panel-tabs-bar {
+  background-color: var(--color-fog);
+  padding: 0.5rem 0;
+  overflow-x: auto;
+}
+
+.panel-tabs-inner {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.tab-panel-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.65rem 1rem;
+  border-radius: var(--radius-xl);
+  background-color: transparent;
+  color: var(--color-graphite);
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+  border: none;
+  outline: none;
+}
+
+.tab-panel-item:hover {
+  background-color: #e4e4eb;
+  color: var(--color-ink);
+}
+
+.tab-panel-item.activo {
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+  font-weight: 600;
+}
+
+.tab-panel-item:focus-visible {
+  outline: 2px solid var(--color-ember);
+  outline-offset: 2px;
+}
+
+/* ==============================================================================
+   HERO CON CROSS-FADE Y DIFUMINADO SUAVE
+   ============================================================================== */
+.hero-split-grid {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  align-items: center;
+  gap: 2.5rem;
+  padding: 3.5rem 0;
+}
+
+.hero-titular {
+  font-family: var(--font-display);
+  font-size: 3.125rem;
+  font-weight: 400;
+  line-height: 1.11;
+  letter-spacing: -0.02em;
+  color: var(--color-ink);
+  margin-bottom: 1.25rem;
+}
+
+.hero-bajada {
+  font-size: 1.125rem;
+  color: var(--color-graphite);
+  line-height: 1.6;
+  margin-bottom: 2rem;
+  max-width: 580px;
+}
+
+.hero-acciones {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.hero-banner-frame {
+  position: relative;
+  width: 100%;
+  height: 440px;
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  background-color: var(--color-fog);
+}
+
+.crossfade-img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 0.8s ease-in-out;
+}
+
+.crossfade-img.activa {
+  opacity: 1;
+}
+
+/* Difuminado suave donde empieza el texto (mask gradiente horizontal) */
+.hero-gradiente-mask {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 25%;
+  background: linear-gradient(to right, rgba(255,255,255,0.85), transparent);
+  pointer-events: none;
+}
+
+.hero-banner-pie {
+  position: absolute;
+  bottom: 1rem;
+  left: 1rem;
+  right: 1rem;
+  background-color: rgba(21, 25, 30, 0.88);
+  backdrop-filter: blur(8px);
+  color: var(--color-white);
+  padding: 0.6rem 1rem;
+  border-radius: var(--radius-xl);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.8125rem;
+}
+
+/* ==============================================================================
+   TABLAS ESTANDARIZADAS SIN BORDES REDONDEADOS (CERO BORDER-RADIUS)
+   Estructura ordenada, profesional, con cifras numéricas tabulares delgadas
+   ============================================================================== */
+.tabla-lat-wrap {
+  width: 100%;
+  overflow-x: auto;
+  border-radius: 0 !important;
+  background-color: var(--color-paper);
+  border: 1px solid #d4e6f4;
+}
+
+.tabla-lat {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9375rem;
+  border-radius: 0 !important;
+}
+
+.tabla-lat th {
+  padding: 0.875rem 1.25rem;
+  text-align: left;
+  font-weight: 500;
+  color: var(--color-slate-deep);
+  font-size: 0.8125rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background-color: #e6f2fb;
+  border-bottom: 2px solid #c7e0f2;
+  border-radius: 0 !important;
+}
+
+.tabla-lat td {
+  padding: 0.875rem 1.25rem;
+  background-color: var(--color-paper);
+  color: var(--color-slate-deep);
+  vertical-align: middle;
+  border-bottom: 1px solid #e1eef8;
+  border-radius: 0 !important;
+}
+
+.tabla-lat tr td:first-child,
+.tabla-lat tr td:last-child,
+.tabla-lat tr th:first-child,
+.tabla-lat tr th:last-child {
+  border-radius: 0 !important;
+}
+
+.tabla-lat tr:nth-child(even) td {
+  background-color: #f7fbfe;
+}
+
+.tabla-lat tr:hover td {
+  background-color: #edf6fd;
+}
+
+/* Alineaciones funcionales de tabla */
+.tabla-lat th.num-col,
+.tabla-lat td.num-col,
+.tabla-lat td.num-tabular {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: 300 !important;
+}
+
+/* ==============================================================================
+   PIE DE PÁGINA AZUL OCÉANO ACUARELA (CERO NEGRO)
+   ============================================================================== */
+.footer-sitio {
+  margin-top: auto;
+  background-color: var(--color-ocean);
+  color: #dbeafe;
+  padding: 3.5rem 0 2rem;
+  border-top: 3px solid #0284c7;
+}
+
+.footer-grid {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: 3rem;
+  margin-bottom: 2.5rem;
+}
+
+.footer-marca-desc {
+  font-size: 0.9375rem;
+  color: #bae6fd;
+  max-width: 480px;
+  margin-top: 1rem;
+  line-height: 1.6;
+}
+
+.footer-col-tit {
+  color: var(--color-white);
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  letter-spacing: -0.01em;
+}
+
+.footer-links-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.footer-links-list a {
+  color: #dbeafe;
+  font-size: 0.9375rem;
+  transition: color 0.15s ease;
+  text-decoration: none;
+}
+
+.footer-links-list a:hover {
+  color: var(--color-white);
+  text-decoration: underline;
+}
+
+.footer-bottom-bar {
+  padding-top: 1.75rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #93c5fd;
+  font-size: 0.8125rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+/* ==============================================================================
+   BANNER DE COOKIES SIMÉTRICO AZUL PIZARRA (CERO NEGRO)
+   ============================================================================== */
+.banner-cookies-lat {
+  position: fixed;
+  bottom: 1.5rem;
+  left: 1.5rem;
+  right: 1.5rem;
+  max-width: 960px;
+  margin: 0 auto;
+  background-color: var(--color-slate-deep);
+  color: var(--color-white);
+  padding: 1.25rem 1.5rem;
+  border-radius: var(--radius-xl);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  box-shadow: 0 10px 25px -5px rgba(10, 47, 77, 0.35);
+}
+
+.cookies-acciones-row {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+/* Responsividad Multidispositivo (Celular < 640px, Tablet 641-1024px, PC > 1024px) */
+@media (max-width: 1024px) {
+  .hero-split-grid {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+  .hero-titular {
+    font-size: 2.35rem;
+  }
+  .hero-banner-frame {
+    height: 340px;
+  }
+  .footer-grid {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .hero-titular {
+    font-size: 1.85rem;
+  }
+  .nav-principal-inner {
+    flex-wrap: wrap;
+  }
+  .menu-publico-links {
+    order: 3;
+    width: 100%;
+    overflow-x: auto;
+    padding-top: 0.5rem;
+  }
+  .top-bar-inner {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .btn-lat {
+    width: 100%;
+  }
+  .cookies-acciones-row {
+    flex-direction: column;
+  }
+}
+
+/* Respeto a Movimiento Reducido (WCAG 2.2.2) */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

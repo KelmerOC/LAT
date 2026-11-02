@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 750 360" width="100%" height="100%">
+  <!-- LAT LOGO OFICIAL AZUL CELESTE: FRASCO DE LECHE + CUÑA DE QUESO + LAT (FONDOS CLAROS) -->
+  <g transform="translate(40, 40)">
+    <!-- Isotipo: Frasco de leche tradicional + Cuña de queso -->
+    <g transform="translate(0, 0)">
+      <!-- 1. FRASCO DE LECHE TRADICIONAL -->
+      <path d="M 48,96 
+               L 64,62 
+               C 65,59 65,56 65,52 
+               L 65,36 
+               C 61,36 58,33 58,30 
+               L 58,24 
+               C 58,20 61,18 65,18 
+               L 95,18 
+               C 99,18 102,20 102,24 
+               L 102,30 
+               C 102,33 99,36 95,36 
+               L 95,52 
+               C 95,56 95,59 96,62 
+               L 112,96 
+               C 118,107 121,120 121,133 
+               L 121,202 
+               C 121,215 111,226 98,226 
+               L 62,226 
+               C 49,226 39,215 39,202 
+               L 39,133 
+               C 39,120 42,107 48,96 Z" 
+            fill="#0284c7" />
+
+      <!-- Silueta del nivel de leche fresca en el frasco -->
+      <path d="M 52,130 
+               Q 80,140 108,130 
+               L 108,198 
+               C 108,208 100,216 90,216 
+               L 70,216 
+               C 60,216 52,208 52,198 Z" 
+            fill="#e0f2fe" />
+
+      <!-- Detalle cuello frasco -->
+      <rect x="68" y="24" width="24" height="6" rx="2" fill="#0369a1" />
+
+      <!-- 2. CUÑA DE QUESO ANDINO -->
+      <!-- Cara Superior Inclinada -->
+      <path d="M 116,134 
+               L 194,70 
+               L 246,102 
+               L 156,168 Z" 
+            fill="#0a2f4d" />
+
+      <!-- Cara Lateral Frontal con Agujeros -->
+      <path d="M 156,168 
+               L 246,102 
+               L 246,158 
+               C 246,164 242,170 236,174 
+               L 156,226 
+               Z" 
+            fill="#0c3a5e" />
+
+      <!-- Orificios de la cuña de queso -->
+      <ellipse cx="186" cy="188" rx="13" ry="15" fill="#f0f7fb" />
+      <ellipse cx="225" cy="146" rx="9" ry="11" fill="#f0f7fb" />
+      <circle cx="214" cy="188" r="6" fill="#f0f7fb" />
+      <ellipse cx="180" cy="112" rx="10" ry="6" fill="#0284c7" opacity="0.3" />
+    </g>
+
+    <!-- Wordmark LAT y Subtítulo -->
+    <g transform="translate(285, 155)">
+      <text x="0" y="0" 
+            font-family="'Inter', 'Montserrat', -apple-system, sans-serif" 
+            font-weight="900" 
+            font-size="124" 
+            letter-spacing="6px" 
+            fill="#0a2f4d">
+        LAT
+      </text>
+
+      <text x="4" y="44" 
+            font-family="'Inter', 'Montserrat', -apple-system, sans-serif" 
+            font-weight="600" 
+            font-size="19" 
+            letter-spacing="9px" 
+            fill="#0284c7">
+        LÁCTEOS &amp; QUESOS
+      </text>
+    </g>
+  </g>
+</svg>

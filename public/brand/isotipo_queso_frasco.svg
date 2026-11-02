@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 280" width="100%" height="100%">
+  <!-- LAT ISOTIPO OFICIAL: FRASCO DE LECHE ARTESANAL + CUÑA DE QUESO ANDINO -->
+  <g id="isotipo-lat">
+    <!-- 1. FRASCO DE LECHE TRADICIONAL (LADO IZQUIERDO) -->
+    <!-- Contorno y cuerpo de vidrio/cerámica lechera -->
+    <path d="M 58,110 
+             L 76,72 
+             C 77,69 77,66 77,62 
+             L 77,44 
+             C 73,44 70,41 70,38 
+             L 70,32 
+             C 70,28 73,26 77,26 
+             L 109,26 
+             C 113,26 116,28 116,32 
+             L 116,38 
+             C 116,41 113,44 109,44 
+             L 109,62 
+             C 109,66 109,69 110,72 
+             L 128,110 
+             C 134,122 137,136 137,150 
+             L 137,222 
+             C 137,236 126,248 112,248 
+             L 74,248 
+             C 60,248 49,236 49,222 
+             L 49,150 
+             C 49,136 52,122 58,110 Z" 
+          fill="currentColor" />
+
+    <!-- Ventana / Silueta interna que define el contenido de leche fresca -->
+    <path d="M 83,44 L 103,44 L 103,58 C 103,64 102,69 100,74 L 84,110 C 79,122 76,136 76,148 L 76,220 C 76,224 79,228 83,228 L 103,228 C 107,228 110,224 110,220 L 110,148 C 110,136 107,122 102,110 L 86,74 C 84,69 83,64 83,58 Z" 
+          fill="#0284c7" 
+          opacity="0.18" />
+
+    <!-- 2. CUÑA DE QUESO ANDINO CON ORIFICIOS (LADO DERECHO) -->
+    <!-- Cara Superior Inclinada -->
+    <path d="M 132,152 
+             L 218,82 
+             L 272,116 
+             L 174,188 Z" 
+          fill="currentColor" />
+
+    <!-- Cara Lateral Derecha (Frontal con agujeros de queso) -->
+    <path d="M 174,188 
+             L 272,116 
+             L 272,176 
+             C 272,182 268,188 262,192 
+             L 174,248 
+             Z" 
+          fill="currentColor" 
+          opacity="0.92" />
+
+    <!-- Orificios característicos del queso (Swiss / Andino) -->
+    <!-- Agujero grande frontal -->
+    <ellipse cx="206" cy="208" rx="14" ry="16" fill="#0369a1" opacity="0.32" />
+    <ellipse cx="204" cy="206" rx="11" ry="13" fill="#ffffff" opacity="0.9" />
+
+    <!-- Agujero mediano derecho -->
+    <ellipse cx="248" cy="162" rx="10" ry="12" fill="#0369a1" opacity="0.32" />
+    <ellipse cx="247" cy="160" rx="8" ry="10" fill="#ffffff" opacity="0.9" />
+
+    <!-- Agujero pequeño inferior -->
+    <circle cx="236" cy="205" r="7" fill="#ffffff" opacity="0.85" />
+
+    <!-- Agujero superior en la corteza -->
+    <ellipse cx="200" cy="128" rx="11" ry="7" fill="#0369a1" opacity="0.25" />
+    <ellipse cx="199" cy="127" rx="9" ry="5" fill="#ffffff" opacity="0.9" />
+  </g>
+</svg>
