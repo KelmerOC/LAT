@@ -3,68 +3,51 @@
 @section('titulo', 'LAT · Acceso a Mi Panel')
 
 @section('contenido')
-  <div style="max-width: 500px; margin: 2rem auto;">
-    <div style="background-color: var(--color-fog); border-radius: 12px; padding: 2.5rem 2rem;">
-      <div style="text-align: center; margin-bottom: 2rem;">
-        <span style="font-size: 0.8rem; font-weight: 600; color: var(--color-celeste); text-transform: uppercase; letter-spacing: 0.5px;">Acceso Seguro</span>
-        <h2 style="font-family: var(--font-display); font-size: 1.85rem; color: var(--color-slate-deep); margin-top: 0.25rem;">
-          Ingreso a Mi Panel Lácteo
-        </h2>
-        <p style="color: var(--color-graphite); font-size: 0.88rem; margin-top: 0.5rem;">
-          Ingrese con su identificador de operario o correo de la microempresa.
-        </p>
-      </div>
+  <section class="login-wrap lienzo-acuarela" aria-labelledby="titulo-login">
+    <div class="aguada aguada-cielo" aria-hidden="true"></div>
+    <div class="contenedor">
+      <div class="login-card on-fog">
+        <header>
+          <h2 id="titulo-login">Ingreso a Mi Panel Lácteo</h2>
+          <p>Acceso seguro · Cusco Provincia. Ingrese con su identificador de operario o el correo de la microempresa.</p>
+        </header>
 
-      <form method="POST" action="{{ route('login') }}">
-        @csrf
-        <div style="margin-bottom: 1.25rem;">
-          <label for="login" style="display: block; font-size: 0.85rem; font-weight: 500; color: var(--color-slate-deep); margin-bottom: 0.35rem;">
-            Usuario o Correo
-          </label>
-          <input type="text" id="login" name="login" value="{{ old('login', 'donjusto@sanborreal.pe') }}" required autofocus
-                 style="width: 100%; padding: 0.75rem 1rem; border: none; border-radius: 8px; background-color: #ffffff; color: var(--color-slate-deep); font-size: 0.95rem; outline: none;">
-        </div>
+        <form method="POST" action="{{ route('login') }}">
+          @csrf
+          <div class="form-grupo">
+            <label for="login" class="form-label">Usuario o correo</label>
+            <input type="text" id="login" name="login" class="input-lat" value="{{ old('login', 'donjusto@sanborreal.pe') }}" required autofocus autocomplete="username" @error('login') aria-invalid="true" @enderror>
+          </div>
 
-        <div style="margin-bottom: 1.5rem;">
-          <label for="password" style="display: block; font-size: 0.85rem; font-weight: 500; color: var(--color-slate-deep); margin-bottom: 0.35rem;">
-            Contraseña
-          </label>
-          <input type="password" id="password" name="password" value="secreto123" required
-                 style="width: 100%; padding: 0.75rem 1rem; border: none; border-radius: 8px; background-color: #ffffff; color: var(--color-slate-deep); font-size: 0.95rem; outline: none;">
-        </div>
+          <div class="form-grupo">
+            <label for="password" class="form-label">Contraseña</label>
+            <input type="password" id="password" name="password" class="input-lat" value="secreto123" required autocomplete="current-password">
+          </div>
 
-        <button type="submit" class="btn-lat btn-ember" style="width: 100%; padding: 0.85rem; font-size: 1rem; font-weight: 600; cursor: pointer; border: none; border-radius: 8px;">
-          Entrar a Mi Panel
-        </button>
-      </form>
+          <button type="submit" class="btn btn-ember btn-bloque btn-grande">Entrar a Mi Panel</button>
+        </form>
 
-      <!-- Selector Rápido para Demostración Universitaria -->
-      <div style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--color-sky-wash);">
-        <strong style="display: block; font-size: 0.78rem; text-transform: uppercase; color: var(--color-pewter); margin-bottom: 0.75rem; letter-spacing: 0.5px;">
-          Perfiles de Prueba Sembrados (1 Clic)
-        </strong>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
-          <button type="button" onclick="cargar('donjusto@sanborreal.pe')" style="background: #ffffff; border: none; padding: 0.5rem; border-radius: 6px; font-size: 0.78rem; cursor: pointer; text-align: left; color: var(--color-slate-deep);">
-            <strong>Don Justo</strong><br><span style="color: var(--color-pewter); font-size: 0.72rem;">Administración</span>
-          </button>
-          <button type="button" onclick="cargar('carlos.anta')" style="background: #ffffff; border: none; padding: 0.5rem; border-radius: 6px; font-size: 0.78rem; cursor: pointer; text-align: left; color: var(--color-slate-deep);">
-            <strong>Carlos</strong><br><span style="color: var(--color-pewter); font-size: 0.72rem;">Encargado Planta</span>
-          </button>
-          <button type="button" onclick="cargar('sabina.tina')" style="background: #ffffff; border: none; padding: 0.5rem; border-radius: 6px; font-size: 0.78rem; cursor: pointer; text-align: left; color: var(--color-slate-deep);">
-            <strong>Sabina</strong><br><span style="color: var(--color-pewter); font-size: 0.72rem;">Tina / Calidad</span>
-          </button>
-          <button type="button" onclick="cargar('contador.marco')" style="background: #ffffff; border: none; padding: 0.5rem; border-radius: 6px; font-size: 0.78rem; cursor: pointer; text-align: left; color: var(--color-slate-deep);">
-            <strong>Marco</strong><br><span style="color: var(--color-pewter); font-size: 0.72rem;">Contador</span>
-          </button>
+        <div class="perfiles">
+          <h3>Perfiles de prueba sembrados</h3>
+          <p class="ayuda">Rellenan el formulario con un clic. Solo para demostración universitaria.</p>
+          <div class="perfiles-grid" role="group" aria-label="Perfiles de prueba">
+            <button type="button" class="perfil-btn" data-usuario="donjusto@sanborreal.pe" aria-pressed="true"><strong>Don Justo</strong><span>Administración</span></button>
+            <button type="button" class="perfil-btn" data-usuario="carlos.anta" aria-pressed="false"><strong>Carlos</strong><span>Encargado de planta</span></button>
+            <button type="button" class="perfil-btn" data-usuario="sabina.tina" aria-pressed="false"><strong>Sabina</strong><span>Tina / Calidad</span></button>
+            <button type="button" class="perfil-btn" data-usuario="contador.marco" aria-pressed="false"><strong>Marco</strong><span>Contador externo</span></button>
+          </div>
         </div>
       </div>
     </div>
-  </div>
+  </section>
 
   <script>
-    function cargar(usuario) {
-      document.getElementById('login').value = usuario;
-      document.getElementById('password').value = 'secreto123';
-    }
+    document.querySelectorAll('.perfil-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.getElementById('login').value = btn.dataset.usuario;
+        document.getElementById('password').value = 'secreto123';
+        document.querySelectorAll('.perfil-btn').forEach(b => b.setAttribute('aria-pressed', b === btn ? 'true' : 'false'));
+      });
+    });
   </script>
 @endsection

@@ -2,539 +2,543 @@
 
 @section('titulo', 'LAT · Mi Panel Operativo')
 
+@php
+  $icoMic = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M19 10v1a7 7 0 0 1-14 0v-1M12 18v4"/></svg>';
+  $icoMicS = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M19 10v1a7 7 0 0 1-14 0v-1M12 18v4"/></svg>';
+  $icoTec = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/></svg>';
+  $icoOk = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>';
+  $icoAlerta = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 2 20h20L12 3Z"/><path d="M12 10v4M12 17h.01"/></svg>';
+  $icoDescarga = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>';
+  $icoTina = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z"/></svg>';
+  $icoBalance = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M9 14h6M9 18h6M9 10h2"/></svg>';
+@endphp
+
 @section('contenido')
-  <!-- Encabezado de Sesión y Perfil -->
-  <div style="background-color: var(--color-fog); border-radius: 12px; padding: 1.5rem 2rem; margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+<div class="contenedor" style="padding-block: 1.5rem 3rem;">
+
+  <!-- Encabezado de sesión -->
+  <section class="panel-cabecera" aria-labelledby="titulo-panel">
     <div>
-      <span style="font-size: 0.8rem; font-weight: 600; color: var(--color-celeste); text-transform: uppercase; letter-spacing: 0.5px;">Centro de Acopio y Transformación</span>
-      <h2 style="font-family: var(--font-display); font-size: 1.8rem; color: var(--color-slate-deep); margin: 0.25rem 0;">
-        Planta Láctea San Borreal
-      </h2>
-      <p style="color: var(--color-graphite); font-size: 0.88rem; margin: 0;">
-        Operador: <strong>{{ $usuario->name }}</strong> · Cargo: <span style="background: var(--color-sky-wash); color: var(--color-slate-deep); padding: 2px 8px; border-radius: 4px; font-weight: 600; font-size: 0.78rem;">{{ strtoupper(str_replace('_', ' ', $usuario->cargo)) }}</span>
+      <p style="font-size: 0.875rem; font-weight: 600;">Centro de acopio y transformación</p>
+      <h1 id="titulo-panel">Planta Láctea San Borreal · Cusco Provincia</h1>
+      <p style="font-size: 0.9375rem;">
+        Operador: <strong>{{ $usuario->name }}</strong> ·
+        Cargo: <span class="chip chip-celeste">{{ strtoupper(str_replace('_', ' ', $usuario->cargo)) }}</span>
       </p>
     </div>
+    <div class="panel-cabecera-acciones">
+      <a href="{{ route('panel.exportar') }}" class="btn btn-ember">{!! $icoDescarga !!} Exportar balance CSV</a>
+    </div>
+  </section>
 
-    <div style="display: flex; gap: 0.5rem; align-items: center;">
-      <span style="background-color: var(--verde-fill); color: var(--verde-text); padding: 0.45rem 0.85rem; border-radius: 6px; font-size: 0.82rem; font-weight: 600;">
-        ● Sistema Operativo en Línea
+  <!-- KPIs -->
+  <ul class="kpis" aria-label="Indicadores del día">
+    <li class="kpi">
+      <span class="kpi-etq">Leche recibida hoy</span>
+      <span class="kpi-numero">{{ number_format($litrosHoy, 1) }}<small>L</small></span>
+      <span class="kpi-nota">{{ $acopiosHoy->count() }} entregas registradas</span>
+    </li>
+    <li class="kpi kpi-celeste">
+      <span class="kpi-etq">Precio vigente por litro</span>
+      <span class="kpi-numero">S/ {{ number_format($precioLitro, 2) }}</span>
+      <span class="kpi-nota">Comisión LAT: S/ 0.00</span>
+    </li>
+    <li class="kpi kpi-oceano">
+      <span class="kpi-etq">Tina pasteurizadora</span>
+      <span class="kpi-numero">{{ number_format($loteActivo->temperatura_actual, 1) }}<small>°C</small></span>
+      <span class="kpi-nota">Estado: {{ strtoupper($termica['estado']) }} ({{ $termica['porcentaje'] }}%)</span>
+    </li>
+    <li class="kpi">
+      <span class="kpi-etq">Control sanitario 74°</span>
+      <span class="kpi-numero">
+        @if($totalPendientesCalidad === 0) 100<small>%</small> @else {{ $totalPendientesCalidad }} @endif
       </span>
-      <a href="{{ route('panel.exportar') }}" class="btn-lat btn-ember" style="padding: 0.5rem 1rem; text-decoration: none; font-size: 0.85rem; font-weight: 600;">
-        Exportar Balance CSV
-      </a>
-    </div>
-  </div>
+      <span class="kpi-nota">{{ $totalPendientesCalidad === 0 ? 'Todas las entregas verificadas' : 'Porongos por verificar' }}</span>
+    </li>
+  </ul>
 
-  <!-- TARJETAS SUPERIORES DE MÉTRICAS (Flat Fill Contrast y Cifras Delgadas 300) -->
-  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.25rem; margin-bottom: 2rem;">
-    <!-- Métrica 1 -->
-    <div style="background-color: var(--color-fog); padding: 1.5rem; border-radius: 12px;">
-      <span style="font-size: 0.82rem; color: var(--color-pewter); text-transform: uppercase; letter-spacing: 0.5px; display: block;">Leche Recibida Hoy</span>
-      <div style="font-size: 2.3rem; color: var(--color-slate-deep); margin-top: 0.35rem;" class="cifra-delgada">
-        {{ number_format($litrosHoy, 1) }} <span style="font-size: 1.1rem; color: var(--color-graphite);">L</span>
-      </div>
-      <span style="font-size: 0.75rem; color: var(--color-celeste); font-weight: 500;">{{ $acopiosHoy->count() }} entregas registradas</span>
-    </div>
-
-    <!-- Métrica 2 -->
-    <div style="background-color: var(--color-sky-wash); padding: 1.5rem; border-radius: 12px;">
-      <span style="font-size: 0.82rem; color: var(--color-slate-deep); text-transform: uppercase; letter-spacing: 0.5px; display: block;">Precio Vigente</span>
-      <div style="font-size: 2.3rem; color: var(--color-slate-deep); margin-top: 0.35rem;" class="cifra-delgada">
-        S/ {{ number_format($precioLitro, 2) }}
-      </div>
-      <span style="font-size: 0.75rem; color: #15803d; font-weight: 600;">Comisión LAT: S/ 0.00</span>
-    </div>
-
-    <!-- Métrica 3 -->
-    <div style="background-color: var(--color-ocean); color: #ffffff; padding: 1.5rem; border-radius: 12px;">
-      <span style="font-size: 0.82rem; color: #bae6fd; text-transform: uppercase; letter-spacing: 0.5px; display: block;">Tina Pasteurizadora</span>
-      <div style="font-size: 2.3rem; color: #ffffff; margin-top: 0.35rem;" class="cifra-delgada">
-        {{ number_format($loteActivo->temperatura_actual, 1) }} <span style="font-size: 1.1rem; color: #7dd3fc;">°C</span>
-      </div>
-      <span style="font-size: 0.75rem; color: #fef08a; font-weight: 500;">
-        Estado: {{ strtoupper($termica['estado']) }} ({{ $termica['porcentaje'] }}%)
+  <!-- Selector Desplegable de Módulos (Exclusivo Celulares <= 768px) -->
+  <div class="panel-modulo-dropdown" id="panel-modulo-dropdown">
+    <label for="btn-dropdown-modulos" class="sr-only">Seleccionar módulo operativo</label>
+    <button type="button" class="dropdown-trigger" id="btn-dropdown-modulos" aria-expanded="false" aria-haspopup="listbox" aria-controls="dropdown-lista-modulos" aria-label="Cambiar módulo operativo">
+      <span class="dropdown-trigger-icon" id="dropdown-icon-activo" aria-hidden="true">
+        {!! $icoMicS !!}
       </span>
-    </div>
-
-    <!-- Métrica 4 -->
-    <div style="background-color: var(--color-fog); padding: 1.5rem; border-radius: 12px;">
-      <span style="font-size: 0.82rem; color: var(--color-pewter); text-transform: uppercase; letter-spacing: 0.5px; display: block;">Control Sanitario 74°</span>
-      <div style="font-size: 2.3rem; color: var(--color-slate-deep); margin-top: 0.35rem;" class="cifra-delgada">
-        @if($totalPendientesCalidad === 0)
-          <span style="color: #15803d;">100%</span>
-        @else
-          <span style="color: #b45309;">{{ $totalPendientesCalidad }}</span>
-        @endif
-      </div>
-      <span style="font-size: 0.75rem; color: var(--color-pewter);">
-        {{ $totalPendientesCalidad === 0 ? 'Todas verificadas' : 'Porongos por verificar' }}
+      <span class="dropdown-trigger-text">
+        <small class="dropdown-trigger-sub">Módulo Operativo Activo</small>
+        <strong id="dropdown-titulo-activo" class="dropdown-trigger-tit">1. Acopio por voz y tacto</strong>
       </span>
-    </div>
-  </div>
+      <svg class="dropdown-trigger-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+    </button>
 
-  <!-- BARRA DE PESTAÑAS OPERATIVAS -->
-  <div style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem; border-bottom: 2px solid var(--color-sky-wash); padding-bottom: 0.5rem; overflow-x: auto;">
-    <button type="button" onclick="mostrarPestana('tab-acopio')" id="btn-tab-acopio" class="btn-lat nav-tab-activa" style="padding: 0.6rem 1.25rem; font-size: 0.9rem; font-weight: 600; border-radius: 6px; cursor: pointer; border: none;">
-      1. Acopio por Voz y Tacto
-    </button>
-    <button type="button" onclick="mostrarPestana('tab-calidad')" id="btn-tab-calidad" class="btn-lat" style="padding: 0.6rem 1.25rem; font-size: 0.9rem; font-weight: 600; border-radius: 6px; cursor: pointer; border: none; background: var(--color-fog); color: var(--color-slate-deep);">
-      2. Calidad Sanitaria (Triage)
-    </button>
-    <button type="button" onclick="mostrarPestana('tab-tina')" id="btn-tab-tina" class="btn-lat" style="padding: 0.6rem 1.25rem; font-size: 0.9rem; font-weight: 600; border-radius: 6px; cursor: pointer; border: none; background: var(--color-fog); color: var(--color-slate-deep);">
-      3. Tina y Receta Automática
-    </button>
-    <button type="button" onclick="mostrarPestana('tab-quincena')" id="btn-tab-quincena" class="btn-lat" style="padding: 0.6rem 1.25rem; font-size: 0.9rem; font-weight: 600; border-radius: 6px; cursor: pointer; border: none; background: var(--color-fog); color: var(--color-slate-deep);">
-      4. Liquidación Quincenal
-    </button>
-  </div>
-
-  <!-- PESTAÑA 1: MÓDULO ACOPIO POR VOZ Y TECLADO 1 MANO -->
-  <div id="tab-acopio" class="seccion-pestana">
-    <div style="display: grid; grid-template-columns: 1fr 1.3fr; gap: 1.5rem; align-items: start;">
-      <!-- Panel de Registro -->
-      <div style="background-color: var(--color-fog); padding: 1.75rem; border-radius: 12px;">
-        <h3 style="font-family: var(--font-display); font-size: 1.35rem; color: var(--color-slate-deep); margin-bottom: 0.5rem;">
-          Registro Diario de Recepción
-        </h3>
-        <p style="color: var(--color-graphite); font-size: 0.85rem; margin-bottom: 1.25rem;">
-          Dictado por voz con síntesis confirmatoria o ingreso manual de alta velocidad.
-        </p>
-
-        <!-- Botón de Reconocimiento por Voz -->
-        <div style="margin-bottom: 1.5rem; text-align: center;">
-          <button type="button" id="btn-voz" onclick="iniciarReconocimientoVoz()" class="btn-lat btn-ember" style="width: 100%; padding: 0.9rem; font-size: 1rem; font-weight: 600; border-radius: 8px; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
-            <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/><path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>
-            <span id="txt-btn-voz">Dictar Acopio por Voz</span>
-          </button>
-          <div id="transcripcion-voz" style="margin-top: 0.5rem; font-size: 0.82rem; color: var(--color-graphite); min-height: 20px; font-style: italic;">
-            Ejemplo: "Don Eloy Condori, 35 litros"
-          </div>
+    <div class="dropdown-menu-list" id="dropdown-lista-modulos" role="listbox" aria-label="Módulos de la planta">
+      <button type="button" class="dropdown-item activo" role="option" aria-selected="true" data-tab="tab-acopio" data-titulo="1. Acopio por voz y tacto" data-icon="voz">
+        <span class="dropdown-item-num">1</span>
+        <div class="dropdown-item-info">
+          <strong>Acopio por voz y tacto</strong>
+          <small>Recepción y pesaje diario en porongo</small>
         </div>
+      </button>
+
+      <button type="button" class="dropdown-item" role="option" aria-selected="false" data-tab="tab-calidad" data-titulo="2. Calidad sanitaria (Triage 74°)" data-icon="calidad">
+        <span class="dropdown-item-num">2</span>
+        <div class="dropdown-item-info">
+          <strong>Calidad sanitaria (Triage 74°)</strong>
+          <small>Prueba alcohol 74° y desvío a quesillo</small>
+        </div>
+      </button>
+
+      <button type="button" class="dropdown-item" role="option" aria-selected="false" data-tab="tab-tina" data-titulo="3. Tina y receta automática" data-icon="tina">
+        <span class="dropdown-item-num">3</span>
+        <div class="dropdown-item-info">
+          <strong>Tina y receta automática</strong>
+          <small>Control térmico 72° a 38°C y dosificación</small>
+        </div>
+      </button>
+
+      <button type="button" class="dropdown-item" role="option" aria-selected="false" data-tab="tab-quincena" data-titulo="4. Liquidación quincenal" data-icon="quincena">
+        <span class="dropdown-item-num">4</span>
+        <div class="dropdown-item-info">
+          <strong>Liquidación quincenal</strong>
+          <small>Cuentas claras S/ 0.00 y balances CSV</small>
+        </div>
+      </button>
+    </div>
+  </div>
+
+  <!-- Pestañas de módulos (Desktop > 768px) -->
+  <div class="tabs-bar tabs-bar-desktop" role="tablist" aria-label="Módulos operativos de la planta" id="tablist">
+    <button type="button" role="tab" id="tab-btn-acopio" class="tab" aria-selected="true" aria-controls="tab-acopio" tabindex="0">1. Acopio por voz y tacto</button>
+    <button type="button" role="tab" id="tab-btn-calidad" class="tab" aria-selected="false" aria-controls="tab-calidad" tabindex="-1">2. Calidad sanitaria</button>
+    <button type="button" role="tab" id="tab-btn-tina" class="tab" aria-selected="false" aria-controls="tab-tina" tabindex="-1">3. Tina y receta</button>
+    <button type="button" role="tab" id="tab-btn-quincena" class="tab" aria-selected="false" aria-controls="tab-quincena" tabindex="-1">4. Liquidación quincenal</button>
+  </div>
+
+  <!-- MÓDULO 1: ACOPIO -->
+  <section id="tab-acopio" class="tab-panel" role="tabpanel" aria-labelledby="tab-btn-acopio" tabindex="0">
+    <div class="panel-grid-2">
+      <div class="panel-card on-fog">
+        <h2>Registro diario de recepción</h2>
+        <p>Dicte por voz con confirmación hablada o ingrese la cantidad de forma manual.</p>
+
+        <button type="button" id="btn-voz" class="btn btn-ember btn-grande btn-bloque btn-voz" aria-pressed="false">
+          {!! $icoMic !!}
+          <span id="txt-btn-voz">Dictar acopio por voz</span>
+        </button>
+        <div id="transcripcion-voz" class="transcripcion" role="status" aria-live="polite">Ejemplo: “Don Eloy Condori, 35 litros”</div>
 
         <form method="POST" action="{{ route('panel.acopio') }}" id="form-acopio">
           @csrf
           <input type="hidden" name="metodo" id="input-metodo" value="manual">
           <input type="hidden" name="frase_dictada" id="input-frase" value="">
 
-          <div style="margin-bottom: 1rem;">
-            <label style="display: block; font-size: 0.82rem; font-weight: 600; color: var(--color-slate-deep); margin-bottom: 0.25rem;">
-              Ganadero / Productor
-            </label>
-            <select name="proveedor_id" id="select-proveedor" required style="width: 100%; padding: 0.65rem 0.85rem; border: none; border-radius: 6px; background-color: #ffffff; color: var(--color-slate-deep); font-size: 0.9rem;">
-              <option value="">Seleccione el ganadero...</option>
+          <div class="form-grupo">
+            <label for="select-proveedor" class="form-label">Ganadero / productor</label>
+            <select name="proveedor_id" id="select-proveedor" class="select-lat" required>
+              <option value="">Seleccione el ganadero…</option>
               @foreach($proveedores as $prov)
                 <option value="{{ $prov->id }}">{{ $prov->codigo }} - {{ $prov->nombre }} ({{ $prov->sector }})</option>
               @endforeach
             </select>
           </div>
 
-          <div style="margin-bottom: 1rem;">
-            <label style="display: block; font-size: 0.82rem; font-weight: 600; color: var(--color-slate-deep); margin-bottom: 0.25rem;">
-              Volumen en Litros (L)
-            </label>
-            <input type="number" step="0.1" name="litros" id="input-litros" required placeholder="0.0"
-                   style="width: 100%; padding: 0.75rem 1rem; border: none; border-radius: 6px; background-color: #ffffff; color: var(--color-slate-deep); font-size: 1.4rem; outline: none;" class="cifra-delgada">
+          <div class="form-grupo">
+            <label for="input-litros" class="form-label">Volumen en litros (L)</label>
+            <input type="number" step="0.1" min="0.5" max="5000" inputmode="decimal" name="litros" id="input-litros" class="input-lat input-litros" required placeholder="0.0">
           </div>
 
-          <!-- Teclado Rápido Modo 1 Mano (Botones 54px) -->
-          <div style="margin-bottom: 1.25rem;">
-            <span style="font-size: 0.75rem; color: var(--color-pewter); text-transform: uppercase; font-weight: 600; display: block; margin-bottom: 0.5rem;">
-              Botonera Táctil Rápida (1 Mano)
-            </span>
-            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem;">
+          <div class="form-grupo" role="group" aria-labelledby="botonera-etq">
+            <span class="botonera-etq" id="botonera-etq">Botonera táctil rápida (suma litros)</span>
+            <div class="botonera">
               @foreach([10, 15, 20, 25, 30, 35, 40, 50] as $lit)
-                <button type="button" onclick="sumarLitros({{ $lit }})" style="height: 48px; background: #ffffff; border: none; border-radius: 6px; font-weight: 600; color: var(--color-slate-deep); cursor: pointer; font-size: 0.95rem;">
-                  +{{ $lit }}
-                </button>
+                <button type="button" data-litros="{{ $lit }}" aria-label="Sumar {{ $lit }} litros">+{{ $lit }}</button>
               @endforeach
             </div>
           </div>
 
-          <button type="submit" class="btn-lat btn-ocean" style="width: 100%; padding: 0.8rem; font-size: 0.95rem; font-weight: 600; border-radius: 6px; border: none; cursor: pointer; background-color: var(--color-ocean); color: #ffffff;">
-            Guardar Entrega en Tina
-          </button>
+          <button type="submit" class="btn btn-ocean btn-bloque btn-grande">Guardar entrega en tina</button>
         </form>
       </div>
 
-      <!-- Tabla de Entregas del Día -->
-      <div style="background-color: #ffffff; border: 1px solid var(--color-sky-wash); border-radius: 12px; overflow: hidden;">
-        <div style="background-color: var(--color-sky-wash); padding: 1rem 1.5rem; display: flex; justify-content: space-between; align-items: center;">
-          <h4 style="margin: 0; color: var(--color-slate-deep); font-size: 1rem;">Entregas de Hoy ({{ Carbon\Carbon::today()->format('d/m/Y') }})</h4>
-          <span style="font-size: 0.8rem; font-weight: 600; color: var(--color-celeste);">Total: {{ number_format($litrosHoy, 1) }} L</span>
+      <div class="panel-tabla-wrap">
+        <div class="panel-tabla-cab">
+          <h3>Entregas de hoy ({{ Carbon\Carbon::today()->format('d/m/Y') }})</h3>
+          <span class="chip chip-celeste num-tabular">Total: {{ number_format($litrosHoy, 1) }} L</span>
         </div>
+        <div class="tabla-region" role="region" aria-label="Entregas de leche de hoy" tabindex="0">
+          <table class="tabla-plana">
+            <thead>
+              <tr>
+                <th scope="col">Hora</th>
+                <th scope="col">Productor</th>
+                <th scope="col" class="num">Litros</th>
+                <th scope="col">Método</th>
+                <th scope="col">Calidad</th>
+              </tr>
+            </thead>
+            <tbody>
+              @forelse($acopiosHoy as $acopio)
+                <tr>
+                  <td class="num-tabular">{{ substr($acopio->hora, 0, 5) }}</td>
+                  <td><strong>{{ $acopio->proveedor->nombre }}</strong><small>{{ $acopio->proveedor->sector }}</small></td>
+                  <td class="num" style="font-size: 1.1rem;">{{ number_format($acopio->litros, 1) }}</td>
+                  <td>
+                    @if($acopio->metodo === 'voz')
+                      <span class="chip chip-celeste">{!! $icoMicS !!} Voz</span>
+                    @else
+                      <span class="chip chip-fog">{!! $icoTec !!} Manual</span>
+                    @endif
+                  </td>
+                  <td>
+                    @if($acopio->calidad === 'buena')
+                      <span class="chip chip-verde">{!! $icoOk !!} Aprobada</span>
+                    @elseif($acopio->calidad === 'acida')
+                      <span class="chip chip-amarillo">{!! $icoAlerta !!} Ácida (quesillo)</span>
+                    @else
+                      <span class="chip chip-amarillo">Pendiente</span>
+                    @endif
+                  </td>
+                </tr>
+              @empty
+                <tr><td colspan="5" style="text-align: center; padding: 2rem; color: var(--color-graphite);">No hay entregas registradas hoy.</td></tr>
+              @endforelse
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
 
+  <!-- MÓDULO 2: CALIDAD -->
+  <section id="tab-calidad" class="tab-panel" role="tabpanel" aria-labelledby="tab-btn-calidad" tabindex="0" hidden>
+    <div class="panel-card">
+      <h2>Control sanitario en recepción (prueba de alcohol a 74°)</h2>
+      <p><strong>Principio de cero desperdicio:</strong> la leche con acidez no se desecha ni se multa al productor. Se clasifica de inmediato y se deriva a quesillos frescos de 4 días.</p>
+
+      <div class="tabla-region" role="region" aria-label="Clasificación sanitaria de las entregas de hoy" tabindex="0">
         <table class="tabla-plana">
           <thead>
             <tr>
-              <th>Hora</th>
-              <th>Productor</th>
-              <th style="text-align: right;">Litros</th>
-              <th>Método</th>
-              <th>Calidad</th>
+              <th scope="col">Productor</th>
+              <th scope="col" class="num">Litros</th>
+              <th scope="col">Estado actual</th>
+              <th scope="col">Destino operativo</th>
+              <th scope="col">Triage inmediato</th>
             </tr>
           </thead>
           <tbody>
             @forelse($acopiosHoy as $acopio)
               <tr>
-                <td style="font-size: 0.85rem;" class="cifra-delgada">{{ substr($acopio->hora, 0, 5) }}</td>
-                <td>
-                  <strong>{{ $acopio->proveedor->nombre }}</strong>
-                  <span style="display: block; font-size: 0.75rem; color: var(--color-pewter);">{{ $acopio->proveedor->sector }}</span>
-                </td>
-                <td style="text-align: right; font-size: 1.1rem; color: var(--color-slate-deep);" class="cifra-delgada">
-                  {{ number_format($acopio->litros, 1) }}
-                </td>
-                <td>
-                  <span style="background: {{ $acopio->metodo === 'voz' ? 'var(--color-celeste-suave)' : 'var(--color-fog)' }}; color: var(--color-slate-deep); font-size: 0.75rem; padding: 2px 6px; border-radius: 4px; font-weight: 500;">
-                    {{ $acopio->metodo === 'voz' ? '🎙 Voz' : '⌨ Manual' }}
-                  </span>
-                </td>
+                <td><strong>{{ $acopio->proveedor->nombre }}</strong><small>{{ $acopio->proveedor->codigo }}</small></td>
+                <td class="num" style="font-size: 1.1rem;">{{ number_format($acopio->litros, 1) }} L</td>
                 <td>
                   @if($acopio->calidad === 'buena')
-                    <span style="background: var(--verde-fill); color: var(--verde-text); font-size: 0.75rem; padding: 2px 6px; border-radius: 4px; font-weight: 600;">Aprobada</span>
+                    <span class="chip chip-verde">{!! $icoOk !!} Óptima</span>
                   @elseif($acopio->calidad === 'acida')
-                    <span style="background: var(--rojo-fill); color: var(--rojo-text); font-size: 0.75rem; padding: 2px 6px; border-radius: 4px; font-weight: 600;">Ácida (Quesillo)</span>
+                    <span class="chip chip-amarillo">{!! $icoAlerta !!} Con acidez</span>
                   @else
-                    <span style="background: var(--amarillo-fill); color: var(--amarillo-text); font-size: 0.75rem; padding: 2px 6px; border-radius: 4px; font-weight: 600;">Pendiente</span>
+                    <span class="chip chip-amarillo">Sin probar</span>
                   @endif
+                </td>
+                <td>{{ $acopio->destino === 'quesillo_4_dias' ? 'Tina quesillo 4 días' : 'Tina principal (queso / yogur)' }}</td>
+                <td>
+                  <div class="acciones-celda">
+                    <form method="POST" action="{{ route('panel.calidad', $acopio->id) }}">
+                      @csrf
+                      <input type="hidden" name="calidad" value="buena">
+                      <button type="submit" class="btn btn-verde btn-compacto" aria-label="Aprobar leche de {{ $acopio->proveedor->nombre }}">{!! $icoOk !!} Aprobar</button>
+                    </form>
+                    <form method="POST" action="{{ route('panel.calidad', $acopio->id) }}">
+                      @csrf
+                      <input type="hidden" name="calidad" value="acida">
+                      <button type="submit" class="btn btn-ember btn-compacto" aria-label="Desviar a quesillo la leche de {{ $acopio->proveedor->nombre }}">{!! $icoAlerta !!} Desviar a quesillo</button>
+                    </form>
+                  </div>
                 </td>
               </tr>
             @empty
-              <tr>
-                <td colspan="5" style="text-align: center; color: var(--color-pewter); padding: 2rem;">No hay entregas registradas hoy.</td>
-              </tr>
+              <tr><td colspan="5" style="text-align: center; padding: 2rem; color: var(--color-graphite);">No hay entregas para clasificar hoy.</td></tr>
             @endforelse
           </tbody>
         </table>
       </div>
     </div>
-  </div>
+  </section>
 
-  <!-- PESTAÑA 2: MÓDULO CALIDAD SANITARIA (TRIAGE ÉTICO 74°) -->
-  <div id="tab-calidad" class="seccion-pestana" style="display: none;">
-    <div style="background-color: var(--color-fog); border-radius: 12px; padding: 1.75rem; margin-bottom: 1.5rem;">
-      <h3 style="font-family: var(--font-display); font-size: 1.35rem; color: var(--color-slate-deep); margin-bottom: 0.35rem;">
-        Control Sanitario en Recepción (Prueba Rápida de Alcohol a 74°)
-      </h3>
-      <p style="color: var(--color-graphite); font-size: 0.88rem; line-height: 1.6; margin-bottom: 1.25rem;">
-        <strong>Principio de Cero Desperdicio:</strong> La leche que presenta acidez no se desecha ni se multa al campesino. Se clasifica de inmediato y se deriva éticamente a la producción de quesillos frescos de 4 días, protegiendo la economía comunitaria.
-      </p>
+  <!-- MÓDULO 3: TINA -->
+  <section id="tab-tina" class="tab-panel" role="tabpanel" aria-labelledby="tab-btn-tina" tabindex="0" hidden>
+    <div class="panel-grid-eq">
+      <div class="panel-card panel-card-oceano">
+        <p style="font-size: 0.875rem; font-weight: 600;">Monitoreo térmico</p>
+        <h2>Lote {{ $loteActivo->codigo }}</h2>
+        <p>Curva de enfriamiento: pasteurización a 72 °C hasta el punto de cuajado (36–40 °C).</p>
 
-      <table class="tabla-plana" style="background: #ffffff;">
-        <thead>
-          <tr>
-            <th>Productor</th>
-            <th>Litros</th>
-            <th>Estado Actual</th>
-            <th>Destino Operativo</th>
-            <th style="text-align: center;">Triage Inmediato</th>
-          </tr>
-        </thead>
-        <tbody>
-          @foreach($acopiosHoy as $acopio)
-            <tr>
-              <td>
-                <strong>{{ $acopio->proveedor->nombre }}</strong>
-                <span style="font-size: 0.75rem; color: var(--color-pewter); display: block;">{{ $acopio->proveedor->codigo }}</span>
-              </td>
-              <td style="font-size: 1.1rem; color: var(--color-slate-deep);" class="cifra-delgada">
-                {{ number_format($acopio->litros, 1) }} L
-              </td>
-              <td>
-                @if($acopio->calidad === 'buena')
-                  <span style="background: var(--verde-fill); color: var(--verde-text); font-size: 0.78rem; padding: 3px 8px; border-radius: 4px; font-weight: 600;">Óptima</span>
-                @elseif($acopio->calidad === 'acida')
-                  <span style="background: var(--rojo-fill); color: var(--rojo-text); font-size: 0.78rem; padding: 3px 8px; border-radius: 4px; font-weight: 600;">Con Acidez</span>
-                @else
-                  <span style="background: var(--amarillo-fill); color: var(--amarillo-text); font-size: 0.78rem; padding: 3px 8px; border-radius: 4px; font-weight: 600;">Sin Probar</span>
-                @endif
-              </td>
-              <td>
-                <span style="font-size: 0.85rem; color: var(--color-slate-deep); font-weight: 500;">
-                  {{ $acopio->destino === 'quesillo_4_dias' ? 'Tina Quesillo 4 Días' : 'Tina Principal (Queso/Yogur)' }}
-                </span>
-              </td>
-              <td style="text-align: center;">
-                <div style="display: flex; gap: 0.5rem; justify-content: center;">
-                  <form method="POST" action="{{ route('panel.calidad', $acopio->id) }}">
-                    @csrf
-                    <input type="hidden" name="calidad" value="buena">
-                    <button type="submit" style="background: #15803d; color: #ffffff; border: none; padding: 0.4rem 0.75rem; border-radius: 6px; font-size: 0.78rem; font-weight: 600; cursor: pointer;">
-                      ✓ Aprobar Leche
-                    </button>
-                  </form>
-                  <form method="POST" action="{{ route('panel.calidad', $acopio->id) }}">
-                    @csrf
-                    <input type="hidden" name="calidad" value="acida">
-                    <button type="submit" style="background: #b91c1c; color: #ffffff; border: none; padding: 0.4rem 0.75rem; border-radius: 6px; font-size: 0.78rem; font-weight: 600; cursor: pointer;">
-                      ⚠ Desviar a Quesillo
-                    </button>
-                  </form>
-                </div>
-              </td>
-            </tr>
-          @endforeach
-        </tbody>
-      </table>
-    </div>
-  </div>
-
-  <!-- PESTAÑA 3: MÓDULO TINA Y RECETA AUTOMÁTICA -->
-  <div id="tab-tina" class="seccion-pestana" style="display: none;">
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
-      <!-- Monitor Térmico -->
-      <div style="background-color: var(--color-ocean); color: #ffffff; padding: 2rem; border-radius: 12px;">
-        <span style="font-size: 0.82rem; color: #bae6fd; text-transform: uppercase; letter-spacing: 0.5px;">Monitoreo Térmico</span>
-        <h3 style="font-family: var(--font-display); font-size: 1.5rem; color: #ffffff; margin-top: 0.25rem;">
-          Lote: {{ $loteActivo->codigo }}
-        </h3>
-        <p style="color: #bae6fd; font-size: 0.85rem; margin-bottom: 1.5rem;">
-          Curva de enfriamiento: Pasteurización a 72 °C hasta punto de cuajado (36-40 °C).
-        </p>
-
-        <div style="background: rgba(255,255,255,0.08); padding: 1.5rem; border-radius: 8px; text-align: center; margin-bottom: 1.5rem;">
-          <div style="font-size: 3.5rem; font-weight: 300;" class="cifra-delgada">
-            {{ number_format($loteActivo->temperatura_actual, 1) }} °C
+        <div class="termico">
+          <div class="termico-valor">{{ number_format($loteActivo->temperatura_actual, 1) }} °C</div>
+          <div class="barra-termica" role="progressbar" aria-label="Avance del enfriamiento de la tina" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ $termica['porcentaje'] }}" aria-valuetext="{{ $termica['porcentaje'] }}% de avance, estado {{ $termica['estado'] }}">
+            <div style="width: {{ min(100, max(0, $termica['porcentaje'])) }}%;"></div>
           </div>
-          <span style="display: inline-block; background-color: {{ $termica['apta'] ? '#22c55e' : '#f59e0b' }}; color: #ffffff; padding: 4px 12px; border-radius: 12px; font-size: 0.82rem; font-weight: 600; margin-top: 0.5rem;">
-            {{ strtoupper($termica['estado']) }} (Avance: {{ $termica['porcentaje'] }}%)
-          </span>
+          <span class="chip {{ $termica['apta'] ? 'chip-verde' : 'chip-amarillo' }}">{{ strtoupper($termica['estado']) }} · Avance {{ $termica['porcentaje'] }}%</span>
         </div>
 
         <form method="POST" action="{{ route('panel.tina', $loteActivo->id) }}">
           @csrf
-          <label style="display: block; font-size: 0.82rem; color: #bae6fd; margin-bottom: 0.35rem;">
-            Simular / Ajustar Sensor Térmico (°C):
-          </label>
-          <div style="display: flex; gap: 0.5rem;">
-            <input type="number" step="0.5" name="temperatura" value="{{ $loteActivo->temperatura_actual }}" style="flex: 1; padding: 0.65rem 1rem; border: none; border-radius: 6px; font-size: 1.1rem; color: var(--color-slate-deep);" class="cifra-delgada">
-            <button type="submit" class="btn-lat btn-ember" style="padding: 0.65rem 1.25rem; font-size: 0.88rem; font-weight: 600; border: none; border-radius: 6px; cursor: pointer;">
-              Actualizar Sensor
-            </button>
+          <div class="fila-sensor on-fog">
+            <div class="form-grupo">
+              <label for="input-temperatura" class="form-label">Simular o ajustar sensor térmico (°C)</label>
+              <input type="number" step="0.5" id="input-temperatura" name="temperatura" class="input-lat input-litros" value="{{ $loteActivo->temperatura_actual }}">
+            </div>
+            <button type="submit" class="btn btn-ember">Actualizar sensor</button>
           </div>
         </form>
       </div>
 
-      <!-- Receta Parametrizada -->
-      <div style="background-color: var(--color-fog); padding: 2rem; border-radius: 12px;">
-        <span style="font-size: 0.82rem; color: var(--color-celeste); text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px;">Estandarización de Calidad</span>
-        <h3 style="font-family: var(--font-display); font-size: 1.5rem; color: var(--color-slate-deep); margin-top: 0.25rem;">
-          Dosificación de Tina ({{ $receta['litros'] }} L)
-        </h3>
-        <p style="color: var(--color-graphite); font-size: 0.85rem; margin-bottom: 1.5rem;">
-          Cálculo exacto para garantizar uniformidad en acidez, salinidad y firmeza del cuajo.
-        </p>
+      <div class="panel-card">
+        <p style="font-size: 0.875rem; font-weight: 600;">Estandarización de calidad</p>
+        <h2>Dosificación de tina ({{ $receta['litros'] }} L)</h2>
+        <p>Cálculo para mantener uniformidad en acidez, salinidad y firmeza del cuajo.</p>
 
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-          <div style="background: #ffffff; padding: 1.25rem; border-radius: 8px;">
-            <span style="font-size: 0.78rem; color: var(--color-pewter); text-transform: uppercase; display: block;">Cuajo Líquido</span>
-            <div style="font-size: 1.8rem; color: var(--color-slate-deep);" class="cifra-delgada">
-              {{ $receta['cuajo_ml'] }} <span style="font-size: 0.9rem; color: var(--color-graphite);">ml</span>
-            </div>
-            <span style="font-size: 0.75rem; color: var(--color-celeste);">Ratio: 2.5 ml / 100 L</span>
-          </div>
-
-          <div style="background: #ffffff; padding: 1.25rem; border-radius: 8px;">
-            <span style="font-size: 0.78rem; color: var(--color-pewter); text-transform: uppercase; display: block;">Sal Común</span>
-            <div style="font-size: 1.8rem; color: var(--color-slate-deep);" class="cifra-delgada">
-              {{ $receta['sal_kg'] }} <span style="font-size: 0.9rem; color: var(--color-graphite);">kg</span>
-            </div>
-            <span style="font-size: 0.75rem; color: var(--color-celeste);">Ratio: 1.8 kg / 100 L</span>
-          </div>
-
-          <div style="background: #ffffff; padding: 1.25rem; border-radius: 8px;">
-            <span style="font-size: 0.78rem; color: var(--color-pewter); text-transform: uppercase; display: block;">Cultivo Iniciador</span>
-            <div style="font-size: 1.8rem; color: var(--color-slate-deep);" class="cifra-delgada">
-              {{ $receta['cultivo_g'] }} <span style="font-size: 0.9rem; color: var(--color-graphite);">g</span>
-            </div>
-            <span style="font-size: 0.75rem; color: var(--color-celeste);">Ratio: 1.0 g / 100 L</span>
-          </div>
-
-          <div style="background: #ffffff; padding: 1.25rem; border-radius: 8px;">
-            <span style="font-size: 0.78rem; color: var(--color-pewter); text-transform: uppercase; display: block;">Moldes Estimados</span>
-            <div style="font-size: 1.8rem; color: var(--color-ember);" class="cifra-delgada">
-              {{ $receta['moldes_estimados'] }} <span style="font-size: 0.9rem; color: var(--color-graphite);">und (1kg)</span>
-            </div>
-            <span style="font-size: 0.75rem; color: var(--color-pewter);">Rendimiento: 9 L / molde</span>
-          </div>
+        <div class="receta">
+          <div class="receta-item"><span class="etq">Cuajo líquido</span><span class="val">{{ $receta['cuajo_ml'] }} <small>ml</small></span><span class="ratio">Ratio: 2.5 ml / 100 L</span></div>
+          <div class="receta-item"><span class="etq">Sal común</span><span class="val">{{ $receta['sal_kg'] }} <small>kg</small></span><span class="ratio">Ratio: 1.8 kg / 100 L</span></div>
+          <div class="receta-item"><span class="etq">Cultivo iniciador</span><span class="val">{{ $receta['cultivo_g'] }} <small>g</small></span><span class="ratio">Ratio: 1.0 g / 100 L</span></div>
+          <div class="receta-item"><span class="etq">Moldes estimados</span><span class="val" style="color: var(--color-ember-action);">{{ $receta['moldes_estimados'] }} <small>und (1 kg)</small></span><span class="ratio">Rendimiento estimado por volumen</span></div>
         </div>
       </div>
     </div>
-  </div>
+  </section>
 
-  <!-- PESTAÑA 4: MÓDULO LIQUIDACIÓN QUINCENAL Y CUENTAS CLARAS -->
-  <div id="tab-quincena" class="seccion-pestana" style="display: none;">
-    <div style="background-color: var(--color-fog); border-radius: 12px; padding: 1.75rem; margin-bottom: 1.5rem;">
-      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.25rem;">
+  <!-- MÓDULO 4: QUINCENA -->
+  <section id="tab-quincena" class="tab-panel" role="tabpanel" aria-labelledby="tab-btn-quincena" tabindex="0" hidden>
+    <div class="panel-card">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.25rem;">
         <div>
-          <h3 style="font-family: var(--font-display); font-size: 1.35rem; color: var(--color-slate-deep); margin-bottom: 0.25rem;">
-            Liquidación Quincenal de Proveedores ({{ $desde }} al {{ $hasta }})
-          </h3>
-          <p style="color: var(--color-graphite); font-size: 0.85rem; margin: 0;">
-            Cálculo neto transparente: Bruto - Adelantos en Efectivo / Queso. <strong>Comisión: S/ 0.00</strong>.
-          </p>
+          <h2>Liquidación quincenal de proveedores ({{ $desde }} al {{ $hasta }})</h2>
+          <p style="margin: 0;">Cálculo neto transparente: bruto menos adelantos en efectivo o queso. <strong>Comisión: S/ 0.00.</strong></p>
         </div>
-        <a href="{{ route('panel.exportar') }}" class="btn-lat btn-ember" style="padding: 0.65rem 1.25rem; font-size: 0.88rem; font-weight: 600; text-decoration: none; border-radius: 6px;">
-          Descargar Balance Oficial en CSV
-        </a>
+        <a href="{{ route('panel.exportar') }}" class="btn btn-ember">{!! $icoDescarga !!} Descargar balance en CSV</a>
       </div>
 
-      <table class="tabla-plana" style="background: #ffffff; margin-bottom: 1.5rem;">
-        <thead>
-          <tr>
-            <th>Código</th>
-            <th>Ganadero</th>
-            <th>Sector</th>
-            <th style="text-align: right;">Litros</th>
-            <th style="text-align: right;">Bruto</th>
-            <th style="text-align: right;">Adelantos</th>
-            <th style="text-align: right;">Comisión</th>
-            <th style="text-align: right; background-color: var(--color-sky-wash);">Neto a Pagar</th>
-          </tr>
-        </thead>
-        <tbody>
-          @foreach($liquidaciones as $liq)
+      <div class="tabla-region" role="region" aria-label="Liquidación quincenal de proveedores" tabindex="0" style="margin-bottom: 1.5rem;">
+        <table class="tabla-plana" style="min-width: 720px;">
+          <thead>
             <tr>
-              <td style="font-size: 0.85rem;" class="cifra-delgada">{{ $liq->codigo }}</td>
-              <td><strong>{{ $liq->nombre }}</strong></td>
-              <td style="color: var(--color-pewter); font-size: 0.85rem;">{{ $liq->sector }}</td>
-              <td style="text-align: right;" class="cifra-delgada">{{ number_format($liq->litros, 1) }} L</td>
-              <td style="text-align: right;" class="cifra-delgada">S/ {{ number_format($liq->bruto, 2) }}</td>
-              <td style="text-align: right; color: #b91c1c;" class="cifra-delgada">- S/ {{ number_format($liq->adelantos, 2) }}</td>
-              <td style="text-align: right; color: #15803d; font-weight: 600;" class="cifra-delgada">S/ 0.00</td>
-              <td style="text-align: right; font-size: 1.15rem; font-weight: 500; color: var(--color-slate-deep); background-color: #f7fbfe;" class="cifra-delgada">
-                S/ {{ number_format($liq->neto, 2) }}
-              </td>
+              <th scope="col">Código</th>
+              <th scope="col">Ganadero</th>
+              <th scope="col">Sector</th>
+              <th scope="col" class="num">Litros</th>
+              <th scope="col" class="num">Bruto</th>
+              <th scope="col" class="num">Adelantos</th>
+              <th scope="col" class="num">Comisión</th>
+              <th scope="col" class="num" style="background: var(--color-sky-wash);">Neto a pagar</th>
             </tr>
-          @endforeach
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            @forelse($liquidaciones as $liq)
+              <tr>
+                <td class="num-tabular">{{ $liq->codigo }}</td>
+                <td><strong>{{ $liq->nombre }}</strong></td>
+                <td>{{ $liq->sector }}</td>
+                <td class="num">{{ number_format($liq->litros, 1) }} L</td>
+                <td class="num">S/ {{ number_format($liq->bruto, 2) }}</td>
+                <td class="num" style="color: var(--rojo-text);">- S/ {{ number_format($liq->adelantos, 2) }}</td>
+                <td class="num" style="color: var(--verde-text);">S/ 0.00</td>
+                <td class="num" style="font-size: 1.15rem; background: #f7fbfe;">S/ {{ number_format($liq->neto, 2) }}</td>
+              </tr>
+            @empty
+              <tr><td colspan="8" style="text-align: center; padding: 2rem; color: var(--color-graphite);">No hay liquidaciones en este período.</td></tr>
+            @endforelse
+          </tbody>
+        </table>
+      </div>
 
-      <!-- Subformulario: Adelanto o Jornal Eventual (Ley 29733) -->
-      <div style="background-color: var(--color-sky-wash); padding: 1.25rem; border-radius: 8px;">
-        <h4 style="margin: 0 0 0.5rem; color: var(--color-slate-deep); font-size: 0.95rem;">
-          Registrar Adelanto o Pago de Ayuda del Día (Mano de Obra Eventual)
-        </h4>
-        <p style="font-size: 0.8rem; color: var(--color-graphite); margin-bottom: 1rem;">
-          Cumplimiento Ley N.° 29733: Los pagos en mano por faenas de lavado o volteo no requieren DNI ni datos personales sensibles.
-        </p>
+      <div class="panel-card panel-card-celeste on-fog" style="padding: 1.5rem;">
+        <h3 style="font-size: 1.1rem;">Registrar adelanto o pago de ayuda del día (mano de obra eventual)</h3>
+        <p class="legal">Ley N.° 29733: los pagos en mano por faenas de lavado o volteo no requieren DNI ni datos personales sensibles.</p>
 
-        <form method="POST" action="{{ route('panel.movimiento') }}" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)) auto; gap: 0.75rem; align-items: end;">
+        <form method="POST" action="{{ route('panel.movimiento') }}" class="movimiento-form">
           @csrf
-          <div>
-            <label style="display: block; font-size: 0.75rem; font-weight: 600; color: var(--color-slate-deep); margin-bottom: 0.25rem;">Tipo</label>
-            <select name="tipo" style="width: 100%; padding: 0.6rem; border: none; border-radius: 4px; font-size: 0.85rem; background: #ffffff;">
-              <option value="adelanto_efectivo">Adelanto en Efectivo</option>
-              <option value="adelanto_queso">Adelanto en Moldes de Queso</option>
-              <option value="ayuda_del_dia">Pago de Ayuda del Día (Sin DNI)</option>
-              <option value="gasto_operativo">Gasto Operativo / Insumos</option>
+          <div class="form-grupo">
+            <label for="mov-tipo" class="form-label">Tipo</label>
+            <select name="tipo" id="mov-tipo" class="select-lat">
+              <option value="adelanto_efectivo">Adelanto en efectivo</option>
+              <option value="adelanto_queso">Adelanto en moldes de queso</option>
+              <option value="ayuda_del_dia">Pago de ayuda del día (sin DNI)</option>
+              <option value="gasto_operativo">Gasto operativo / insumos</option>
             </select>
           </div>
-
-          <div>
-            <label style="display: block; font-size: 0.75rem; font-weight: 600; color: var(--color-slate-deep); margin-bottom: 0.25rem;">Productor (si aplica)</label>
-            <select name="proveedor_id" style="width: 100%; padding: 0.6rem; border: none; border-radius: 4px; font-size: 0.85rem; background: #ffffff;">
-              <option value="">Ninguno / Faena externa</option>
+          <div class="form-grupo">
+            <label for="mov-proveedor" class="form-label">Productor (si aplica)</label>
+            <select name="proveedor_id" id="mov-proveedor" class="select-lat">
+              <option value="">Ninguno / faena externa</option>
               @foreach($proveedores as $prov)
                 <option value="{{ $prov->id }}">{{ $prov->nombre }}</option>
               @endforeach
             </select>
           </div>
-
-          <div>
-            <label style="display: block; font-size: 0.75rem; font-weight: 600; color: var(--color-slate-deep); margin-bottom: 0.25rem;">Concepto</label>
-            <input type="text" name="concepto" required placeholder="Ej: Compra de salmuera o faena" style="width: 100%; padding: 0.6rem; border: none; border-radius: 4px; font-size: 0.85rem; background: #ffffff;">
+          <div class="form-grupo">
+            <label for="mov-concepto" class="form-label">Concepto</label>
+            <input type="text" name="concepto" id="mov-concepto" class="input-lat" required maxlength="160" placeholder="Ej: compra de salmuera o faena">
           </div>
-
-          <div>
-            <label style="display: block; font-size: 0.75rem; font-weight: 600; color: var(--color-slate-deep); margin-bottom: 0.25rem;">Monto (S/)</label>
-            <input type="number" step="0.5" name="monto" required placeholder="0.00" style="width: 100%; padding: 0.6rem; border: none; border-radius: 4px; font-size: 0.85rem; background: #ffffff;" class="cifra-delgada">
+          <div class="form-grupo">
+            <label for="mov-monto" class="form-label">Monto (S/)</label>
+            <input type="number" step="0.5" min="0.5" inputmode="decimal" name="monto" id="mov-monto" class="input-lat" required placeholder="0.00">
           </div>
-
-          <button type="submit" class="btn-lat btn-ocean" style="padding: 0.65rem 1.25rem; font-size: 0.85rem; font-weight: 600; border: none; border-radius: 4px; cursor: pointer; background: var(--color-ocean); color: #fff;">
-            Asentar
-          </button>
+          <button type="submit" class="btn btn-ocean">Asentar movimiento</button>
         </form>
       </div>
     </div>
-  </div>
+  </section>
+</div>
 
-  <!-- SCRIPT DE NAVEGACIÓN Y WEB SPEECH API -->
-  <script>
-    function mostrarPestana(id) {
-      document.querySelectorAll('.seccion-pestana').forEach(el => el.style.display = 'none');
-      document.querySelectorAll('.nav-tab-activa').forEach(el => {
-        el.classList.remove('nav-tab-activa');
-        el.style.background = 'var(--color-fog)';
-        el.style.color = 'var(--color-slate-deep)';
+<script>
+  // Navegación de módulos (sincronizada entre pestañas Desktop y selector desplegable Móvil)
+  (function () {
+    const tabs = Array.from(document.querySelectorAll('#tablist [role="tab"]'));
+    const dropdownItems = Array.from(document.querySelectorAll('#dropdown-lista-modulos .dropdown-item'));
+    const btnDropdown = document.getElementById('btn-dropdown-modulos');
+    const menuDropdown = document.getElementById('dropdown-lista-modulos');
+    const tituloActivo = document.getElementById('dropdown-titulo-activo');
+    const iconActivo = document.getElementById('dropdown-icon-activo');
+
+    const iconos = {
+      'tab-acopio': '{!! $icoMicS !!}',
+      'tab-calidad': '{!! $icoOk !!}',
+      'tab-tina': '{!! $icoTina !!}',
+      'tab-quincena': '{!! $icoBalance !!}'
+    };
+
+    function activarModulo(tabId, enfocarTab) {
+      // 1. Mostrar el panel correspondiente
+      document.querySelectorAll('.tab-panel').forEach(p => {
+        p.hidden = p.id !== tabId;
       });
 
-      const seccion = document.getElementById(id);
-      if (seccion) seccion.style.display = 'block';
+      // 2. Actualizar las pestañas de escritorio
+      tabs.forEach(t => {
+        const activa = t.getAttribute('aria-controls') === tabId;
+        t.setAttribute('aria-selected', activa ? 'true' : 'false');
+        t.tabIndex = activa ? 0 : -1;
+        if (activa && enfocarTab) t.focus();
+      });
 
-      const btn = document.getElementById('btn-' + id);
-      if (btn) {
-        btn.classList.add('nav-tab-activa');
-        btn.style.background = 'var(--color-ember)';
-        btn.style.color = '#ffffff';
+      // 3. Actualizar el selector desplegable móvil
+      dropdownItems.forEach(item => {
+        const activa = item.dataset.tab === tabId;
+        item.classList.toggle('activo', activa);
+        item.setAttribute('aria-selected', activa ? 'true' : 'false');
+        if (activa && tituloActivo) {
+          tituloActivo.textContent = item.dataset.titulo;
+          if (iconActivo && iconos[tabId]) iconActivo.innerHTML = iconos[tabId];
+        }
+      });
+
+      // 4. Cerrar el menú desplegable móvil si está abierto
+      if (btnDropdown && menuDropdown) {
+        btnDropdown.setAttribute('aria-expanded', 'false');
+        menuDropdown.classList.remove('abierto');
       }
     }
 
-    function sumarLitros(cant) {
+    // Interacción de pestañas de escritorio
+    tabs.forEach((tab, i) => {
+      tab.addEventListener('click', () => {
+        activarModulo(tab.getAttribute('aria-controls'), false);
+      });
+      tab.addEventListener('keydown', e => {
+        let destino = null;
+        if (e.key === 'ArrowRight') destino = tabs[(i + 1) % tabs.length];
+        else if (e.key === 'ArrowLeft') destino = tabs[(i - 1 + tabs.length) % tabs.length];
+        else if (e.key === 'Home') destino = tabs[0];
+        else if (e.key === 'End') destino = tabs[tabs.length - 1];
+        if (destino) {
+          e.preventDefault();
+          activarModulo(destino.getAttribute('aria-controls'), true);
+        }
+      });
+    });
+
+    // Interacción del selector desplegable móvil
+    if (btnDropdown && menuDropdown) {
+      btnDropdown.addEventListener('click', () => {
+        const abierto = menuDropdown.classList.toggle('abierto');
+        btnDropdown.setAttribute('aria-expanded', abierto ? 'true' : 'false');
+      });
+
+      dropdownItems.forEach(item => {
+        item.addEventListener('click', () => {
+          activarModulo(item.dataset.tab, false);
+        });
+      });
+
+      document.addEventListener('keydown', e => {
+        if (e.key === 'Escape' && menuDropdown.classList.contains('abierto')) {
+          menuDropdown.classList.remove('abierto');
+          btnDropdown.setAttribute('aria-expanded', 'false');
+          btnDropdown.focus();
+        }
+      });
+
+      // Cerrar al hacer clic fuera del dropdown
+      document.addEventListener('click', e => {
+        if (!e.target.closest('#panel-modulo-dropdown') && menuDropdown.classList.contains('abierto')) {
+          menuDropdown.classList.remove('abierto');
+          btnDropdown.setAttribute('aria-expanded', 'false');
+        }
+      });
+    }
+  })();
+
+  // Botonera táctil de una mano
+  document.querySelectorAll('.botonera button').forEach(b => {
+    b.addEventListener('click', () => {
       const input = document.getElementById('input-litros');
-      const actual = parseFloat(input.value) || 0;
-      input.value = (actual + cant).toFixed(1);
+      input.value = ((parseFloat(input.value) || 0) + parseFloat(b.dataset.litros)).toFixed(1);
+    });
+  });
+
+  // Reconocimiento de voz (Web Speech API) con confirmación hablada
+  (function () {
+    const btnVoz = document.getElementById('btn-voz');
+    const txtBtn = document.getElementById('txt-btn-voz');
+    const transcripcion = document.getElementById('transcripcion-voz');
+
+    function reposo() {
+      txtBtn.textContent = 'Dictar acopio por voz';
+      btnVoz.setAttribute('aria-pressed', 'false');
     }
 
-    // Reconocimiento de Voz nativo (Web Speech API) para Acopio a 1 Mano
-    function iniciarReconocimientoVoz() {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (!SpeechRecognition) {
-        alert("El navegador no soporta Web Speech API. Use el teclado táctil de 54px.");
+    btnVoz.addEventListener('click', () => {
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SR) {
+        transcripcion.textContent = 'Este navegador no admite dictado por voz. Use la botonera táctil o escriba los litros.';
         return;
       }
+      const rec = new SR();
+      rec.lang = 'es-PE';
+      rec.interimResults = false;
 
-      const recognition = new SpeechRecognition();
-      recognition.lang = 'es-PE';
-      recognition.interimResults = false;
+      txtBtn.textContent = 'Escuchando… hable ahora';
+      btnVoz.setAttribute('aria-pressed', 'true');
 
-      const btnVoz = document.getElementById('btn-voz');
-      const txtBtn = document.getElementById('txt-btn-voz');
-      const transcripcion = document.getElementById('transcripcion-voz');
-
-      txtBtn.innerText = "Escuchando... Hable ahora";
-      btnVoz.style.background = "#b91c1c";
-
-      recognition.onresult = function(event) {
-        const frase = event.results[0][0].transcript;
-        transcripcion.innerText = `Escuchado: "${frase}"`;
+      rec.onresult = e => {
+        const frase = e.results[0][0].transcript;
+        transcripcion.textContent = 'Escuchado: “' + frase + '”';
         document.getElementById('input-frase').value = frase;
         document.getElementById('input-metodo').value = 'voz';
-
-        // Extracción regex de números
-        const match = frase.match(/(\d+([\.,]\d+)?)/);
-        if (match) {
-          const litros = parseFloat(match[1].replace(',', '.'));
-          document.getElementById('input-litros').value = litros;
-        }
-
-        // Síntesis de voz confirmatoria
+        const m = frase.match(/(\d+([\.,]\d+)?)/);
+        if (m) document.getElementById('input-litros').value = parseFloat(m[1].replace(',', '.'));
         if ('speechSynthesis' in window) {
-          const utter = new SpeechSynthesisUtterance("Acopio capturado correctamente");
-          utter.lang = 'es-PE';
-          window.speechSynthesis.speak(utter);
+          const u = new SpeechSynthesisUtterance('Acopio capturado correctamente');
+          u.lang = 'es-PE';
+          window.speechSynthesis.speak(u);
         }
-
-        txtBtn.innerText = "Dictar Acopio por Voz";
-        btnVoz.style.background = "var(--color-ember)";
+        reposo();
       };
-
-      recognition.onerror = function() {
-        txtBtn.innerText = "Dictar Acopio por Voz";
-        btnVoz.style.background = "var(--color-ember)";
-      };
-
-      recognition.start();
-    }
-  </script>
+      rec.onerror = () => { transcripcion.textContent = 'No se pudo escuchar. Intente de nuevo o use la botonera táctil.'; reposo(); };
+      rec.onend = reposo;
+      rec.start();
+    });
+  })();
+</script>
 @endsection
