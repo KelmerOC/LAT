@@ -3,7 +3,36 @@
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
-use Illuminate\Http\Request;
+
+/**
+ * ============================================================================
+ * PROYECTO UNIVERSITARIO: LAT - SISTEMA DE GESTIÓN LÁCTEA COMPACTO
+ * CONFIGURACIÓN DE ARRANQUE (BOOTSTRAP LARAVEL)
+ * ============================================================================
+ */
+
+// Garantiza la resolución local de los espacios de nombres App y Database\Seeders
+spl_autoload_register(function (string $class): bool {
+    if (str_starts_with($class, 'App\\')) {
+        $relativa = str_replace('\\', '/', substr($class, 4));
+        $archivo = dirname(__DIR__) . '/app/' . $relativa . '.php';
+        if (file_exists($archivo)) {
+            require_once $archivo;
+            return true;
+        }
+    }
+
+    if (str_starts_with($class, 'Database\\Seeders\\')) {
+        $relativa = str_replace('\\', '/', substr($class, 17));
+        $archivo = dirname(__DIR__) . '/database/seeders/' . $relativa . '.php';
+        if (file_exists($archivo)) {
+            require_once $archivo;
+            return true;
+        }
+    }
+
+    return false;
+}, true, true);
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -12,10 +41,12 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        $middleware->web(append: [
+            \App\Http\Middleware\SetLocaleMiddleware::class,
+        ]);
+        $middleware->redirectGuestsTo(fn () => route('login'));
+        $middleware->redirectUsersTo(fn () => route('panel'));
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        $exceptions->shouldRenderJsonWhen(
-            fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
-        );
+        // Manejo centralizado de excepciones
     })->create();
