@@ -8,27 +8,32 @@
     <div class="contenedor">
       <div class="login-card on-fog">
         <header>
-          <h2 id="titulo-login">Ingreso a Mi Panel Lácteo</h2>
-          <p>Acceso seguro · Cusco Provincia. Ingrese con su identificador de operario o el correo de la microempresa.</p>
+          <h2 id="titulo-login" data-i18n="login.title">Ingreso a Mi Panel Lácteo</h2>
+          <p data-i18n="login.sub">Acceso seguro · Cusco Provincia. Ingrese con su identificador de operario o el correo de la microempresa.</p>
         </header>
 
         <form method="POST" action="{{ route('login') }}">
           @csrf
           <div class="form-grupo">
-            <label for="login" class="form-label">Usuario o correo</label>
+            <label for="login" class="form-label" data-i18n="login.user_label">Usuario o correo</label>
             <input type="text" id="login" name="login" class="input-lat" value="{{ old('login', 'donjusto@sanborreal.pe') }}" required autofocus autocomplete="username" @error('login') aria-invalid="true" @enderror>
           </div>
 
           <div class="form-grupo">
-            <label for="password" class="form-label">Contraseña</label>
+            <label for="password" class="form-label" data-i18n="login.pass_label">Contraseña</label>
             <input type="password" id="password" name="password" class="input-lat" value="secreto123" required autocomplete="current-password">
           </div>
 
-          <button type="submit" class="btn btn-ember btn-bloque btn-grande">Entrar a Mi Panel</button>
+          <button type="submit" class="btn btn-ember btn-bloque btn-grande" data-i18n="login.submit">Entrar a Mi Panel</button>
         </form>
 
+        <p style="margin-top: 1.1rem; font-size: 0.9rem; text-align: center; color: var(--color-graphite);">
+          <span data-i18n="login.no_account">¿Nueva planta o asociación?</span>
+          <a href="{{ route('registro') }}" style="font-weight: 700; color: var(--color-celeste-action); text-decoration: underline;" data-i18n="login.go_register">Registrar nueva planta aquí</a>
+        </p>
+
         <div class="perfiles">
-          <h3>Perfiles de prueba sembrados</h3>
+          <h3 data-i18n="login.profiles_title">Perfiles de prueba sembrados</h3>
           <p class="ayuda">Rellenan el formulario con un clic. Solo para demostración universitaria.</p>
           <div class="perfiles-grid" role="group" aria-label="Perfiles de prueba">
             <button type="button" class="perfil-btn" data-usuario="donjusto@sanborreal.pe" aria-pressed="true"><strong>Don Justo</strong><span>Administración</span></button>

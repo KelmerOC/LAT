@@ -8,20 +8,20 @@
     <div class="aguada aguada-cielo" aria-hidden="true"></div>
     <div class="contenedor hero-grid">
       <div>
-        <h1 id="hero-titular" class="hero-titular">
+        <h1 id="hero-titular" class="hero-titular" data-i18n="hero.title">
           Donde antes un cuaderno se perdía en el agua, <span class="hero-titular-highlight">hoy manda la voz.</span>
         </h1>
 
-        <p id="hero-sub" class="hero-bajada">
+        <p id="hero-sub" class="hero-bajada" data-i18n="hero.sub">
           Digitalización accesible para centros de acopio rural, control sanitario de porongo en recepción, monitoreo térmico de tina y liquidaciones transparentes al 0% de comisión.
         </p>
 
         <div class="hero-acciones">
-          <a href="{{ auth()->check() ? route('panel') : route('login') }}" class="btn btn-ember btn-grande">
+          <a href="{{ auth()->check() ? route('panel') : route('login') }}" class="btn btn-ember btn-grande" data-i18n="hero.cta_panel">
             Entrar a Mi Panel Operativo
           </a>
           <a href="#soluciones" class="btn btn-outline btn-grande">
-            <span>Ver herramientas de terreno</span>
+            <span data-i18n="hero.cta_tools">Ver herramientas de terreno</span>
             <span class="btn-arrow" aria-hidden="true">↗</span>
           </a>
         </div>
@@ -92,8 +92,8 @@
   <section id="soluciones" class="seccion" aria-labelledby="titulo-soluciones">
     <div class="contenedor">
       <div class="seccion-cabecera">
-        <h2 id="titulo-soluciones">Herramientas de trabajo en campo</h2>
-        <p>Pensadas para las condiciones reales de las microempresas lácteas: manos con guantes, humedad de suero y conectividad intermitente.</p>
+        <h2 id="titulo-soluciones" data-i18n="home.tools_title">Herramientas de trabajo en campo</h2>
+        <p data-i18n="home.tools_sub">Pensadas para las condiciones reales de las microempresas lácteas: manos con guantes, humedad de suero y conectividad intermitente.</p>
         <hr class="hairline-rule-dashed" style="margin-top: 2rem;">
       </div>
 
@@ -175,8 +175,8 @@
     <div class="aguada aguada-nube" aria-hidden="true"></div>
     <div class="contenedor">
       <div class="seccion-cabecera" style="margin-bottom: 2.5rem;">
-        <h2 id="titulo-empresas">Del campo a la quincena, sin cuaderno</h2>
-        <p>Un mismo flujo conecta la ruta de acopio, la planta y la contabilidad.</p>
+        <h2 id="titulo-empresas" data-i18n="home.families_title">Del campo a la quincena, sin cuaderno</h2>
+        <p data-i18n="home.families_sub">Un mismo flujo conecta la ruta de acopio, la planta y la contabilidad.</p>
         <hr class="hairline-rule-dashed" style="margin-top: 1.5rem;">
       </div>
 
@@ -242,7 +242,7 @@
   <section id="nosotros" class="seccion nosotros" aria-labelledby="titulo-nosotros">
     <div class="contenedor">
       <div class="nosotros-intro">
-        <h2 id="titulo-nosotros">La realidad de nuestras microempresas familiares</h2>
+        <h2 id="titulo-nosotros" data-i18n="home.about_title">La realidad de nuestras microempresas familiares</h2>
         <p>LAT no es una startup de intermediación financiera ni una franquicia de software comercial. Nace para defender el trabajo lechero de padres e hijos en Cusco Provincia, eliminando las disputas en la liquidación quincenal y cuidando la soberanía de los datos productivos.</p>
         <hr class="hairline-rule-dashed" style="margin-top: 1.5rem;">
       </div>
@@ -277,8 +277,8 @@
     <div class="aguada aguada-cielo" aria-hidden="true" style="transform: scaleX(-1) scale(1.12);"></div>
     <div class="contenedor">
       <div class="cierre-inner">
-        <h2 id="titulo-cierre">Lleve el acopio de su planta al panel</h2>
-        <p>Ingrese con su usuario de operario o el correo de la microempresa.</p>
+        <h2 id="titulo-cierre" data-i18n="home.close_title">Lleve el acopio de su planta al panel</h2>
+        <p data-i18n="home.close_sub">Ingrese con su usuario de operario o el correo de la microempresa.</p>
         <a href="{{ auth()->check() ? route('panel') : route('login') }}" class="btn btn-ember btn-grande">
           <span>{{ auth()->check() ? 'Ir a Mi Panel' : 'Iniciar Sesión' }}</span>
           <span class="btn-arrow" aria-hidden="true">↗</span>

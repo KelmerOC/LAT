@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="{{ app()->getLocale() }}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,6 +10,7 @@
   <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
   <link rel="preload" href="{{ asset('fonts/inter-var-latin.woff2') }}" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="{{ asset('css/lat-design-system.css') }}">
+  <script src="{{ asset('js/lat-i18n.js') }}"></script>
   @stack('styles')
 </head>
 <body>
@@ -24,29 +25,29 @@
           <img src="{{ asset('brand/isotipo_queso_frasco.svg') }}" alt="" width="40" height="40" onerror="this.src='{{ asset('favicon.svg') }}'">
           <span>
             <strong>LAT</strong>
-            <small>Gestión Láctea Rural</small>
+            <small data-i18n="nav.brand_sub">Gestión Láctea Rural</small>
           </span>
         </a>
 
         <!-- Centro: Enlaces horizontales perfectamente centrados en el eje 50% con chevrons (⌄) -->
         <nav aria-label="Principal" class="menu-links" id="menu-links">
           <div class="menu-links-list">
-            <a class="enlace-nav" href="{{ route('inicio') }}" @if(request()->routeIs('inicio')) aria-current="page" @endif>Inicio</a>
+            <a class="enlace-nav" href="{{ route('inicio') }}" @if(request()->routeIs('inicio')) aria-current="page" @endif data-i18n="nav.home">Inicio</a>
             <a class="enlace-nav" href="{{ route('inicio') }}#soluciones">
-              <span>Herramientas</span>
+              <span data-i18n="nav.tools">Herramientas</span>
               <svg class="chevron-nav" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
             </a>
             <a class="enlace-nav" href="{{ route('inicio') }}#empresas-familiares">
-              <span>Empresas Familiares</span>
+              <span data-i18n="nav.families">Empresas Familiares</span>
               <svg class="chevron-nav" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
             </a>
-            <a class="enlace-nav" href="{{ route('inicio') }}#nosotros">Nosotros</a>
+            <a class="enlace-nav" href="{{ route('inicio') }}#nosotros" data-i18n="nav.about">Nosotros</a>
           </div>
 
           <!-- Acciones y selector integrados en el menú desplegable móvil -->
           <div class="menu-mobile-session">
             <div class="mobile-lang-section">
-              <span class="mobile-lang-title">Idioma de la plataforma</span>
+              <span class="mobile-lang-title" data-i18n="nav.lang_title">Idioma de la plataforma</span>
               <div class="mobile-lang-grid" role="group" aria-label="Seleccionar idioma">
                 <button type="button" class="btn-lang-choice activo" data-lang="es" aria-pressed="true">
                   <strong>ES</strong>
@@ -70,20 +71,21 @@
               </div>
               <a href="{{ route('panel') }}" class="btn btn-ember btn-bloque" @if(request()->routeIs('panel')) aria-current="page" @endif>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
-                Mi Panel Operativo
+                <span data-i18n="nav.panel_full">Mi Panel Operativo</span>
               </a>
               <form method="POST" action="{{ route('logout') }}" style="width: 100%;">
                 @csrf
                 <button type="submit" class="btn btn-fog btn-bloque">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
-                  Cerrar Sesión
+                  <span data-i18n="nav.logout">Cerrar Sesión</span>
                 </button>
               </form>
             @else
               <a href="{{ route('login') }}" class="btn btn-ember btn-bloque">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg>
-                Iniciar Sesión
+                <span data-i18n="nav.login">Iniciar Sesión</span>
               </a>
+              <a href="{{ route('registro') }}" class="btn btn-outline btn-bloque" data-i18n="nav.register">Registrarse</a>
             @endauth
           </div>
         </nav>
@@ -113,12 +115,12 @@
           @auth
             <form method="POST" action="{{ route('logout') }}" style="display: inline;">
               @csrf
-              <button type="submit" class="enlace-auth-texto" aria-label="Salir de la sesión de {{ Auth::user()->name }}">Cerrar Sesión</button>
+              <button type="submit" class="enlace-auth-texto" aria-label="Salir de la sesión de {{ Auth::user()->name }}" data-i18n="nav.logout">Cerrar Sesión</button>
             </form>
-            <a href="{{ route('panel') }}" class="btn btn-ember btn-cta-nav" @if(request()->routeIs('panel')) aria-current="page" @endif>Mi Panel</a>
+            <a href="{{ route('panel') }}" class="btn btn-ember btn-cta-nav" @if(request()->routeIs('panel')) aria-current="page" @endif data-i18n="nav.panel">Mi Panel</a>
           @else
-            <a href="{{ route('login') }}" class="enlace-auth-texto">Iniciar Sesión</a>
-            <a href="{{ route('login') }}" class="btn btn-ember btn-cta-nav">Mi Panel</a>
+            <a href="{{ route('registro') }}" class="enlace-auth-texto" data-i18n="nav.register">Registrarse</a>
+            <a href="{{ route('login') }}" class="btn btn-ember btn-cta-nav" data-i18n="nav.login">Iniciar Sesión</a>
           @endauth
         </div>
 
@@ -198,25 +200,25 @@
       <div class="footer-grid">
         <div>
           <h2 class="footer-col-tit" style="font-size: 1.25rem;">LAT Lácteos</h2>
-          <p>Software universitario comunitario para microempresas queseras y asociaciones ganaderas de Cusco Provincia. Comisión S/ 0.00 por principio de diseño.</p>
+          <p data-i18n="footer.desc">Software universitario comunitario para microempresas queseras y asociaciones ganaderas de Cusco Provincia. Comisión S/ 0.00 por principio de diseño.</p>
         </div>
         <nav aria-label="Pie de página">
-          <h2 class="footer-col-tit">Explorar</h2>
+          <h2 class="footer-col-tit" data-i18n="footer.explore">Explorar</h2>
           <ul class="footer-links-list">
-            <li><a href="{{ route('inicio') }}">Inicio</a></li>
-            <li><a href="{{ route('inicio') }}#soluciones">Herramientas de campo</a></li>
-            <li><a href="{{ route('inicio') }}#empresas-familiares">Empresas familiares</a></li>
-            <li><a href="{{ route('inicio') }}#nosotros">Nosotros</a></li>
-            <li><a href="{{ route('login') }}">Iniciar sesión</a></li>
+            <li><a href="{{ route('inicio') }}" data-i18n="nav.home">Inicio</a></li>
+            <li><a href="{{ route('inicio') }}#soluciones" data-i18n="nav.tools">Herramientas de campo</a></li>
+            <li><a href="{{ route('inicio') }}#empresas-familiares" data-i18n="nav.families">Empresas familiares</a></li>
+            <li><a href="{{ route('inicio') }}#nosotros" data-i18n="nav.about">Nosotros</a></li>
+            <li><a href="{{ route('login') }}" data-i18n="nav.login">Iniciar sesión</a></li>
           </ul>
         </nav>
         <div>
-          <h2 class="footer-col-tit">Compromisos</h2>
+          <h2 class="footer-col-tit" data-i18n="footer.commitments">Compromisos</h2>
           <ul class="footer-links-list" style="gap: 0;">
-            <li style="min-height: 36px; display: flex; align-items: center;">Sin comisión a pequeños productores</li>
-            <li style="min-height: 36px; display: flex; align-items: center;">Dictado por voz y modo una mano</li>
-            <li style="min-height: 36px; display: flex; align-items: center;">Leche ácida a quesillos de 4 días</li>
-            <li style="min-height: 36px; display: flex; align-items: center;">Ley N.° 29733: sin DNI a jornales</li>
+            <li style="min-height: 36px; display: flex; align-items: center;" data-i18n="footer.c1">Sin comisión a pequeños productores</li>
+            <li style="min-height: 36px; display: flex; align-items: center;" data-i18n="footer.c2">Dictado por voz y modo una mano</li>
+            <li style="min-height: 36px; display: flex; align-items: center;" data-i18n="footer.c3">Leche ácida a quesillos de 4 días</li>
+            <li style="min-height: 36px; display: flex; align-items: center;" data-i18n="footer.c4">Ley N.° 29733: sin DNI a jornales</li>
           </ul>
         </div>
       </div>
@@ -226,27 +228,6 @@
   </footer>
 
   <script>
-    const traducciones = {
-      es: {
-        lema: "Cusco Provincia · Red Comunitaria Láctea · Comisión S/ 0.00",
-        heroTitular: "Donde antes un cuaderno se perdía en el agua, hoy manda la voz.",
-        heroSub: "Digitalización accesible para centros de acopio rural, control sanitario de porongo en recepción, monitoreo térmico de tina y liquidaciones transparentes al 0% de comisión.",
-        lang: "es"
-      },
-      qu: {
-        lema: "Llactakunapaq Allin Llamkay · Manan Qullqita Chaskinchu S/ 0.00",
-        heroTitular: "Ñawpaqta qillqana maytu yakuwan chinkaqtin, kunanqa kunkallawanñam.",
-        heroSub: "Chakra runakunapaq lechikuna qillqay, allin kaqta qhawariy, tina ruphay tupuy, chanta qusqa chaninpi qunakuy.",
-        lang: "qu"
-      },
-      en: {
-        lema: "Nonprofit Community Tech · Zero Commission S/ 0.00",
-        heroTitular: "Where notebooks once drowned in whey, today your voice leads.",
-        heroSub: "Accessible digital intake for rural dairy plants, rapid milk quality inspection, vat thermal monitoring, and fair bi-weekly settlements.",
-        lang: "en"
-      }
-    };
-
     function cerrarTodosDropdownsIdioma() {
       document.querySelectorAll('.lang-dropdown').forEach(dd => {
         dd.classList.remove('abierto');
@@ -255,41 +236,25 @@
       });
     }
 
-    function cambiarIdioma(lang) {
-      const t = traducciones[lang] || traducciones.es;
-      document.documentElement.lang = t.lang;
-      const lema = document.getElementById('top-lema');
-      if (lema) lema.textContent = t.lema;
-      const h = document.getElementById('hero-titular');
-      if (h) h.textContent = t.heroTitular;
-      const s = document.getElementById('hero-sub');
-      if (s) s.textContent = t.heroSub;
-
-      // Actualizar etiqueta del botón trigger desktop
-      const labelDesktop = document.getElementById('lang-current-label');
-      if (labelDesktop) labelDesktop.textContent = lang.toUpperCase();
-
-      // Actualizar etiquetas en triggers móviles
-      document.querySelectorAll('.lang-mobile-current').forEach(el => {
-        el.textContent = lang.toUpperCase();
-      });
-
-      // Actualizar opciones de lista desplegable
-      document.querySelectorAll('.lang-opt').forEach(opt => {
-        const activo = opt.dataset.lang === lang;
-        opt.classList.toggle('activo', activo);
-        opt.setAttribute('aria-selected', activo ? 'true' : 'false');
-      });
-
-      // Actualizar botones de elección en drawer móvil
-      document.querySelectorAll('.btn-lang-choice').forEach(btn => {
-        const activo = btn.dataset.lang === lang;
-        btn.classList.toggle('activo', activo);
-        btn.setAttribute('aria-pressed', activo ? 'true' : 'false');
-      });
-
+    function cambiarIdioma(lang, persistServer = true) {
+      if (window.LAT_I18N) {
+        window.LAT_I18N.apply(lang);
+      }
       cerrarTodosDropdownsIdioma();
+      if (persistServer) {
+        fetch('{{ url('/idioma') }}/' + encodeURIComponent(lang), {
+          headers: { 'Accept': 'application/json' },
+          credentials: 'same-origin'
+        }).catch(() => {});
+      }
     }
+
+    // Aplicar idioma guardado al cargar la vista
+    document.addEventListener('DOMContentLoaded', () => {
+      if (window.LAT_I18N) {
+        window.LAT_I18N.apply(window.LAT_I18N.getLang());
+      }
+    });
 
     function setupLangDropdown(dropdownId, triggerId, menuId) {
       const dd = document.getElementById(dropdownId);
