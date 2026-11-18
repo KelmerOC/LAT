@@ -16,7 +16,7 @@
       <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; margin-bottom: 1rem;">
         <div>
           <h2 data-i18n="m6.plants_title">Administrador de plantas lácteas</h2>
-          <p style="margin: 0;">Cree, edite y configure el precio por litro de cada planta comunitaria.</p>
+          <p style="margin: 0;" data-i18n="m6.plants_sub">Cree, edite y configure el precio por litro de cada planta comunitaria.</p>
         </div>
         <button type="button" class="btn btn-ember" data-open-modal="modal-nueva-planta" data-i18n="m6.add_plant">+ Nueva planta</button>
       </div>
@@ -72,9 +72,9 @@
         <div>
           <h2 data-i18n="m6.users_title">Gestión de usuarios personalizados y credenciales</h2>
           <p style="margin: 0;">
-            Cree usuarios con credenciales propias y elija exactamente qué <strong>secciones y controles</strong> pueden usar.
+            <span data-i18n="m6.users_sub">Cree usuarios con credenciales propias y elija exactamente qué secciones y controles pueden usar.</span>
             @unless($usuario->esAdmin())
-              <span class="chip chip-amarillo" style="margin-left: 0.35rem;">Tu rango permite crear cuentas para {{ $plantaActiva->nombre }} con tus mismos permisos o menos</span>
+              <span class="chip chip-amarillo" style="margin-left: 0.35rem;">{{ $plantaActiva->nombre }}</span>
             @endunless
           </p>
         </div>
@@ -85,13 +85,13 @@
         <table class="tabla-plana">
           <thead>
             <tr>
-              <th>Nombre</th>
-              <th>Credencial</th>
-              <th>Cargo y Rango</th>
-              <th>Secciones y controles permitidos</th>
-              <th>Planta</th>
-              <th>Estado</th>
-              <th>Acciones</th>
+              <th data-i18n="m6.col_name">Nombre</th>
+              <th data-i18n="m6.col_cred">Credencial</th>
+              <th data-i18n="m6.col_role_rank">Cargo y Rango</th>
+              <th data-i18n="m6.col_perms">Secciones y controles permitidos</th>
+              <th data-i18n="m6.col_plant">Planta</th>
+              <th data-i18n="m6.col_status">Estado</th>
+              <th data-i18n="m1.col_actions">Acciones</th>
             </tr>
           </thead>
           <tbody>
@@ -116,19 +116,19 @@
                 <td>
                   <div class="user-perms-chips">
                     @if($u->esAdmin())
-                      <span class="chip chip-verde">Acceso Total ({{ count($permsU) }} controles)</span>
+                      <span class="chip chip-verde"><span data-i18n="m6.full_access">Acceso Total</span> ({{ count($permsU) }})</span>
                     @else
                       @forelse($secsU as $secClave)
-                        <span class="chip chip-fog">{{ $etiquetasSeccion[$secClave] ?? $secClave }}</span>
+                        <span class="chip chip-fog" data-i18n="perm.sec.{{ $secClave }}">{{ $etiquetasSeccion[$secClave] ?? $secClave }}</span>
                       @empty
-                        <span class="chip chip-rojo">Sin secciones</span>
+                        <span class="chip chip-rojo">0</span>
                       @endforelse
-                      <small style="width: 100%; margin-top: 2px;">{{ count($permsU) }} controles activos</small>
+                      <small style="width: 100%; margin-top: 2px;">{{ count($permsU) }} controles</small>
                     @endif
                   </div>
                 </td>
-                <td>{{ $u->planta?->nombre ?? 'Sin planta' }}</td>
-                <td><span class="chip {{ $u->activo ? 'chip-verde' : 'chip-rojo' }}">{{ $u->activo ? 'Activo' : 'Inactivo' }}</span></td>
+                <td>{{ $u->planta?->nombre ?? '—' }}</td>
+                <td><span class="chip {{ $u->activo ? 'chip-verde' : 'chip-rojo' }}" data-i18n="{{ $u->activo ? 'm3.active' : 'm3.inactive' }}">{{ $u->activo ? 'Activo' : 'Inactivo' }}</span></td>
                 <td>
                   @if($usuario->puedeGestionarUsuario($u))
                     <button type="button" class="btn-micro js-edit-usuario"
@@ -141,10 +141,10 @@
                       data-planta="{{ $u->planta_id ?? $plantaActiva->id }}"
                       data-activo="{{ $u->activo ? '1' : '0' }}"
                       data-permisos="{{ json_encode($permsU) }}">
-                      {!! $icoEditar !!} Editar
+                      {!! $icoEditar !!} <span data-i18n="common.edit">Editar</span>
                     </button>
                   @else
-                    <span class="chip chip-fog">Protegido</span>
+                    <span class="chip chip-fog" data-i18n="m6.protected">Protegido</span>
                   @endif
                 </td>
               </tr>

@@ -16,7 +16,7 @@
           @csrf
           <div class="form-grupo">
             <label for="reg-name" class="form-label" data-i18n="register.name">Nombre completo del responsable</label>
-            <input type="text" id="reg-name" name="name" class="input-lat" value="{{ old('name') }}" required placeholder="Ej: Rosaura Quispe">
+            <input type="text" id="reg-name" name="name" class="input-lat" value="{{ old('name') }}" required placeholder="Ej: Rosaura Quispe" data-i18n-placeholder="register.ph_name">
           </div>
 
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
@@ -34,7 +34,7 @@
 
           <div class="form-grupo">
             <label for="reg-planta" class="form-label" data-i18n="register.plant_name">Nombre de la planta o quesería</label>
-            <input type="text" id="reg-planta" name="planta_nombre" class="input-lat" value="{{ old('planta_nombre') }}" required placeholder="Ej: Quesería Familiar Santa Rosa">
+            <input type="text" id="reg-planta" name="planta_nombre" class="input-lat" value="{{ old('planta_nombre') }}" required placeholder="Ej: Quesería Familiar Santa Rosa" data-i18n-placeholder="register.ph_plant">
           </div>
 
           <div style="display: grid; grid-template-columns: 1.4fr 1fr; gap: 0.75rem;">

@@ -164,7 +164,10 @@
         btn.classList.toggle('activo', activa);
         if (activa) {
           btn.setAttribute('aria-current', 'page');
-          if (topbarTitle) topbarTitle.textContent = btn.dataset.titulo || 'Mi Panel Operativo';
+          if (topbarTitle) {
+            const titKey = btn.dataset.tituloKey;
+            topbarTitle.textContent = (titKey && window.LAT_I18N) ? window.LAT_I18N.t(titKey) : (btn.dataset.titulo || 'Mi Panel Operativo');
+          }
         } else {
           btn.removeAttribute('aria-current');
         }
@@ -173,6 +176,16 @@
       toggleSidebar(false);
       try { sessionStorage.setItem(storageKey, sectionId); } catch (_) {}
       window.dispatchEvent(new Event('resize'));
+    }
+
+    if (window.LAT_I18N && window.LAT_I18N.onChange) {
+      window.LAT_I18N.onChange(() => {
+        const activeBtn = navBtns.find(b => b.classList.contains('activo'));
+        if (activeBtn && topbarTitle) {
+          const titKey = activeBtn.dataset.tituloKey;
+          topbarTitle.textContent = titKey ? window.LAT_I18N.t(titKey) : (activeBtn.dataset.titulo || '');
+        }
+      });
     }
 
     navBtns.forEach(btn => {
@@ -197,30 +210,36 @@
     activarSeccion(inicial);
   })();
 
-  // 2. Gráficas interactivas Chart.js (Dashboard y Estadísticas)
+  // 2. Gráficas interactivas Chart.js (Dashboard y Estadísticas) con soporte trilingüe
   (function () {
     if (typeof Chart === 'undefined') return;
     Chart.defaults.font.family = "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
     Chart.defaults.color = '#4b6276';
+    const tr = (key, fallback) => (window.LAT_I18N ? window.LAT_I18N.t(key) : fallback);
+
+    let chartAcopio = null;
+    let chartVentas = null;
+    let chartMoldes = null;
+    let chartStatsCalidad = null;
 
     @if($dashboardData)
       const dashSeries = @json($dashboardData['series']);
 
       const ctxAcopio = document.getElementById('chart-acopio-diario');
       if (ctxAcopio) {
-        new Chart(ctxAcopio, {
+        chartAcopio = new Chart(ctxAcopio, {
           type: 'bar',
           data: {
             labels: dashSeries.labels,
             datasets: [
               {
-                label: 'Óptima (L)',
+                label: tr('dash.c1_ds_good', 'Óptima (L)'),
                 data: dashSeries.acopio_buena,
                 backgroundColor: '#0284c7',
                 borderRadius: 4,
               },
               {
-                label: 'Ácida · Quesillo (L)',
+                label: tr('dash.c1_ds_acid', 'Ácida · Quesillo (L)'),
                 data: dashSeries.acopio_acida,
                 backgroundColor: '#c2410c',
                 borderRadius: 4,
@@ -241,13 +260,13 @@
 
       const ctxVentas = document.getElementById('chart-ventas-gastos');
       if (ctxVentas) {
-        new Chart(ctxVentas, {
+        chartVentas = new Chart(ctxVentas, {
           type: 'line',
           data: {
             labels: dashSeries.labels,
             datasets: [
               {
-                label: 'Ventas (S/)',
+                label: tr('dash.c2_ds_sales', 'Ventas (S/)'),
                 data: dashSeries.ventas,
                 borderColor: '#15803d',
                 backgroundColor: 'rgba(21, 128, 61, 0.12)',
@@ -257,7 +276,7 @@
                 pointRadius: 3.5,
               },
               {
-                label: 'Gastos (S/)',
+                label: tr('dash.c2_ds_exp', 'Gastos (S/)'),
                 data: dashSeries.gastos,
                 borderColor: '#0a2f4d',
                 backgroundColor: 'transparent',
@@ -282,12 +301,12 @@
 
       const ctxMoldes = document.getElementById('chart-moldes-diarios');
       if (ctxMoldes) {
-        new Chart(ctxMoldes, {
+        chartMoldes = new Chart(ctxMoldes, {
           type: 'line',
           data: {
             labels: dashSeries.labels,
             datasets: [{
-              label: 'Moldes producidos',
+              label: tr('dash.c3_ds_molds', 'Moldes producidos'),
               data: dashSeries.moldes,
               borderColor: '#c2410c',
               backgroundColor: 'rgba(194, 65, 12, 0.12)',
@@ -314,10 +333,14 @@
     @if($estadisticas)
       const ctxStatsCalidad = document.getElementById('chart-estadisticas-calidad');
       if (ctxStatsCalidad) {
-        new Chart(ctxStatsCalidad, {
+        chartStatsCalidad = new Chart(ctxStatsCalidad, {
           type: 'doughnut',
           data: {
-            labels: ['Óptima (Tina)', 'Ácida (Quesillo)', 'Pendiente'],
+            labels: [
+              tr('dash.c4_l1', 'Óptima (Tina)'),
+              tr('dash.c4_l2', 'Ácida (Quesillo)'),
+              tr('dash.c4_l3', 'Pendiente')
+            ],
             datasets: [{
               data: [
                 {{ (float) $estadisticas['calidad']['buena_litros'] }},
@@ -338,6 +361,33 @@
         });
       }
     @endif
+
+    if (window.LAT_I18N && window.LAT_I18N.onChange) {
+      window.LAT_I18N.onChange(() => {
+        if (chartAcopio) {
+          chartAcopio.data.datasets[0].label = tr('dash.c1_ds_good', 'Óptima (L)');
+          chartAcopio.data.datasets[1].label = tr('dash.c1_ds_acid', 'Ácida · Quesillo (L)');
+          chartAcopio.update();
+        }
+        if (chartVentas) {
+          chartVentas.data.datasets[0].label = tr('dash.c2_ds_sales', 'Ventas (S/)');
+          chartVentas.data.datasets[1].label = tr('dash.c2_ds_exp', 'Gastos (S/)');
+          chartVentas.update();
+        }
+        if (chartMoldes) {
+          chartMoldes.data.datasets[0].label = tr('dash.c3_ds_molds', 'Moldes producidos');
+          chartMoldes.update();
+        }
+        if (chartStatsCalidad) {
+          chartStatsCalidad.data.labels = [
+            tr('dash.c4_l1', 'Óptima (Tina)'),
+            tr('dash.c4_l2', 'Ácida (Quesillo)'),
+            tr('dash.c4_l3', 'Pendiente')
+          ];
+          chartStatsCalidad.update();
+        }
+      });
+    }
   })();
 
   // 3. Modales, Confirmación JS y Matriz de Permisos de Usuarios Personalizados
@@ -438,8 +488,17 @@
       const secciones = new Set(marcados.map(c => c.dataset.sec));
       const counterEl = document.getElementById(prefix + '-perm-counter');
       if (counterEl) {
-        counterEl.textContent = `${secciones.size} secciones · ${marcados.length} controles activos`;
+        counterEl.textContent = window.LAT_I18N
+          ? window.LAT_I18N.t('perm.counter', { secs: secciones.size, ctrls: marcados.length })
+          : `${secciones.size} secciones · ${marcados.length} controles activos`;
       }
+    }
+
+    if (window.LAT_I18N && window.LAT_I18N.onChange) {
+      window.LAT_I18N.onChange(() => {
+        actualizarContadorPermisos('nu');
+        actualizarContadorPermisos('eu');
+      });
     }
 
     function aplicarPermisosEnMatriz(prefix, listaPermisos) {

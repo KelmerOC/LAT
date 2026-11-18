@@ -28,7 +28,7 @@
             <h3 style="margin-top: 0.45rem; font-size: 1.15rem;">{{ $tina->nombre }}</h3>
             <p style="font-size: 0.85rem; color: var(--color-graphite); margin: 0;">
               <span data-i18n="m3.capacity">Capacidad:</span> <strong>{{ number_format($tina->capacidad_litros, 0) }} L</strong> ·
-              Estado: <strong>{{ $tina->activa ? 'Activa' : 'Inactiva' }}</strong>
+              <span data-i18n="m3.state">Estado:</span> <strong data-i18n="{{ $tina->activa ? 'm3.active' : 'm3.inactive' }}">{{ $tina->activa ? 'Activa' : 'Inactiva' }}</strong>
             </p>
           </div>
           @if($usuario->tienePermiso('tinas.gestionar'))
@@ -60,10 +60,10 @@
           </div>
 
           <div class="tina-receta-mini">
-            <div><span>Cuajo líquido</span><strong>{{ $tRec['cuajo_ml'] }} ml</strong></div>
-            <div><span>Sal común</span><strong>{{ $tRec['sal_kg'] }} kg</strong></div>
-            <div><span>Cultivo</span><strong>{{ $tRec['cultivo_g'] }} g</strong></div>
-            <div><span>Moldes est.</span><strong>{{ $tRec['moldes_estimados'] }} und</strong></div>
+            <div><span data-i18n="m3.rennet">Cuajo líquido</span><strong>{{ $tRec['cuajo_ml'] }} ml</strong></div>
+            <div><span data-i18n="m3.salt">Sal común</span><strong>{{ $tRec['sal_kg'] }} kg</strong></div>
+            <div><span data-i18n="m3.culture">Cultivo</span><strong>{{ $tRec['cultivo_g'] }} g</strong></div>
+            <div><span data-i18n="m3.molds_est">Moldes est.</span><strong>{{ $tRec['moldes_estimados'] }} und</strong></div>
           </div>
 
           @if($usuario->tienePermiso('tinas.operar'))

@@ -13,7 +13,7 @@
   <nav class="dash-nav" id="dash-nav-list" aria-label="Secciones autorizadas">
     @if($usuario->puedeVerSeccion('dashboard'))
       <div class="dash-nav-group" data-i18n="nav_group.main">Resumen</div>
-      <button type="button" class="dash-nav-btn" data-section="sec-dashboard" data-titulo="Dashboard general">
+      <button type="button" class="dash-nav-btn" data-section="sec-dashboard" data-titulo="Dashboard general" data-titulo-key="tab.dashboard">
         <span class="dash-nav-icon">{!! $icoDash !!}</span>
         <span class="dash-nav-label" data-i18n="tab.dashboard">Dashboard</span>
       </button>
@@ -24,7 +24,7 @@
     @endif
 
     @if($usuario->puedeVerSeccion('acopio'))
-      <button type="button" class="dash-nav-btn" data-section="sec-acopio" data-titulo="1. Acopio por voz y tacto">
+      <button type="button" class="dash-nav-btn" data-section="sec-acopio" data-titulo="1. Acopio por voz y tacto" data-titulo-key="tab.acopio">
         <span class="dash-nav-icon">{!! $icoMicS !!}</span>
         <span class="dash-nav-label" data-i18n="tab.acopio">1. Acopio</span>
         @if($acopiosHoy->count() > 0)
@@ -34,7 +34,7 @@
     @endif
 
     @if($usuario->puedeVerSeccion('calidad'))
-      <button type="button" class="dash-nav-btn" data-section="sec-calidad" data-titulo="2. Calidad sanitaria (74°)">
+      <button type="button" class="dash-nav-btn" data-section="sec-calidad" data-titulo="2. Calidad sanitaria (74°)" data-titulo-key="tab.calidad">
         <span class="dash-nav-icon">{!! $icoOk !!}</span>
         <span class="dash-nav-label" data-i18n="tab.calidad">2. Calidad sanitaria</span>
         @if($totalPendientesCalidad > 0)
@@ -44,21 +44,21 @@
     @endif
 
     @if($usuario->puedeVerSeccion('tinas'))
-      <button type="button" class="dash-nav-btn" data-section="sec-tina" data-titulo="3. Tinas y receta">
+      <button type="button" class="dash-nav-btn" data-section="sec-tina" data-titulo="3. Tinas y receta" data-titulo-key="tab.tina">
         <span class="dash-nav-icon">{!! $icoTina !!}</span>
         <span class="dash-nav-label" data-i18n="tab.tina">3. Tinas y receta</span>
       </button>
     @endif
 
     @if($usuario->puedeVerSeccion('finanzas'))
-      <button type="button" class="dash-nav-btn" data-section="sec-quincena" data-titulo="4. Liquidación y ventas">
+      <button type="button" class="dash-nav-btn" data-section="sec-quincena" data-titulo="4. Liquidación y ventas" data-titulo-key="tab.quincena">
         <span class="dash-nav-icon">{!! $icoBalance !!}</span>
         <span class="dash-nav-label" data-i18n="tab.quincena">4. Liquidación y ventas</span>
       </button>
     @endif
 
     @if($usuario->puedeVerSeccion('estadisticas'))
-      <button type="button" class="dash-nav-btn" data-section="sec-estadisticas" data-titulo="5. Estadísticas">
+      <button type="button" class="dash-nav-btn" data-section="sec-estadisticas" data-titulo="5. Estadísticas" data-titulo-key="tab.estadisticas">
         <span class="dash-nav-icon">{!! $icoStats !!}</span>
         <span class="dash-nav-label" data-i18n="tab.estadisticas">5. Estadísticas</span>
       </button>
@@ -66,7 +66,7 @@
 
     @if($usuario->puedeVerSeccion('admin'))
       <div class="dash-nav-group" data-i18n="nav_group.admin">Administración</div>
-      <button type="button" class="dash-nav-btn" data-section="sec-admin" data-titulo="6. Plantas y usuarios">
+      <button type="button" class="dash-nav-btn" data-section="sec-admin" data-titulo="6. Plantas y usuarios" data-titulo-key="tab.admin">
         <span class="dash-nav-icon">{!! $icoAdmin !!}</span>
         <span class="dash-nav-label" data-i18n="tab.admin">6. Plantas y usuarios</span>
       </button>

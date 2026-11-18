@@ -346,6 +346,21 @@ body.dash-body {
   gap: 2px;
 }
 
+.dash-topbar-lang {
+  display: inline-flex;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 3px;
+  gap: 2px;
+}
+
+.dash-topbar-lang .dash-lang-pill {
+  border: none;
+  min-width: 34px;
+  padding-inline: 0.45rem;
+}
+
 .dash-range-pill {
   display: inline-flex;
   align-items: center;

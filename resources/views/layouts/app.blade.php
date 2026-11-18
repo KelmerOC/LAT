@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="{{ app()->getLocale() }}">
+<html lang="{{ app()->getLocale() }}"@if(session()->has('locale')) data-server-locale="{{ session('locale') }}"@endif>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -14,7 +14,7 @@
   @stack('styles')
 </head>
 <body class="@yield('body_class')">
-  <a href="#contenido-principal" class="skip-link">Saltar al contenido principal</a>
+  <a href="#contenido-principal" class="skip-link" data-i18n="nav.skip">Saltar al contenido principal</a>
 
   @unless(View::hasSection('sin_chrome_publico'))
   <div class="header-sitio">
@@ -152,7 +152,7 @@
               <span class="hamb-line"></span>
               <span class="hamb-line"></span>
             </span>
-            <span class="btn-menu-txt">Menú</span>
+            <span class="btn-menu-txt" data-i18n="nav.menu">Menú</span>
           </button>
         </div>
       </div>
@@ -225,7 +225,7 @@
           </ul>
         </div>
       </div>
-      <p class="footer-bottom">&copy; {{ date('Y') }} LAT Comunitario · Código libre académico</p>
+      <p class="footer-bottom" data-i18n="footer.bottom">&copy; {{ date('Y') }} LAT Comunitario · Código libre académico</p>
     </div>
     <span class="footer-wordmark" aria-hidden="true">LAT</span>
   </footer>

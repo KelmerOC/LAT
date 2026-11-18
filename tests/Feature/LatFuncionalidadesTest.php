@@ -402,10 +402,24 @@ class LatFuncionalidadesTest extends TestCase
 
     public function test_cambio_de_idioma_persiste_en_sesion(): void
     {
+        $admin = User::where('usuario', 'donjusto')->firstOrFail();
+
         $this->get('/idioma/qu')->assertStatus(302);
-        $this->get('/')->assertStatus(200)->assertSee('<html lang="qu">', false);
+        $this->get('/')->assertStatus(200)
+            ->assertSee('<html lang="qu" data-server-locale="qu">', false)
+            ->assertSee('data-i18n="steps.p2_title"', false)
+            ->assertSee('data-i18n="bento.how_title"', false);
+        $this->get('/login')->assertStatus(200)
+            ->assertSee('<html lang="qu" data-server-locale="qu">', false)
+            ->assertSee('data-i18n="login.role_custom"', false);
+        $this->actingAs($admin)->get('/panel')->assertStatus(200)
+            ->assertSee('<html lang="qu" data-server-locale="qu">', false)
+            ->assertSee('data-i18n="dash.c1_title"', false);
 
         $this->get('/idioma/en')->assertStatus(302);
-        $this->get('/')->assertStatus(200)->assertSee('<html lang="en">', false);
+        $this->get('/')->assertStatus(200)
+            ->assertSee('<html lang="en" data-server-locale="en">', false);
+        $this->actingAs($admin)->get('/panel')->assertStatus(200)
+            ->assertSee('<html lang="en" data-server-locale="en">', false);
     }
 }

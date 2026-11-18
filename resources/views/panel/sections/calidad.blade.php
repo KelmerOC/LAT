@@ -23,9 +23,9 @@
               <td class="num" style="font-size: 1.1rem;">{{ number_format($acopio->litros, 1) }} L</td>
               <td>
                 @if($acopio->calidad === 'buena')
-                  <span class="chip chip-verde" data-i18n="m2.status_good">{!! $icoOk !!} Óptima</span>
+                  <span class="chip chip-verde">{!! $icoOk !!} <span data-i18n="m2.status_good">Óptima</span></span>
                 @elseif($acopio->calidad === 'acida')
-                  <span class="chip chip-amarillo" data-i18n="m2.status_acid">{!! $icoAlerta !!} Con acidez</span>
+                  <span class="chip chip-amarillo">{!! $icoAlerta !!} <span data-i18n="m2.status_acid">Con acidez</span></span>
                 @else
                   <span class="chip chip-amarillo" data-i18n="m2.status_pending">Sin probar</span>
                 @endif
@@ -69,7 +69,7 @@
               @endif
             </tr>
           @empty
-            <tr><td colspan="{{ $usuario->tienePermiso('calidad.evaluar') ? 5 : 4 }}" style="text-align: center; padding: 2rem; color: var(--color-graphite);">No hay entregas para clasificar hoy.</td></tr>
+            <tr><td colspan="{{ $usuario->tienePermiso('calidad.evaluar') ? 5 : 4 }}" style="text-align: center; padding: 2rem; color: var(--color-graphite);" data-i18n="m2.empty">No hay entregas para clasificar hoy.</td></tr>
           @endforelse
         </tbody>
       </table>

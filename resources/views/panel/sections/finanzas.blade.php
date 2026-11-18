@@ -23,14 +23,14 @@
       <table class="tabla-plana" style="min-width: 720px;">
         <thead>
           <tr>
-            <th scope="col">Código</th>
-            <th scope="col">Ganadero</th>
-            <th scope="col">Sector</th>
-            <th scope="col" class="num">Litros</th>
-            <th scope="col" class="num">Bruto</th>
-            <th scope="col" class="num">Adelantos</th>
-            <th scope="col" class="num">Comisión</th>
-            <th scope="col" class="num" style="background: var(--color-sky-wash);">Neto a pagar</th>
+            <th scope="col" data-i18n="m4.col_code">Código</th>
+            <th scope="col" data-i18n="m4.col_farmer">Ganadero</th>
+            <th scope="col" data-i18n="m4.col_sector">Sector</th>
+            <th scope="col" class="num" data-i18n="m1.col_liters">Litros</th>
+            <th scope="col" class="num" data-i18n="m4.col_gross">Bruto</th>
+            <th scope="col" class="num" data-i18n="m4.col_advances">Adelantos</th>
+            <th scope="col" class="num" data-i18n="m4.col_comm">Comisión</th>
+            <th scope="col" class="num" style="background: var(--color-sky-wash);" data-i18n="m4.col_net">Neto a pagar</th>
           </tr>
         </thead>
         <tbody>
@@ -55,7 +55,7 @@
     @if($usuario->tienePermiso('finanzas.registrar'))
       <div class="panel-card panel-card-celeste on-fog" style="padding: 1.5rem;">
         <h3 style="font-size: 1.1rem;" data-i18n="m4.mov_title">Registrar movimiento, venta o ayuda del día</h3>
-        <p class="legal">Ley N.° 29733: los pagos en mano por faenas de lavado o volteo no requieren DNI ni datos personales sensibles. Las ventas alimentan las estadísticas de plantas.</p>
+        <p class="legal" data-i18n="m4.mov_legal">Ley N.° 29733: los pagos en mano por faenas de lavado o volteo no requieren DNI ni datos personales sensibles. Las ventas alimentan las estadísticas de plantas.</p>
 
         <form method="POST" action="{{ route('panel.movimiento') }}" class="movimiento-form">
           @csrf
@@ -104,14 +104,14 @@
       <table class="tabla-plana">
         <thead>
           <tr>
-            <th>Fecha</th>
-            <th>Tipo</th>
-            <th>Referencia</th>
-            <th>Concepto</th>
-            <th class="num">Und.</th>
-            <th class="num">Monto</th>
+            <th data-i18n="m4.col_date">Fecha</th>
+            <th data-i18n="m4.col_type">Tipo</th>
+            <th data-i18n="m4.col_ref">Referencia</th>
+            <th data-i18n="m4.col_concept">Concepto</th>
+            <th class="num" data-i18n="m4.col_units">Und.</th>
+            <th class="num" data-i18n="m4.col_amount">Monto</th>
             @if($usuario->tienePermiso('finanzas.editar'))
-              <th>Acciones</th>
+              <th data-i18n="m1.col_actions">Acciones</th>
             @endif
           </tr>
         </thead>
@@ -134,14 +134,14 @@
                       data-concepto="{{ $mov->concepto }}"
                       data-unidades="{{ $mov->cantidad_unidades ?? 0 }}"
                       data-monto="{{ $mov->monto }}">
-                      {!! $icoEditar !!} Editar
+                      {!! $icoEditar !!} <span data-i18n="common.edit">Editar</span>
                     </button>
                     <form method="POST" action="{{ route('panel.movimiento.delete', $mov->id) }}"
                       class="js-confirm-form"
                       data-confirm-kind="delete"
                       data-detalle="{{ $mov->concepto }}">
                       @csrf @method('DELETE')
-                      <button type="submit" class="btn-micro btn-micro-danger">Eliminar</button>
+                      <button type="submit" class="btn-micro btn-micro-danger" data-i18n="common.delete">Eliminar</button>
                     </form>
                   </div>
                 </td>

@@ -10,10 +10,16 @@
   </div>
 
   <div class="dash-topbar-right">
+    <div class="dash-topbar-lang" role="group" aria-label="Idioma de la plataforma">
+      <button type="button" class="dash-lang-pill btn-lang-choice" data-lang="es" title="Español">ES</button>
+      <button type="button" class="dash-lang-pill btn-lang-choice" data-lang="qu" title="Runasimi (Quechua)">QU</button>
+      <button type="button" class="dash-lang-pill btn-lang-choice" data-lang="en" title="English">EN</button>
+    </div>
+
     @if($usuario->puedeVerSeccion('dashboard'))
       <nav class="dash-range-pills" aria-label="Filtro de período del dashboard">
         @foreach(['hoy' => 'Hoy', '7d' => '7 días', 'quincena' => 'Quincena', 'mes' => 'Mes'] as $claveRango => $etqRango)
-          <a href="{{ route('panel', ['rango' => $claveRango]) }}" class="dash-range-pill {{ $rango === $claveRango ? 'activo' : '' }}">
+          <a href="{{ route('panel', ['rango' => $claveRango]) }}" class="dash-range-pill {{ $rango === $claveRango ? 'activo' : '' }}" data-i18n="dash.range_{{ $claveRango }}">
             {{ $etqRango }}
           </a>
         @endforeach

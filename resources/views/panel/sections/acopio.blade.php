@@ -9,7 +9,7 @@
           {!! $icoMic !!}
           <span id="txt-btn-voz" data-i18n="m1.voice_btn">Dictar acopio por voz</span>
         </button>
-        <div id="transcripcion-voz" class="transcripcion" role="status" aria-live="polite">Ejemplo: “Don Eloy Condori, 35 litros”</div>
+        <div id="transcripcion-voz" class="transcripcion" role="status" aria-live="polite" data-i18n="m1.voice_sample">Ejemplo: “Don Eloy Condori, 35 litros”</div>
 
         <form method="POST" action="{{ route('panel.acopio') }}" id="form-acopio">
           @csrf
@@ -19,7 +19,7 @@
           <div class="form-grupo">
             <label for="select-proveedor" class="form-label" data-i18n="m1.producer">Ganadero / productor</label>
             <select name="proveedor_id" id="select-proveedor" class="select-lat" required>
-              <option value="">Seleccione el ganadero…</option>
+              <option value="" data-i18n="m1.select_producer">Seleccione el ganadero…</option>
               @foreach($proveedores as $prov)
                 <option value="{{ $prov->id }}">{{ $prov->codigo }} - {{ $prov->nombre }} ({{ $prov->sector }})</option>
               @endforeach
@@ -72,18 +72,18 @@
                 <td class="num" style="font-size: 1.1rem;">{{ number_format($acopio->litros, 1) }}</td>
                 <td>
                   @if($acopio->metodo === 'voz')
-                    <span class="chip chip-celeste">{!! $icoMicS !!} Voz</span>
+                    <span class="chip chip-celeste">{!! $icoMicS !!} <span data-i18n="common.voice">Voz</span></span>
                   @else
-                    <span class="chip chip-fog">{!! $icoTec !!} Manual</span>
+                    <span class="chip chip-fog">{!! $icoTec !!} <span data-i18n="common.manual">Manual</span></span>
                   @endif
                 </td>
                 <td>
                   @if($acopio->calidad === 'buena')
-                    <span class="chip chip-verde">{!! $icoOk !!} Aprobada</span>
+                    <span class="chip chip-verde">{!! $icoOk !!} <span data-i18n="common.approved">Aprobada</span></span>
                   @elseif($acopio->calidad === 'acida')
-                    <span class="chip chip-amarillo">{!! $icoAlerta !!} Ácida (quesillo)</span>
+                    <span class="chip chip-amarillo">{!! $icoAlerta !!} <span data-i18n="common.acid_chip">Ácida (quesillo)</span></span>
                   @else
-                    <span class="chip chip-amarillo">Pendiente</span>
+                    <span class="chip chip-amarillo" data-i18n="common.pending">Pendiente</span>
                   @endif
                 </td>
                 @if($usuario->tienePermiso('acopio.editar'))
@@ -95,13 +95,13 @@
                       data-calidad="{{ $acopio->calidad }}"
                       data-metodo="{{ $acopio->metodo }}"
                       data-hora="{{ substr($acopio->hora, 0, 5) }}">
-                      {!! $icoEditar !!} Editar
+                      {!! $icoEditar !!} <span data-i18n="common.edit">Editar</span>
                     </button>
                   </td>
                 @endif
               </tr>
             @empty
-              <tr><td colspan="{{ $usuario->tienePermiso('acopio.editar') ? 6 : 5 }}" style="text-align: center; padding: 2rem; color: var(--color-graphite);">No hay entregas registradas hoy.</td></tr>
+              <tr><td colspan="{{ $usuario->tienePermiso('acopio.editar') ? 6 : 5 }}" style="text-align: center; padding: 2rem; color: var(--color-graphite);" data-i18n="m1.empty">No hay entregas registradas hoy.</td></tr>
             @endforelse
           </tbody>
         </table>

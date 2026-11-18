@@ -440,7 +440,7 @@
 <div class="modal-overlay" id="modal-nuevo-usuario" hidden role="dialog" aria-modal="true" aria-labelledby="title-nuevo-usuario">
   <div class="modal-swiss modal-lg">
     <div class="modal-head">
-      <h2 id="title-nuevo-usuario">Crear usuario personalizado y permisos</h2>
+      <h2 id="title-nuevo-usuario" data-i18n="modal.new_user_title">Crear usuario personalizado y permisos</h2>
       <button type="button" class="modal-close" data-close-modal="modal-nuevo-usuario" aria-label="Cerrar">&times;</button>
     </div>
     <form method="POST" action="{{ route('admin.usuarios.store') }}" class="js-user-perm-form" data-prefix="nu">
@@ -507,16 +507,16 @@
         </div>
 
         <div class="perm-summary-bar">
-          <span><strong>Permisos por sección y control:</strong> marca únicamente lo que este usuario verá al iniciar sesión.</span>
-          <span class="chip chip-celeste" id="nu-perm-counter">0 controles seleccionados</span>
+          <span data-i18n="modal.perm_hint">Permisos por sección y control: marca únicamente lo que este usuario verá al iniciar sesión.</span>
+          <span class="chip chip-celeste" id="nu-perm-counter">0</span>
         </div>
 
         <div class="perm-matrix" id="nu-perm-matrix">
           @foreach($catalogoPermisos as $secKey => $secData)
             <div class="perm-section-card">
               <div class="perm-section-head">
-                <strong>{{ $secData['titulo'] }}</strong>
-                <button type="button" class="perm-toggle-all" data-target-sec="{{ $secKey }}" data-prefix="nu">Marcar todo</button>
+                <strong data-i18n="perm.sec.{{ $secKey }}">{{ $secData['titulo'] }}</strong>
+                <button type="button" class="perm-toggle-all" data-target-sec="{{ $secKey }}" data-prefix="nu" data-i18n="modal.mark_all">Marcar todo</button>
               </div>
               <div class="perm-list">
                 @foreach($secData['permisos'] as $permKey => $permInfo)
@@ -530,8 +530,8 @@
                       class="js-perm-checkbox"
                       @disabled(! $puedeAsignar)>
                     <span>
-                      <strong>{{ $permInfo['label'] }}</strong>
-                      <small>{{ $permInfo['desc'] }}</small>
+                      <strong data-i18n="perm.{{ $permKey }}.label">{{ $permInfo['label'] }}</strong>
+                      <small data-i18n="perm.{{ $permKey }}.desc">{{ $permInfo['desc'] }}</small>
                     </span>
                   </label>
                 @endforeach
@@ -541,8 +541,8 @@
         </div>
       </div>
       <div class="modal-foot">
-        <button type="button" class="btn btn-outline" data-close-modal="modal-nuevo-usuario">Cancelar</button>
-        <button type="submit" class="btn btn-ember">Crear usuario con permisos</button>
+        <button type="button" class="btn btn-outline" data-close-modal="modal-nuevo-usuario" data-i18n="common.cancel">Cancelar</button>
+        <button type="submit" class="btn btn-ember" data-i18n="modal.create_user_btn">Crear usuario con permisos</button>
       </div>
     </form>
   </div>
@@ -551,7 +551,7 @@
 <div class="modal-overlay" id="modal-edit-usuario" hidden role="dialog" aria-modal="true" aria-labelledby="title-edit-usuario">
   <div class="modal-swiss modal-lg">
     <div class="modal-head">
-      <h2 id="title-edit-usuario">Editar usuario y permisos por sección</h2>
+      <h2 id="title-edit-usuario" data-i18n="modal.edit_user_title">Editar usuario y permisos por sección</h2>
       <button type="button" class="modal-close" data-close-modal="modal-edit-usuario" aria-label="Cerrar">&times;</button>
     </div>
     <form method="POST" id="form-edit-usuario" action="" class="js-user-perm-form" data-prefix="eu">
@@ -623,16 +623,16 @@
         <input type="hidden" name="email" id="eu-email" value="">
 
         <div class="perm-summary-bar">
-          <span><strong>Controles habilitados:</strong> ajusta los permisos específicos de esta cuenta.</span>
-          <span class="chip chip-celeste" id="eu-perm-counter">0 controles seleccionados</span>
+          <span data-i18n="modal.perm_adjust">Controles habilitados: ajusta los permisos específicos de esta cuenta.</span>
+          <span class="chip chip-celeste" id="eu-perm-counter">0</span>
         </div>
 
         <div class="perm-matrix" id="eu-perm-matrix">
           @foreach($catalogoPermisos as $secKey => $secData)
             <div class="perm-section-card">
               <div class="perm-section-head">
-                <strong>{{ $secData['titulo'] }}</strong>
-                <button type="button" class="perm-toggle-all" data-target-sec="{{ $secKey }}" data-prefix="eu">Marcar todo</button>
+                <strong data-i18n="perm.sec.{{ $secKey }}">{{ $secData['titulo'] }}</strong>
+                <button type="button" class="perm-toggle-all" data-target-sec="{{ $secKey }}" data-prefix="eu" data-i18n="modal.mark_all">Marcar todo</button>
               </div>
               <div class="perm-list">
                 @foreach($secData['permisos'] as $permKey => $permInfo)
@@ -646,8 +646,8 @@
                       class="js-perm-checkbox"
                       @disabled(! $puedeAsignar)>
                     <span>
-                      <strong>{{ $permInfo['label'] }}</strong>
-                      <small>{{ $permInfo['desc'] }}</small>
+                      <strong data-i18n="perm.{{ $permKey }}.label">{{ $permInfo['label'] }}</strong>
+                      <small data-i18n="perm.{{ $permKey }}.desc">{{ $permInfo['desc'] }}</small>
                     </span>
                   </label>
                 @endforeach
@@ -657,8 +657,8 @@
         </div>
       </div>
       <div class="modal-foot">
-        <button type="button" class="btn btn-outline" data-close-modal="modal-edit-usuario">Cancelar</button>
-        <button type="submit" class="btn btn-ember">Guardar cambios y permisos</button>
+        <button type="button" class="btn btn-outline" data-close-modal="modal-edit-usuario" data-i18n="common.cancel">Cancelar</button>
+        <button type="submit" class="btn btn-ember" data-i18n="modal.save_user_btn">Guardar cambios y permisos</button>
       </div>
     </form>
   </div>
