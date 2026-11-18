@@ -36,10 +36,12 @@
           <h3 data-i18n="login.profiles_title">Perfiles de prueba sembrados</h3>
           <p class="ayuda">Rellenan el formulario con un clic. Solo para demostración universitaria.</p>
           <div class="perfiles-grid" role="group" aria-label="Perfiles de prueba">
-            <button type="button" class="perfil-btn" data-usuario="donjusto@sanborreal.pe" aria-pressed="true"><strong>Don Justo</strong><span>Administración</span></button>
+            <button type="button" class="perfil-btn" data-usuario="donjusto@sanborreal.pe" aria-pressed="true"><strong>Don Justo</strong><span>Administración total</span></button>
             <button type="button" class="perfil-btn" data-usuario="carlos.anta" aria-pressed="false"><strong>Carlos</strong><span>Encargado de planta</span></button>
             <button type="button" class="perfil-btn" data-usuario="sabina.tina" aria-pressed="false"><strong>Sabina</strong><span>Tina / Calidad</span></button>
             <button type="button" class="perfil-btn" data-usuario="contador.marco" aria-pressed="false"><strong>Marco</strong><span>Contador externo</span></button>
+            <button type="button" class="perfil-btn" data-usuario="mateo.ruta" aria-pressed="false"><strong>Mateo</strong><span>Solo Acopio en ruta</span></button>
+            <button type="button" class="perfil-btn" data-usuario="lucia.personal" aria-pressed="false"><strong>Lucía</strong><span>Personalizado (Calidad + Tinas)</span></button>
           </div>
         </div>
       </div>

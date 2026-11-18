@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Middleware\CheckLatPermission;
+use App\Http\Middleware\SetLocaleMiddleware;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -15,18 +17,20 @@ use Illuminate\Foundation\Configuration\Middleware;
 spl_autoload_register(function (string $class): bool {
     if (str_starts_with($class, 'App\\')) {
         $relativa = str_replace('\\', '/', substr($class, 4));
-        $archivo = dirname(__DIR__) . '/app/' . $relativa . '.php';
+        $archivo = dirname(__DIR__).'/app/'.$relativa.'.php';
         if (file_exists($archivo)) {
             require_once $archivo;
+
             return true;
         }
     }
 
     if (str_starts_with($class, 'Database\\Seeders\\')) {
         $relativa = str_replace('\\', '/', substr($class, 17));
-        $archivo = dirname(__DIR__) . '/database/seeders/' . $relativa . '.php';
+        $archivo = dirname(__DIR__).'/database/seeders/'.$relativa.'.php';
         if (file_exists($archivo)) {
             require_once $archivo;
+
             return true;
         }
     }
@@ -43,7 +47,10 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->trustProxies(at: '*');
         $middleware->web(append: [
-            \App\Http\Middleware\SetLocaleMiddleware::class,
+            SetLocaleMiddleware::class,
+        ]);
+        $middleware->alias([
+            'permiso' => CheckLatPermission::class,
         ]);
         $middleware->redirectGuestsTo(fn () => route('login'));
         $middleware->redirectUsersTo(fn () => route('panel'));

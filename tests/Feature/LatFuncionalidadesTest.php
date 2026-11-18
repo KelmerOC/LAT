@@ -26,13 +26,13 @@ class LatFuncionalidadesTest extends TestCase
     public function test_registro_publico_crea_planta_tina_y_usuario_admin(): void
     {
         $response = $this->post('/registrarse', [
-            'name'                  => 'Elena Mamani',
-            'usuario'               => 'elena.maras',
-            'email'                 => 'elena@maras.pe',
-            'planta_nombre'         => 'Quesería Maras Norte',
-            'planta_ubicacion'      => 'Maras · Urubamba',
-            'precio_litro'          => 1.75,
-            'password'              => 'clave1234',
+            'name' => 'Elena Mamani',
+            'usuario' => 'elena.maras',
+            'email' => 'elena@maras.pe',
+            'planta_nombre' => 'Quesería Maras Norte',
+            'planta_ubicacion' => 'Maras · Urubamba',
+            'precio_litro' => 1.75,
+            'password' => 'clave1234',
             'password_confirmation' => 'clave1234',
         ]);
 
@@ -54,37 +54,222 @@ class LatFuncionalidadesTest extends TestCase
         $planta = Planta::where('codigo', 'PLT-01')->firstOrFail();
 
         $res = $this->actingAs($admin)->post('/panel/admin/usuarios', [
-            'name'      => 'Operario Nuevo',
-            'usuario'   => 'nuevo.ruta',
-            'email'     => '',
-            'password'  => 'operario123',
-            'cargo'     => 'recolector_ruta',
+            'name' => 'Operario Nuevo',
+            'usuario' => 'nuevo.ruta',
+            'email' => '',
+            'password' => 'operario123',
+            'cargo' => 'recolector_ruta',
             'planta_id' => $planta->id,
         ]);
 
         $res->assertRedirect();
         $nuevo = User::where('usuario', 'nuevo.ruta')->firstOrFail();
         $this->assertSame('recolector_ruta', $nuevo->cargo);
+        $this->assertSame($admin->id, $nuevo->creado_por);
 
         // Actualizar cargo del nuevo usuario
         $resEdit = $this->actingAs($admin)->put("/panel/admin/usuarios/{$nuevo->id}", [
-            'name'      => 'Operario Ascendido',
-            'usuario'   => 'nuevo.ruta',
-            'cargo'     => 'control_tina',
+            'name' => 'Operario Ascendido',
+            'usuario' => 'nuevo.ruta',
+            'cargo' => 'control_tina',
             'planta_id' => $planta->id,
-            'activo'    => '1',
+            'activo' => '1',
         ]);
         $resEdit->assertRedirect();
         $this->assertSame('control_tina', $nuevo->fresh()->cargo);
 
-        // Usuario no admin no puede crear usuarios
+        // Usuario no admin sin permiso admin.usuarios no puede crear usuarios
         $this->actingAs($nuevo)->post('/panel/admin/usuarios', [
-            'name'      => 'Intruso',
-            'usuario'   => 'intruso',
-            'password'  => 'secret123',
-            'cargo'     => 'administracion',
+            'name' => 'Intruso',
+            'usuario' => 'intruso',
+            'password' => 'secret123',
+            'cargo' => 'administracion',
             'planta_id' => $planta->id,
         ])->assertStatus(403);
+    }
+
+    public function test_usuario_personalizado_solo_ve_y_accede_a_sus_secciones_y_controles(): void
+    {
+        $admin = User::where('usuario', 'donjusto')->firstOrFail();
+        $planta = Planta::where('codigo', 'PLT-01')->firstOrFail();
+
+        // Crear usuario personalizado con acceso únicamente a Tinas (ver + operar)
+        $this->actingAs($admin)->post('/panel/admin/usuarios', [
+            'name' => 'Lucía Quesera',
+            'usuario' => 'lucia.tina',
+            'password' => 'clave1234',
+            'cargo' => 'personalizado',
+            'rango' => 'personalizado',
+            'planta_id' => $planta->id,
+            'permisos_present' => '1',
+            'permisos' => ['tinas.ver', 'tinas.operar'],
+        ])->assertRedirect();
+
+        $custom = User::where('usuario', 'lucia.tina')->firstOrFail();
+        $this->assertSame('personalizado', $custom->cargo);
+        $this->assertSame(['tinas.ver', 'tinas.operar'], $custom->permisosEfectivos());
+        $this->assertSame('tinas', $custom->primeraSeccionPermitida());
+
+        // Al entrar al panel solo ve la sección de Tinas, no Dashboard, Acopio, Liquidación ni Admin
+        $panelRes = $this->actingAs($custom)->get('/panel');
+        $panelRes->assertStatus(200);
+        $panelRes->assertSee('id="sec-tina"', false);
+        $panelRes->assertDontSee('id="sec-dashboard"', false);
+        $panelRes->assertDontSee('id="sec-acopio"', false);
+        $panelRes->assertDontSee('id="sec-quincena"', false);
+        $panelRes->assertDontSee('id="sec-admin"', false);
+
+        // Puede operar lote en tina
+        $lote = Lote::where('planta_id', $planta->id)->enProceso()->firstOrFail();
+        $this->actingAs($custom)->post("/panel/tina/{$lote->id}", [
+            'temperatura' => 38.5,
+            'litros' => $lote->litros,
+        ])->assertRedirect();
+        $this->assertSame(38.5, $lote->fresh()->temperatura_actual);
+
+        // Bloqueado (403) en controles y secciones no otorgados
+        $prov = Proveedor::where('planta_id', $planta->id)->firstOrFail();
+        $acopio = Acopio::where('planta_id', $planta->id)->firstOrFail();
+
+        $this->actingAs($custom)->post('/panel/acopio', [
+            'proveedor_id' => $prov->id,
+            'litros' => 20,
+        ])->assertStatus(403);
+        $this->actingAs($custom)->post("/panel/calidad/{$acopio->id}", ['calidad' => 'buena'])->assertStatus(403);
+        $this->actingAs($custom)->post('/panel/tinas', [
+            'codigo' => 'TINA-99',
+            'nombre' => 'No autorizada',
+            'capacidad_litros' => 200,
+            'tipo' => 'quesillo',
+        ])->assertStatus(403);
+        $this->actingAs($custom)->post('/panel/movimiento', [
+            'tipo' => 'venta_producto',
+            'concepto' => 'No permitido',
+            'monto' => 100,
+        ])->assertStatus(403);
+        $this->actingAs($custom)->get('/panel/exportar-excel')->assertStatus(403);
+    }
+
+    public function test_control_granular_ver_sin_editar_bloquea_modificaciones(): void
+    {
+        $admin = User::where('usuario', 'donjusto')->firstOrFail();
+        $planta = Planta::where('codigo', 'PLT-01')->firstOrFail();
+
+        $this->actingAs($admin)->post('/panel/admin/usuarios', [
+            'name' => 'Registrador Sin Edicion',
+            'usuario' => 'solo.crear',
+            'password' => 'clave1234',
+            'cargo' => 'personalizado',
+            'planta_id' => $planta->id,
+            'permisos_present' => '1',
+            'permisos' => ['acopio.ver', 'acopio.crear'],
+        ])->assertRedirect();
+
+        $user = User::where('usuario', 'solo.crear')->firstOrFail();
+        $prov = Proveedor::where('planta_id', $planta->id)->firstOrFail();
+        $acopio = Acopio::where('planta_id', $planta->id)->firstOrFail();
+
+        // Puede registrar acopio
+        $this->actingAs($user)->post('/panel/acopio', [
+            'proveedor_id' => $prov->id,
+            'litros' => 25.0,
+            'metodo' => 'manual',
+        ])->assertRedirect();
+
+        // En la vista no debe aparecer el botón de editar acopio
+        $this->actingAs($user)->get('/panel')->assertDontSee('js-edit-acopio');
+
+        // No puede editar ni eliminar
+        $this->actingAs($user)->put("/panel/acopio/{$acopio->id}", [
+            'proveedor_id' => $prov->id,
+            'litros' => 99,
+            'calidad' => 'buena',
+            'metodo' => 'manual',
+        ])->assertStatus(403);
+
+        $this->actingAs($user)->delete("/panel/acopio/{$acopio->id}")->assertStatus(403);
+    }
+
+    public function test_rango_delegado_permite_crear_usuarios_solo_en_su_planta_y_sin_escalar(): void
+    {
+        $admin = User::where('usuario', 'donjusto')->firstOrFail();
+        $planta1 = Planta::where('codigo', 'PLT-01')->firstOrFail();
+        $planta2 = Planta::where('codigo', 'PLT-02')->firstOrFail();
+
+        // Admin otorga rango supervisor con permiso de gestionar usuarios + acopio
+        $this->actingAs($admin)->post('/panel/admin/usuarios', [
+            'name' => 'Supervisor Planta 1',
+            'usuario' => 'sup.planta1',
+            'password' => 'clave1234',
+            'cargo' => 'personalizado',
+            'rango' => 'supervisor',
+            'planta_id' => $planta1->id,
+            'permisos_present' => '1',
+            'permisos' => ['admin.usuarios', 'acopio.ver', 'acopio.crear'],
+        ])->assertRedirect();
+
+        $supervisor = User::where('usuario', 'sup.planta1')->firstOrFail();
+
+        // Puede crear un operario en su misma planta con un subconjunto de sus permisos
+        $this->actingAs($supervisor)->post('/panel/admin/usuarios', [
+            'name' => 'Suboperario Ruta',
+            'usuario' => 'sub.ruta',
+            'password' => 'clave1234',
+            'cargo' => 'personalizado',
+            'planta_id' => $planta1->id,
+            'permisos_present' => '1',
+            'permisos' => ['acopio.ver', 'acopio.crear'],
+        ])->assertRedirect();
+
+        $sub = User::where('usuario', 'sub.ruta')->firstOrFail();
+        $this->assertSame($supervisor->id, $sub->creado_por);
+
+        // No puede asignar permisos que no posee (ej. finanzas.ver)
+        $this->actingAs($supervisor)->post('/panel/admin/usuarios', [
+            'name' => 'Intento Escalado',
+            'usuario' => 'escalado.user',
+            'password' => 'clave1234',
+            'cargo' => 'personalizado',
+            'planta_id' => $planta1->id,
+            'permisos_present' => '1',
+            'permisos' => ['finanzas.ver'],
+        ])->assertStatus(403);
+
+        // No puede crear usuario en otra planta
+        $this->actingAs($supervisor)->post('/panel/admin/usuarios', [
+            'name' => 'Otra Planta',
+            'usuario' => 'otra.planta',
+            'password' => 'clave1234',
+            'cargo' => 'personalizado',
+            'planta_id' => $planta2->id,
+            'permisos_present' => '1',
+            'permisos' => ['acopio.ver'],
+        ])->assertStatus(403);
+
+        // No puede crear o editar administradores
+        $this->actingAs($supervisor)->put("/panel/admin/usuarios/{$admin->id}", [
+            'name' => 'Hack Admin',
+            'usuario' => $admin->usuario,
+            'cargo' => 'administracion',
+            'planta_id' => $planta1->id,
+        ])->assertStatus(403);
+    }
+
+    public function test_dashboard_retorna_series_temporales_y_respeta_filtro_de_rango(): void
+    {
+        $admin = User::where('usuario', 'donjusto')->firstOrFail();
+
+        $res7d = $this->actingAs($admin)->get('/panel?rango=7d');
+        $res7d->assertStatus(200);
+        $res7d->assertSee('id="sec-dashboard"', false);
+        $res7d->assertSee('id="chart-acopio-diario"', false);
+        $res7d->assertSee('id="chart-ventas-gastos"', false);
+        $res7d->assertSee('id="chart-moldes-diarios"', false);
+        $res7d->assertSee('Últimos 7 días');
+
+        $resMes = $this->actingAs($admin)->get('/panel?rango=mes');
+        $resMes->assertStatus(200);
+        $resMes->assertSee('Este mes');
     }
 
     public function test_admin_gestiona_plantas_y_cambia_planta_activa(): void
@@ -92,9 +277,9 @@ class LatFuncionalidadesTest extends TestCase
         $admin = User::where('usuario', 'donjusto')->firstOrFail();
 
         $this->actingAs($admin)->post('/panel/admin/plantas', [
-            'codigo'       => 'PLT-04',
-            'nombre'       => 'Planta Urcos Sur',
-            'ubicacion'    => 'Quispicanchi · Cusco',
+            'codigo' => 'PLT-04',
+            'nombre' => 'Planta Urcos Sur',
+            'ubicacion' => 'Quispicanchi · Cusco',
             'precio_litro' => 1.80,
         ])->assertRedirect();
 
@@ -102,11 +287,11 @@ class LatFuncionalidadesTest extends TestCase
         $this->assertSame('Planta Urcos Sur', $planta->nombre);
 
         $this->actingAs($admin)->put("/panel/admin/plantas/{$planta->id}", [
-            'codigo'       => 'PLT-04',
-            'nombre'       => 'Planta Urcos Editada',
-            'ubicacion'    => 'Urcos Centro',
+            'codigo' => 'PLT-04',
+            'nombre' => 'Planta Urcos Editada',
+            'ubicacion' => 'Urcos Centro',
             'precio_litro' => 1.85,
-            'activa'       => '1',
+            'activa' => '1',
         ])->assertRedirect();
 
         $this->assertSame('Planta Urcos Editada', $planta->fresh()->nombre);
@@ -119,28 +304,28 @@ class LatFuncionalidadesTest extends TestCase
 
         // Agregar nueva tina
         $this->actingAs($admin)->post('/panel/tinas', [
-            'codigo'           => 'TINA-04',
-            'nombre'           => 'Tina Queso Paria',
+            'codigo' => 'TINA-04',
+            'nombre' => 'Tina Queso Paria',
             'capacidad_litros' => 400,
-            'tipo'             => 'principal_queso',
+            'tipo' => 'principal_queso',
         ])->assertRedirect();
 
         $tina = Tina::where('codigo', 'TINA-04')->firstOrFail();
 
         // Editar tina
         $this->actingAs($admin)->put("/panel/tinas/{$tina->id}", [
-            'codigo'           => 'TINA-04',
-            'nombre'           => 'Tina Queso Paria Plus',
+            'codigo' => 'TINA-04',
+            'nombre' => 'Tina Queso Paria Plus',
             'capacidad_litros' => 450,
-            'tipo'             => 'multiproposito',
-            'activa'           => '1',
+            'tipo' => 'multiproposito',
+            'activa' => '1',
         ])->assertRedirect();
 
         $this->assertSame('Tina Queso Paria Plus', $tina->fresh()->nombre);
 
         // Iniciar lote en la tina nueva
         $this->actingAs($admin)->post("/panel/tinas/{$tina->id}/lote", [
-            'litros'             => 180,
+            'litros' => 180,
             'temperatura_actual' => 72.0,
         ])->assertRedirect();
 
@@ -150,7 +335,7 @@ class LatFuncionalidadesTest extends TestCase
         // Ajustar temperatura y finalizar lote
         $this->actingAs($admin)->post("/panel/tina/{$lote->id}", [
             'temperatura' => 38.0,
-            'litros'      => 180,
+            'litros' => 180,
         ])->assertRedirect();
         $this->assertSame('lista_para_cuajo', $lote->fresh()->estado);
 
@@ -169,10 +354,10 @@ class LatFuncionalidadesTest extends TestCase
 
         $this->actingAs($admin)->put("/panel/acopio/{$acopio->id}", [
             'proveedor_id' => $prov->id,
-            'litros'       => 55.5,
-            'calidad'      => 'acida',
-            'metodo'       => 'manual',
-            'hora'         => '08:15',
+            'litros' => 55.5,
+            'calidad' => 'acida',
+            'metodo' => 'manual',
+            'hora' => '08:15',
         ])->assertRedirect();
 
         $acopioFresh = $acopio->fresh();
@@ -181,10 +366,10 @@ class LatFuncionalidadesTest extends TestCase
 
         $mov = Liquidacion::where('planta_id', $admin->planta_id)->firstOrFail();
         $this->actingAs($admin)->put("/panel/movimiento/{$mov->id}", [
-            'tipo'              => 'venta_producto',
-            'concepto'          => 'Venta corregida feria',
+            'tipo' => 'venta_producto',
+            'concepto' => 'Venta corregida feria',
             'cantidad_unidades' => 30,
-            'monto'             => 600.0,
+            'monto' => 600.0,
         ])->assertRedirect();
 
         $this->assertSame(600.0, $mov->fresh()->monto);

@@ -30,6 +30,7 @@ use Illuminate\Validation\Rule;
 class PanelController extends Controller
 {
     protected LacteoService $service;
+
     protected ExcelExportService $excel;
 
     public function __construct(LacteoService $service, ExcelExportService $excel)
@@ -45,7 +46,7 @@ class PanelController extends Controller
     {
         $usuario = $request->user();
 
-        if ($usuario->esAdmin()) {
+        if ($usuario->tienePermiso('admin.plantas')) {
             $sessionId = $request->session()->get('planta_activa_id');
             if ($sessionId) {
                 $planta = Planta::find($sessionId);
@@ -65,10 +66,10 @@ class PanelController extends Controller
         return Planta::firstOrCreate(
             ['codigo' => 'PLT-01'],
             [
-                'nombre'       => 'Planta Láctea San Borreal',
-                'ubicacion'    => 'Anta · Cusco Provincia',
+                'nombre' => 'Planta Láctea San Borreal',
+                'ubicacion' => 'Anta · Cusco Provincia',
                 'precio_litro' => 1.65,
-                'activa'       => true,
+                'activa' => true,
             ]
         );
     }
@@ -85,7 +86,7 @@ class PanelController extends Controller
     }
 
     /**
-     * Carga el estado integral de la planta lechera activa.
+     * Carga el estado integral de la planta lechera activa filtrado por permisos del usuario.
      */
     public function index(Request $request)
     {
@@ -93,118 +94,162 @@ class PanelController extends Controller
         $plantaActiva = $this->resolverPlantaActiva($request);
         $plantaId = $plantaActiva->id;
         $hoy = Carbon::today()->toDateString();
+        $precioLitro = (float) $plantaActiva->precio_litro;
+        [$desde, $hasta] = $this->periodoActual();
 
-        // Plantas y usuarios para selector / administración
-        $plantas = $usuario->esAdmin()
+        $rangoInput = (string) $request->query('rango', '7d');
+        $rango = in_array($rangoInput, ['hoy', '7d', 'quincena', 'mes'], true) ? $rangoInput : '7d';
+
+        $seccionesPermitidas = $usuario->seccionesPermitidas();
+        $seccionInicial = $usuario->primeraSeccionPermitida() ?? 'sin_permisos';
+
+        $puedeVerAcopio = $usuario->puedeVerSeccion('acopio');
+        $puedeVerCalidad = $usuario->puedeVerSeccion('calidad');
+        $puedeVerTinas = $usuario->puedeVerSeccion('tinas');
+        $puedeVerFinanzas = $usuario->puedeVerSeccion('finanzas');
+        $puedeVerStats = $usuario->puedeVerSeccion('estadisticas');
+        $puedeVerDashboard = $usuario->puedeVerSeccion('dashboard');
+        $puedeAdminPlantas = $usuario->tienePermiso('admin.plantas');
+        $puedeAdminUsuarios = $usuario->tienePermiso('admin.usuarios');
+
+        // Plantas y usuarios según jerarquía
+        $plantas = $puedeAdminPlantas
             ? Planta::withCount(['tinas', 'users', 'proveedores'])->orderBy('codigo')->get()
             : collect([$plantaActiva]);
 
-        $usuarios = $usuario->esAdmin()
-            ? User::with('planta:id,codigo,nombre')->orderBy('name')->get()
+        $usuarios = collect();
+        if ($puedeAdminUsuarios) {
+            $usuarios = User::with(['planta:id,codigo,nombre', 'creador:id,name,usuario'])
+                ->when(! $usuario->esAdmin(), function ($q) use ($plantaId): void {
+                    $q->where('planta_id', $plantaId)->where('cargo', '!=', 'administracion');
+                })
+                ->orderBy('name')
+                ->get();
+        }
+
+        // 1. Proveedores (necesarios para acopio o movimientos financieros)
+        $proveedores = ($puedeVerAcopio || $puedeVerFinanzas)
+            ? Proveedor::dePlanta($plantaId)
+                ->activos()
+                ->select('id', 'planta_id', 'codigo', 'nombre', 'sector')
+                ->ordenadosPorNombre()
+                ->get()
             : collect();
 
-        // 1. Proveedores de la planta activa
-        $proveedores = Proveedor::dePlanta($plantaId)
-            ->activos()
-            ->select('id', 'planta_id', 'codigo', 'nombre', 'sector')
-            ->ordenadosPorNombre()
-            ->get();
-
-        // 2. Acopios de hoy de la planta activa
-        $acopiosHoy = Acopio::with('proveedor:id,codigo,nombre,sector')
-            ->dePlanta($plantaId)
-            ->delDia($hoy)
-            ->latest('id')
-            ->get();
+        // 2. Acopios de hoy (necesarios para acopio, calidad o KPIs de planta)
+        $acopiosHoy = ($puedeVerAcopio || $puedeVerCalidad || $puedeVerTinas || $puedeVerDashboard)
+            ? Acopio::with('proveedor:id,codigo,nombre,sector')
+                ->dePlanta($plantaId)
+                ->delDia($hoy)
+                ->latest('id')
+                ->get()
+            : collect();
 
         $litrosHoy = (float) $acopiosHoy->sum('litros');
-        $precioLitro = (float) $plantaActiva->precio_litro;
         $totalPendientesCalidad = $acopiosHoy->where('calidad', 'pendiente')->count();
         $litrosAptosTina = (float) $acopiosHoy->where('calidad', 'buena')->sum('litros');
 
-        // 3. Múltiples Tinas de la planta activa
-        $tinas = Tina::dePlanta($plantaId)
-            ->with('loteActivo')
-            ->orderBy('codigo')
-            ->get();
+        // 3. Múltiples Tinas (solo si accede a tinas o dashboard)
+        $tinasPanel = collect();
+        $loteActivo = null;
+        $termica = null;
+        $receta = null;
 
-        // Si la planta no tiene ninguna tina registrada aún, crea la principal
-        if ($tinas->isEmpty()) {
-            $tinaDefault = Tina::create([
-                'planta_id'        => $plantaId,
-                'codigo'           => 'TINA-01',
-                'nombre'           => 'Tina Principal',
-                'capacidad_litros' => 500,
-                'tipo'             => 'principal_queso',
-                'activa'           => true,
-            ]);
-            $tinas = collect([$tinaDefault->load('loteActivo')]);
-        }
+        if ($puedeVerTinas || $puedeVerDashboard) {
+            $tinas = Tina::dePlanta($plantaId)
+                ->with('loteActivo')
+                ->orderBy('codigo')
+                ->get();
 
-        // Mapear evaluación térmica y receta para cada tina con lote activo
-        $tinasPanel = $tinas->map(function (Tina $tina) {
-            $lote = $tina->loteActivo;
-            $termica = $lote ? $this->service->evaluarTermica($lote->temperatura_actual) : null;
-            $receta = $lote ? $this->service->dosificarReceta($lote->litros) : null;
+            if ($tinas->isEmpty() && $puedeVerTinas) {
+                $tinaDefault = Tina::create([
+                    'planta_id' => $plantaId,
+                    'codigo' => 'TINA-01',
+                    'nombre' => 'Tina Principal',
+                    'capacidad_litros' => 500,
+                    'tipo' => 'principal_queso',
+                    'activa' => true,
+                ]);
+                $tinas = collect([$tinaDefault->load('loteActivo')]);
+            }
 
-            return (object) [
-                'tina'    => $tina,
-                'lote'    => $lote,
-                'termica' => $termica,
-                'receta'  => $receta,
-            ];
-        });
-
-        // Lote principal para el KPI resumen
-        $loteActivo = $tinasPanel->first(fn ($t) => $t->lote !== null)?->lote
-            ?? Lote::dePlanta($plantaId)->enProceso()->latest('id')->first();
-
-        if (!$loteActivo) {
-            $primeraTina = $tinas->first();
-            $litrosBase = max(100.0, $litrosAptosTina > 0 ? $litrosAptosTina : 150.0);
-            $recetaBase = $this->service->dosificarReceta($litrosBase);
-            $loteActivo = Lote::create([
-                'planta_id'          => $plantaId,
-                'tina_id'            => $primeraTina->id,
-                'codigo'             => 'LOTE-'.Carbon::now()->format('Ymd-His'),
-                'fecha'              => $hoy,
-                'litros'             => $litrosBase,
-                'temperatura_actual' => 52.0,
-                'cuajo_ml'           => $recetaBase['cuajo_ml'],
-                'sal_kg'             => $recetaBase['sal_kg'],
-                'cultivo_g'          => $recetaBase['cultivo_g'],
-                'moldes_producidos'  => 0,
-                'estado'             => 'enfriando',
-            ]);
-            // Refrescar colección de tinas
             $tinasPanel = $tinas->map(function (Tina $tina) {
-                $tina->load('loteActivo');
                 $lote = $tina->loteActivo;
+                $termica = $lote ? $this->service->evaluarTermica($lote->temperatura_actual) : null;
+                $receta = $lote ? $this->service->dosificarReceta($lote->litros) : null;
 
                 return (object) [
-                    'tina'    => $tina,
-                    'lote'    => $lote,
-                    'termica' => $lote ? $this->service->evaluarTermica($lote->temperatura_actual) : null,
-                    'receta'  => $lote ? $this->service->dosificarReceta($lote->litros) : null,
+                    'tina' => $tina,
+                    'lote' => $lote,
+                    'termica' => $termica,
+                    'receta' => $receta,
                 ];
             });
+
+            $loteActivo = $tinasPanel->first(fn ($t) => $t->lote !== null)?->lote
+                ?? Lote::dePlanta($plantaId)->enProceso()->latest('id')->first();
+
+            if (! $loteActivo && $puedeVerTinas && $tinas->isNotEmpty()) {
+                $primeraTina = $tinas->first();
+                $litrosBase = max(100.0, $litrosAptosTina > 0 ? $litrosAptosTina : 150.0);
+                $recetaBase = $this->service->dosificarReceta($litrosBase);
+                $loteActivo = Lote::create([
+                    'planta_id' => $plantaId,
+                    'tina_id' => $primeraTina->id,
+                    'codigo' => 'LOTE-'.Carbon::now()->format('Ymd-His'),
+                    'fecha' => $hoy,
+                    'litros' => $litrosBase,
+                    'temperatura_actual' => 52.0,
+                    'cuajo_ml' => $recetaBase['cuajo_ml'],
+                    'sal_kg' => $recetaBase['sal_kg'],
+                    'cultivo_g' => $recetaBase['cultivo_g'],
+                    'moldes_producidos' => 0,
+                    'estado' => 'enfriando',
+                ]);
+                $tinasPanel = $tinas->map(function (Tina $tina) {
+                    $tina->load('loteActivo');
+                    $lote = $tina->loteActivo;
+
+                    return (object) [
+                        'tina' => $tina,
+                        'lote' => $lote,
+                        'termica' => $lote ? $this->service->evaluarTermica($lote->temperatura_actual) : null,
+                        'receta' => $lote ? $this->service->dosificarReceta($lote->litros) : null,
+                    ];
+                });
+            }
+
+            if ($loteActivo) {
+                $termica = $this->service->evaluarTermica($loteActivo->temperatura_actual);
+                $receta = $this->service->dosificarReceta($loteActivo->litros);
+            }
         }
 
-        $termica = $this->service->evaluarTermica($loteActivo->temperatura_actual);
-        $receta = $this->service->dosificarReceta($loteActivo->litros);
+        // 4. Liquidaciones y movimientos (solo si tiene permiso financiero)
+        $liquidaciones = $puedeVerFinanzas
+            ? $this->service->liquidarQuincena($desde, $hasta, $precioLitro, $plantaId)
+            : collect();
 
-        // 4. Período quincenal, liquidaciones y movimientos
-        [$desde, $hasta] = $this->periodoActual();
-        $liquidaciones = $this->service->liquidarQuincena($desde, $hasta, $precioLitro, $plantaId);
+        $movimientos = $puedeVerFinanzas
+            ? Liquidacion::with('proveedor:id,nombre')
+                ->dePlanta($plantaId)
+                ->latest('id')
+                ->limit(25)
+                ->get()
+            : collect();
 
-        $movimientos = Liquidacion::with('proveedor:id,nombre')
-            ->dePlanta($plantaId)
-            ->latest('id')
-            ->limit(25)
-            ->get();
+        // 5. Estadísticas y datos de Dashboard con gráficas
+        $estadisticas = ($puedeVerStats || $usuario->tienePermiso('dashboard.ver_red'))
+            ? $this->service->obtenerEstadisticas($plantaId, $desde, $hasta)
+            : null;
 
-        // 5. Estadísticas comparativas de plantas y de la planta activa
-        $estadisticas = $this->service->obtenerEstadisticas($plantaId, $desde, $hasta);
+        $dashboardData = $puedeVerDashboard
+            ? $this->service->obtenerDatosDashboard($plantaId, $rango, $usuario->tienePermiso('dashboard.ver_red'))
+            : null;
+
+        $catalogoPermisos = User::PERMISOS_CATALOGO;
+        $plantillasCargo = User::PLANTILLAS_CARGO;
+        $permisosAsignables = $usuario->permisosAsignables();
 
         return view('panel', compact(
             'usuario',
@@ -223,17 +268,24 @@ class PanelController extends Controller
             'liquidaciones',
             'movimientos',
             'estadisticas',
+            'dashboardData',
+            'rango',
+            'seccionesPermitidas',
+            'seccionInicial',
+            'catalogoPermisos',
+            'plantillasCargo',
+            'permisosAsignables',
             'desde',
             'hasta'
         ));
     }
 
     /**
-     * Cambia la planta activa en la sesión del administrador.
+     * Cambia la planta activa en la sesión de quien gestiona plantas.
      */
     public function cambiarPlanta(Request $request)
     {
-        if (!$request->user()->esAdmin()) {
+        if (! $request->user()->tienePermiso('admin.plantas')) {
             abort(403);
         }
 
@@ -254,25 +306,25 @@ class PanelController extends Controller
         $planta = $this->resolverPlantaActiva($request);
 
         $datos = $request->validate([
-            'proveedor_id'  => ['required', Rule::exists('proveedores', 'id')->where('planta_id', $planta->id)],
-            'litros'        => ['required', 'numeric', 'min:0.5', 'max:5000'],
-            'metodo'        => ['nullable', 'in:voz,manual'],
+            'proveedor_id' => ['required', Rule::exists('proveedores', 'id')->where('planta_id', $planta->id)],
+            'litros' => ['required', 'numeric', 'min:0.5', 'max:5000'],
+            'metodo' => ['nullable', 'in:voz,manual'],
             'frase_dictada' => ['nullable', 'string', 'max:255'],
         ]);
 
         Acopio::create([
-            'planta_id'      => $planta->id,
-            'proveedor_id'   => $datos['proveedor_id'],
+            'planta_id' => $planta->id,
+            'proveedor_id' => $datos['proveedor_id'],
             'registrado_por' => $request->user()->id,
-            'uuid_offline'   => (string) Str::uuid(),
-            'fecha'          => Carbon::today()->toDateString(),
-            'hora'           => Carbon::now()->toTimeString(),
-            'litros'         => $datos['litros'],
-            'precio_litro'   => $planta->precio_litro,
-            'metodo'         => $datos['metodo'] ?? 'manual',
-            'frase_dictada'  => $datos['frase_dictada'] ?? null,
-            'calidad'        => 'buena',
-            'destino'        => 'queso_yogur',
+            'uuid_offline' => (string) Str::uuid(),
+            'fecha' => Carbon::today()->toDateString(),
+            'hora' => Carbon::now()->toTimeString(),
+            'litros' => $datos['litros'],
+            'precio_litro' => $planta->precio_litro,
+            'metodo' => $datos['metodo'] ?? 'manual',
+            'frase_dictada' => $datos['frase_dictada'] ?? null,
+            'calidad' => 'buena',
+            'destino' => 'queso_yogur',
         ]);
 
         return back()->with('exito', 'Acopio registrado con éxito.');
@@ -288,21 +340,21 @@ class PanelController extends Controller
 
         $datos = $request->validate([
             'proveedor_id' => ['required', Rule::exists('proveedores', 'id')->where('planta_id', $planta->id)],
-            'litros'       => ['required', 'numeric', 'min:0.5', 'max:5000'],
-            'calidad'      => ['required', 'in:pendiente,buena,acida'],
-            'metodo'       => ['required', 'in:voz,manual'],
-            'hora'         => ['nullable', 'string', 'max:8'],
+            'litros' => ['required', 'numeric', 'min:0.5', 'max:5000'],
+            'calidad' => ['required', 'in:pendiente,buena,acida'],
+            'metodo' => ['required', 'in:voz,manual'],
+            'hora' => ['nullable', 'string', 'max:8'],
         ]);
 
         $destino = $datos['calidad'] === 'acida' ? 'quesillo_4_dias' : ($datos['calidad'] === 'buena' ? 'queso_yogur' : 'pendiente');
 
         $acopio->update([
             'proveedor_id' => $datos['proveedor_id'],
-            'litros'       => $datos['litros'],
-            'calidad'      => $datos['calidad'],
-            'destino'      => $destino,
-            'metodo'       => $datos['metodo'],
-            'hora'         => !empty($datos['hora']) ? (strlen($datos['hora']) === 5 ? $datos['hora'].':00' : $datos['hora']) : $acopio->hora,
+            'litros' => $datos['litros'],
+            'calidad' => $datos['calidad'],
+            'destino' => $destino,
+            'metodo' => $datos['metodo'],
+            'hora' => ! empty($datos['hora']) ? (strlen($datos['hora']) === 5 ? $datos['hora'].':00' : $datos['hora']) : $acopio->hora,
         ]);
 
         return back()->with('exito', 'Registro de acopio actualizado correctamente.');
@@ -354,19 +406,19 @@ class PanelController extends Controller
         $planta = $this->resolverPlantaActiva($request);
 
         $datos = $request->validate([
-            'codigo'           => ['required', 'string', 'max:30', Rule::unique('tinas', 'codigo')->where('planta_id', $planta->id)],
-            'nombre'           => ['required', 'string', 'max:100'],
+            'codigo' => ['required', 'string', 'max:30', Rule::unique('tinas', 'codigo')->where('planta_id', $planta->id)],
+            'nombre' => ['required', 'string', 'max:100'],
             'capacidad_litros' => ['required', 'numeric', 'min:20', 'max:10000'],
-            'tipo'             => ['required', 'in:principal_queso,quesillo,yogur,multiproposito'],
+            'tipo' => ['required', 'in:principal_queso,quesillo,yogur,multiproposito'],
         ]);
 
         Tina::create([
-            'planta_id'        => $planta->id,
-            'codigo'           => strtoupper($datos['codigo']),
-            'nombre'           => $datos['nombre'],
+            'planta_id' => $planta->id,
+            'codigo' => strtoupper($datos['codigo']),
+            'nombre' => $datos['nombre'],
             'capacidad_litros' => $datos['capacidad_litros'],
-            'tipo'             => $datos['tipo'],
-            'activa'           => true,
+            'tipo' => $datos['tipo'],
+            'activa' => true,
         ]);
 
         return back()->with('exito', 'Nueva tina agregada a la planta.');
@@ -381,19 +433,19 @@ class PanelController extends Controller
         $tina = Tina::dePlanta($planta->id)->findOrFail($id);
 
         $datos = $request->validate([
-            'codigo'           => ['required', 'string', 'max:30', Rule::unique('tinas', 'codigo')->where('planta_id', $planta->id)->ignore($tina->id)],
-            'nombre'           => ['required', 'string', 'max:100'],
+            'codigo' => ['required', 'string', 'max:30', Rule::unique('tinas', 'codigo')->where('planta_id', $planta->id)->ignore($tina->id)],
+            'nombre' => ['required', 'string', 'max:100'],
             'capacidad_litros' => ['required', 'numeric', 'min:20', 'max:10000'],
-            'tipo'             => ['required', 'in:principal_queso,quesillo,yogur,multiproposito'],
-            'activa'           => ['nullable', 'boolean'],
+            'tipo' => ['required', 'in:principal_queso,quesillo,yogur,multiproposito'],
+            'activa' => ['nullable', 'boolean'],
         ]);
 
         $tina->update([
-            'codigo'           => strtoupper($datos['codigo']),
-            'nombre'           => $datos['nombre'],
+            'codigo' => strtoupper($datos['codigo']),
+            'nombre' => $datos['nombre'],
             'capacidad_litros' => $datos['capacidad_litros'],
-            'tipo'             => $datos['tipo'],
-            'activa'           => $request->has('activa') ? $request->boolean('activa') : $tina->activa,
+            'tipo' => $datos['tipo'],
+            'activa' => $request->has('activa') ? $request->boolean('activa') : $tina->activa,
         ]);
 
         return back()->with('exito', 'Tina actualizada correctamente.');
@@ -408,7 +460,7 @@ class PanelController extends Controller
         $tina = Tina::dePlanta($planta->id)->findOrFail($tinaId);
 
         $datos = $request->validate([
-            'litros'             => ['required', 'numeric', 'min:5', 'max:'.$tina->capacidad_litros],
+            'litros' => ['required', 'numeric', 'min:5', 'max:'.$tina->capacidad_litros],
             'temperatura_actual' => ['nullable', 'numeric', 'min:4', 'max:95'],
         ]);
 
@@ -421,17 +473,17 @@ class PanelController extends Controller
         $receta = $this->service->dosificarReceta((float) $datos['litros']);
 
         Lote::create([
-            'planta_id'          => $planta->id,
-            'tina_id'            => $tina->id,
-            'codigo'             => 'LOTE-'.$tina->codigo.'-'.Carbon::now()->format('Ymd-His'),
-            'fecha'              => Carbon::today()->toDateString(),
-            'litros'             => $datos['litros'],
+            'planta_id' => $planta->id,
+            'tina_id' => $tina->id,
+            'codigo' => 'LOTE-'.$tina->codigo.'-'.Carbon::now()->format('Ymd-His'),
+            'fecha' => Carbon::today()->toDateString(),
+            'litros' => $datos['litros'],
             'temperatura_actual' => $temp,
-            'cuajo_ml'           => $receta['cuajo_ml'],
-            'sal_kg'             => $receta['sal_kg'],
-            'cultivo_g'          => $receta['cultivo_g'],
-            'moldes_producidos'  => 0,
-            'estado'             => $evaluacion['estado'] === 'muy_fria' ? 'enfriando' : $evaluacion['estado'],
+            'cuajo_ml' => $receta['cuajo_ml'],
+            'sal_kg' => $receta['sal_kg'],
+            'cultivo_g' => $receta['cultivo_g'],
+            'moldes_producidos' => 0,
+            'estado' => $evaluacion['estado'] === 'muy_fria' ? 'enfriando' : $evaluacion['estado'],
         ]);
 
         return back()->with('exito', 'Lote iniciado en '.$tina->nombre.' con dosificación calculada.');
@@ -449,9 +501,9 @@ class PanelController extends Controller
             $litros = (float) $request->input('litros');
             $receta = $this->service->dosificarReceta($litros);
             $lote->update([
-                'litros'    => $litros,
-                'cuajo_ml'  => $receta['cuajo_ml'],
-                'sal_kg'    => $receta['sal_kg'],
+                'litros' => $litros,
+                'cuajo_ml' => $receta['cuajo_ml'],
+                'sal_kg' => $receta['sal_kg'],
                 'cultivo_g' => $receta['cultivo_g'],
             ]);
         }
@@ -462,14 +514,14 @@ class PanelController extends Controller
 
             $lote->update([
                 'temperatura_actual' => $nuevaTemp,
-                'estado'             => $evaluacion['estado'] === 'muy_fria' ? 'enfriando' : $evaluacion['estado'],
+                'estado' => $evaluacion['estado'] === 'muy_fria' ? 'enfriando' : $evaluacion['estado'],
             ]);
         }
 
         if ($request->has('moldes')) {
             $lote->update([
                 'moldes_producidos' => max(0, (int) $request->input('moldes')),
-                'estado'            => 'terminado',
+                'estado' => 'terminado',
             ]);
 
             return back()->with('exito', 'Lote finalizado y moldes registrados en la tina.');
@@ -486,24 +538,24 @@ class PanelController extends Controller
         $planta = $this->resolverPlantaActiva($request);
 
         $datos = $request->validate([
-            'tipo'              => ['required', 'in:adelanto_efectivo,adelanto_queso,ayuda_del_dia,gasto_operativo,venta_producto'],
-            'proveedor_id'      => ['nullable', Rule::exists('proveedores', 'id')->where('planta_id', $planta->id)],
-            'concepto'          => ['required', 'string', 'max:160'],
+            'tipo' => ['required', 'in:adelanto_efectivo,adelanto_queso,ayuda_del_dia,gasto_operativo,venta_producto'],
+            'proveedor_id' => ['nullable', Rule::exists('proveedores', 'id')->where('planta_id', $planta->id)],
+            'concepto' => ['required', 'string', 'max:160'],
             'cantidad_unidades' => ['nullable', 'integer', 'min:0', 'max:10000'],
-            'monto'             => ['required', 'numeric', 'min:0.5'],
+            'monto' => ['required', 'numeric', 'min:0.5'],
         ]);
 
         Liquidacion::create([
-            'planta_id'         => $planta->id,
-            'proveedor_id'      => !empty($datos['proveedor_id']) ? $datos['proveedor_id'] : null,
-            'fecha'             => Carbon::today()->toDateString(),
-            'tipo'              => $datos['tipo'],
-            'concepto'          => $datos['concepto'],
-            'litros'            => 0,
+            'planta_id' => $planta->id,
+            'proveedor_id' => ! empty($datos['proveedor_id']) ? $datos['proveedor_id'] : null,
+            'fecha' => Carbon::today()->toDateString(),
+            'tipo' => $datos['tipo'],
+            'concepto' => $datos['concepto'],
+            'litros' => 0,
             'cantidad_unidades' => $datos['cantidad_unidades'] ?? 0,
-            'monto'             => $datos['monto'],
-            'comision'          => 0.00,
-            'descontado'        => $datos['tipo'] === 'venta_producto' || $datos['tipo'] === 'ayuda_del_dia',
+            'monto' => $datos['monto'],
+            'comision' => 0.00,
+            'descontado' => $datos['tipo'] === 'venta_producto' || $datos['tipo'] === 'ayuda_del_dia',
         ]);
 
         return back()->with('exito', 'Movimiento registrado correctamente.');
@@ -518,19 +570,19 @@ class PanelController extends Controller
         $mov = Liquidacion::dePlanta($planta->id)->findOrFail($id);
 
         $datos = $request->validate([
-            'tipo'              => ['required', 'in:adelanto_efectivo,adelanto_queso,ayuda_del_dia,gasto_operativo,venta_producto'],
-            'proveedor_id'      => ['nullable', Rule::exists('proveedores', 'id')->where('planta_id', $planta->id)],
-            'concepto'          => ['required', 'string', 'max:160'],
+            'tipo' => ['required', 'in:adelanto_efectivo,adelanto_queso,ayuda_del_dia,gasto_operativo,venta_producto'],
+            'proveedor_id' => ['nullable', Rule::exists('proveedores', 'id')->where('planta_id', $planta->id)],
+            'concepto' => ['required', 'string', 'max:160'],
             'cantidad_unidades' => ['nullable', 'integer', 'min:0', 'max:10000'],
-            'monto'             => ['required', 'numeric', 'min:0.5'],
+            'monto' => ['required', 'numeric', 'min:0.5'],
         ]);
 
         $mov->update([
-            'tipo'              => $datos['tipo'],
-            'proveedor_id'      => !empty($datos['proveedor_id']) ? $datos['proveedor_id'] : null,
-            'concepto'          => $datos['concepto'],
+            'tipo' => $datos['tipo'],
+            'proveedor_id' => ! empty($datos['proveedor_id']) ? $datos['proveedor_id'] : null,
+            'concepto' => $datos['concepto'],
             'cantidad_unidades' => $datos['cantidad_unidades'] ?? 0,
-            'monto'             => $datos['monto'],
+            'monto' => $datos['monto'],
         ]);
 
         return back()->with('exito', 'Movimiento actualizado correctamente.');
@@ -563,10 +615,10 @@ class PanelController extends Controller
 
         Proveedor::create([
             'planta_id' => $planta->id,
-            'codigo'    => strtoupper($datos['codigo']),
-            'nombre'    => $datos['nombre'],
-            'sector'    => $datos['sector'] ?? $planta->ubicacion,
-            'activo'    => true,
+            'codigo' => strtoupper($datos['codigo']),
+            'nombre' => $datos['nombre'],
+            'sector' => $datos['sector'] ?? $planta->ubicacion,
+            'activo' => true,
         ]);
 
         return back()->with('exito', 'Ganadero registrado en la planta.');
@@ -630,9 +682,9 @@ class PanelController extends Controller
         $filename = "balance_lat_{$slug}_".Carbon::now()->format('Ymd').'.xlsx';
 
         return response($xlsx, 200, [
-            'Content-Type'        => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             'Content-Disposition' => 'attachment; filename="'.$filename.'"',
-            'Cache-Control'       => 'max-age=0',
+            'Cache-Control' => 'max-age=0',
         ]);
     }
 }

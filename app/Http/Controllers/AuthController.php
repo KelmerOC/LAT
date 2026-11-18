@@ -33,10 +33,10 @@ class AuthController extends Controller
     public function login(Request $request)
     {
         $credenciales = $request->validate([
-            'login'    => ['required', 'string'],
+            'login' => ['required', 'string'],
             'password' => ['required', 'string'],
         ], [
-            'login.required'    => 'Ingrese su usuario o correo electrónico.',
+            'login.required' => 'Ingrese su usuario o correo electrónico.',
             'password.required' => 'Ingrese su contraseña.',
         ]);
 
@@ -67,19 +67,19 @@ class AuthController extends Controller
     public function register(Request $request)
     {
         $datos = $request->validate([
-            'name'             => ['required', 'string', 'max:120'],
-            'usuario'          => ['required', 'string', 'min:3', 'max:60', 'regex:/^[a-zA-Z0-9._-]+$/', 'unique:users,usuario'],
-            'email'            => ['nullable', 'email', 'max:255', 'unique:users,email'],
-            'password'         => ['required', 'string', 'min:6', 'confirmed'],
-            'planta_nombre'    => ['required', 'string', 'max:140'],
+            'name' => ['required', 'string', 'max:120'],
+            'usuario' => ['required', 'string', 'min:3', 'max:60', 'regex:/^[a-zA-Z0-9._-]+$/', 'unique:users,usuario'],
+            'email' => ['nullable', 'email', 'max:255', 'unique:users,email'],
+            'password' => ['required', 'string', 'min:6', 'confirmed'],
+            'planta_nombre' => ['required', 'string', 'max:140'],
             'planta_ubicacion' => ['required', 'string', 'max:140'],
-            'precio_litro'     => ['nullable', 'numeric', 'min:0.5', 'max:20'],
+            'precio_litro' => ['nullable', 'numeric', 'min:0.5', 'max:20'],
         ], [
-            'usuario.unique'          => 'Este nombre de usuario ya está en uso.',
-            'usuario.regex'           => 'El usuario solo puede contener letras, números, puntos, guiones y guiones bajos.',
-            'email.unique'            => 'Este correo electrónico ya se encuentra registrado.',
-            'password.confirmed'      => 'Las contraseñas no coinciden.',
-            'planta_nombre.required'  => 'Ingrese el nombre de su planta o quesería.',
+            'usuario.unique' => 'Este nombre de usuario ya está en uso.',
+            'usuario.regex' => 'El usuario solo puede contener letras, números, puntos, guiones y guiones bajos.',
+            'email.unique' => 'Este correo electrónico ya se encuentra registrado.',
+            'password.confirmed' => 'Las contraseñas no coinciden.',
+            'planta_nombre.required' => 'Ingrese el nombre de su planta o quesería.',
         ]);
 
         $user = DB::transaction(function () use ($datos) {
@@ -91,30 +91,32 @@ class AuthController extends Controller
             }
 
             $planta = Planta::create([
-                'codigo'       => $codigoPlanta,
-                'nombre'       => $datos['planta_nombre'],
-                'ubicacion'    => $datos['planta_ubicacion'],
+                'codigo' => $codigoPlanta,
+                'nombre' => $datos['planta_nombre'],
+                'ubicacion' => $datos['planta_ubicacion'],
                 'precio_litro' => $datos['precio_litro'] ?? 1.65,
-                'activa'       => true,
+                'activa' => true,
             ]);
 
             Tina::create([
-                'planta_id'        => $planta->id,
-                'codigo'           => 'TINA-01',
-                'nombre'           => 'Tina Principal',
+                'planta_id' => $planta->id,
+                'codigo' => 'TINA-01',
+                'nombre' => 'Tina Principal',
                 'capacidad_litros' => 500,
-                'tipo'             => 'principal_queso',
-                'activa'           => true,
+                'tipo' => 'principal_queso',
+                'activa' => true,
             ]);
 
             return User::create([
                 'planta_id' => $planta->id,
-                'name'      => $datos['name'],
-                'usuario'   => strtolower($datos['usuario']),
-                'email'     => !empty($datos['email']) ? $datos['email'] : null,
-                'password'  => Hash::make($datos['password']),
-                'cargo'     => 'administracion',
-                'activo'    => true,
+                'name' => $datos['name'],
+                'usuario' => strtolower($datos['usuario']),
+                'email' => ! empty($datos['email']) ? $datos['email'] : null,
+                'password' => Hash::make($datos['password']),
+                'cargo' => 'administracion',
+                'rango' => 'administrador',
+                'permisos' => User::PLANTILLAS_CARGO['administracion'],
+                'activo' => true,
             ]);
         });
 
@@ -137,7 +139,7 @@ class AuthController extends Controller
     /** Persiste la selección de idioma en la sesión del servidor */
     public function cambiarIdioma(Request $request, string $lang)
     {
-        if (!in_array($lang, ['es', 'qu', 'en'], true)) {
+        if (! in_array($lang, ['es', 'qu', 'en'], true)) {
             $lang = 'es';
         }
 

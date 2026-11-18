@@ -13,9 +13,10 @@
   <script src="{{ asset('js/lat-i18n.js') }}"></script>
   @stack('styles')
 </head>
-<body>
+<body class="@yield('body_class')">
   <a href="#contenido-principal" class="skip-link">Saltar al contenido principal</a>
 
+  @unless(View::hasSection('sin_chrome_publico'))
   <div class="header-sitio">
     <!-- Navegación principal Swiss-Grid (altura 68px, borde 1px inferior, barra única unificada) -->
     <header class="nav-principal">
@@ -157,9 +158,10 @@
       </div>
     </header>
   </div>
+  @endunless
 
   <!-- Notificaciones -->
-  @if(session('exito') || session('info') || $errors->any())
+  @if(!View::hasSection('sin_chrome_publico') && (session('exito') || session('info') || $errors->any()))
     <div class="contenedor" style="margin-top: 1rem;">
       @if(session('exito'))
         <div class="alerta alerta-verde" role="status">
@@ -194,6 +196,7 @@
   </main>
 
   <!-- Pie de página monumental -->
+  @unless(View::hasSection('sin_chrome_publico'))
   <footer class="footer-sitio">
     <div class="aguada" aria-hidden="true"></div>
     <div class="contenedor">
@@ -226,6 +229,7 @@
     </div>
     <span class="footer-wordmark" aria-hidden="true">LAT</span>
   </footer>
+  @endunless
 
   <script>
     function cerrarTodosDropdownsIdioma() {

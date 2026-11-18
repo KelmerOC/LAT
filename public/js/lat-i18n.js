@@ -78,6 +78,10 @@
       'kpi.sanitary': 'Control sanitario 74°',
 
       // Tabs del Panel
+      'nav_group.main': 'Resumen',
+      'nav_group.ops': 'Operación de Planta',
+      'nav_group.admin': 'Administración',
+      'tab.dashboard': 'Dashboard',
       'tab.acopio': '1. Acopio por voz y tacto',
       'tab.calidad': '2. Calidad sanitaria',
       'tab.tina': '3. Tinas y receta',
@@ -224,6 +228,10 @@
       'kpi.vat_temp': 'Hatun tina ruphay',
       'kpi.sanitary': '74° qhali kay qhaway',
 
+      'nav_group.main': 'Qhawariy',
+      'nav_group.ops': 'Plantapi Llamkaykuna',
+      'nav_group.admin': 'Kamachiy',
+      'tab.dashboard': 'Dashboard',
       'tab.acopio': '1. Kunkawan lichi huñuy',
       'tab.calidad': '2. Qhali kay (74°)',
       'tab.tina': '3. Tinakuna hinaspa receta',
@@ -363,6 +371,10 @@
       'kpi.vat_temp': 'Main pasteurizing vat',
       'kpi.sanitary': '74° sanitary check',
 
+      'nav_group.main': 'Overview',
+      'nav_group.ops': 'Plant Operations',
+      'nav_group.admin': 'Administration',
+      'tab.dashboard': 'Dashboard',
       'tab.acopio': '1. Voice & touch intake',
       'tab.calidad': '2. Sanitary quality',
       'tab.tina': '3. Vats & recipe',
