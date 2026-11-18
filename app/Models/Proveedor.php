@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
@@ -18,6 +19,7 @@ class Proveedor extends Model
     protected $table = 'proveedores';
 
     protected $fillable = [
+        'planta_id',
         'codigo',
         'nombre',
         'sector',
@@ -31,6 +33,11 @@ class Proveedor extends Model
         'longitud' => 'float',
         'activo' => 'boolean',
     ];
+
+    public function planta(): BelongsTo
+    {
+        return $this->belongsTo(Planta::class);
+    }
 
     /** Relación: Entregas de leche registradas por el ganadero */
     public function acopios(): HasMany
@@ -54,5 +61,10 @@ class Proveedor extends Model
     public function scopeOrdenadosPorNombre(Builder $query): Builder
     {
         return $query->orderBy('nombre', 'asc');
+    }
+
+    public function scopeDePlanta(Builder $query, int $plantaId): Builder
+    {
+        return $query->where('planta_id', $plantaId);
     }
 }

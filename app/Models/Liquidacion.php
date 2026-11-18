@@ -18,23 +18,31 @@ class Liquidacion extends Model
     protected $table = 'liquidaciones';
 
     protected $fillable = [
+        'planta_id',
         'proveedor_id',
         'fecha',
         'tipo',
         'concepto',
         'litros',
+        'cantidad_unidades',
         'monto',
         'comision',
         'descontado',
     ];
 
     protected $casts = [
-        'fecha' => 'date',
-        'litros' => 'float',
-        'monto' => 'float',
-        'comision' => 'float',
-        'descontado' => 'boolean',
+        'fecha'             => 'date',
+        'litros'            => 'float',
+        'cantidad_unidades' => 'integer',
+        'monto'             => 'float',
+        'comision'          => 'float',
+        'descontado'        => 'boolean',
     ];
+
+    public function planta(): BelongsTo
+    {
+        return $this->belongsTo(Planta::class);
+    }
 
     public function proveedor(): BelongsTo
     {
@@ -47,5 +55,10 @@ class Liquidacion extends Model
         return $query->where('proveedor_id', $proveedorId)
             ->whereIn('tipo', ['adelanto_efectivo', 'adelanto_queso'])
             ->where('descontado', false);
+    }
+
+    public function scopeDePlanta(Builder $query, int $plantaId): Builder
+    {
+        return $query->where('planta_id', $plantaId);
     }
 }

@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Acopio extends Model
 {
     protected $fillable = [
+        'planta_id',
         'proveedor_id',
         'registrado_por',
         'uuid_offline',
@@ -36,6 +37,11 @@ class Acopio extends Model
         'precio_litro' => 'float',
     ];
 
+    public function planta(): BelongsTo
+    {
+        return $this->belongsTo(Planta::class);
+    }
+
     public function proveedor(): BelongsTo
     {
         return $this->belongsTo(Proveedor::class);
@@ -49,18 +55,24 @@ class Acopio extends Model
     /** Scope: Entregas correspondientes al día de hoy */
     public function scopeDelDia(Builder $query, ?string $fecha = null): Builder
     {
-        return $query->where('fecha', $fecha ?? Carbon::today()->toDateString());
+        return $query->whereDate('fecha', $fecha ?? Carbon::today()->toDateString());
     }
 
     /** Scope: Rango de fechas para cálculo quincenal */
     public function scopeDelPeriodo(Builder $query, string $desde, string $hasta): Builder
     {
-        return $query->whereBetween('fecha', [$desde, $hasta]);
+        return $query->whereDate('fecha', '>=', $desde)
+            ->whereDate('fecha', '<=', $hasta);
     }
 
     /** Scope: Solo leche apta para pasteurización en tina */
     public function scopeBuena(Builder $query): Builder
     {
         return $query->where('calidad', 'buena');
+    }
+
+    public function scopeDePlanta(Builder $query, int $plantaId): Builder
+    {
+        return $query->where('planta_id', $plantaId);
     }
 }

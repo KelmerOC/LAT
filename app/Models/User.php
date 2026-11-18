@@ -2,31 +2,79 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
-use Database\Factories\UserFactory;
-use Illuminate\Database\Eloquent\Attributes\Fillable;
-use Illuminate\Database\Eloquent\Attributes\Hidden;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['name', 'email', 'password'])]
-#[Hidden(['password', 'remember_token'])]
+/**
+ * ============================================================================
+ * MODELO DE DATOS: USUARIO Y CONTROL DE ACCESO POR ROLES (RBAC)
+ * ============================================================================
+ * Representa al personal de la microempresa quesera.
+ * Los operadores se autentican mediante su identificador 'usuario' o 'email'.
+ */
 class User extends Authenticatable
 {
-    /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable;
+    use Notifiable;
 
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
+    protected $fillable = [
+        'planta_id',
+        'name',
+        'usuario',
+        'email',
+        'password',
+        'cargo',
+        'activo',
+    ];
+
+    protected $hidden = [
+        'password',
+        'remember_token',
+    ];
+
     protected function casts(): array
     {
         return [
-            'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'activo' => 'boolean',
         ];
+    }
+
+    public function planta(): BelongsTo
+    {
+        return $this->belongsTo(Planta::class);
+    }
+
+    /** Scope de optimización: Solo usuarios autorizados y activos */
+    public function scopeActivos(Builder $query): Builder
+    {
+        return $query->where('activo', true);
+    }
+
+    // Métodos semánticos para verificación rápida de permisos
+    public function esAdmin(): bool
+    {
+        return $this->cargo === 'administracion';
+    }
+
+    public function puedeRegistrarAcopio(): bool
+    {
+        return in_array($this->cargo, ['administracion', 'encargado_planta', 'recolector_ruta']);
+    }
+
+    public function puedeEvaluarCalidad(): bool
+    {
+        return in_array($this->cargo, ['administracion', 'encargado_planta', 'control_tina']);
+    }
+
+    public function puedeGestionarTina(): bool
+    {
+        return in_array($this->cargo, ['administracion', 'encargado_planta', 'control_tina']);
+    }
+
+    public function puedeVerFinanzas(): bool
+    {
+        return in_array($this->cargo, ['administracion', 'contador_externo']);
     }
 }
