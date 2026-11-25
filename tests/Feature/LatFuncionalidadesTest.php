@@ -44,7 +44,10 @@ class LatFuncionalidadesTest extends TestCase
 
         $user = User::where('usuario', 'elena.maras')->first();
         $this->assertNotNull($user);
-        $this->assertSame('administracion', $user->cargo);
+        $this->assertSame('encargado_planta', $user->cargo);
+        $this->assertSame('supervisor', $user->rango);
+        $this->assertFalse($user->tienePermiso('admin.plantas'));
+        $this->assertFalse($user->tienePermiso('dashboard.ver_red'));
 
         $planta = Planta::find($user->planta_id);
         $this->assertSame('Quesería Maras Norte', $planta->nombre);
@@ -326,8 +329,10 @@ class LatFuncionalidadesTest extends TestCase
 
         $this->assertSame('Tina Queso Paria Plus', $tina->fresh()->nombre);
 
-        // Iniciar lote en la tina nueva
-        $this->actingAs($admin)->post("/panel/tinas/{$tina->id}/lote", [
+        // Iniciar, actualizar y finalizar lote con usuario operativo de tina (admin no opera en campo)
+        $operadorTina = User::where('usuario', 'carlos.anta')->firstOrFail();
+
+        $this->actingAs($operadorTina)->post("/panel/tinas/{$tina->id}/lote", [
             'litros' => 180,
             'temperatura_actual' => 72.0,
         ])->assertRedirect();
@@ -336,13 +341,13 @@ class LatFuncionalidadesTest extends TestCase
         $this->assertSame('pasteurizando', $lote->estado);
 
         // Ajustar temperatura y finalizar lote
-        $this->actingAs($admin)->post("/panel/tina/{$lote->id}", [
+        $this->actingAs($operadorTina)->post("/panel/tina/{$lote->id}", [
             'temperatura' => 38.0,
             'litros' => 180,
         ])->assertRedirect();
         $this->assertSame('lista_para_cuajo', $lote->fresh()->estado);
 
-        $this->actingAs($admin)->post("/panel/tina/{$lote->id}", [
+        $this->actingAs($operadorTina)->post("/panel/tina/{$lote->id}", [
             'moldes' => 20,
         ])->assertRedirect();
         $this->assertSame('terminado', $lote->fresh()->estado);
@@ -698,9 +703,9 @@ class LatFuncionalidadesTest extends TestCase
 
     public function test_tina_inactiva_y_lote_terminado_o_litros_invalidos_son_bloqueados(): void
     {
-        $admin = User::where('usuario', 'donjusto')->firstOrFail();
+        $operador = User::where('usuario', 'carlos.anta')->firstOrFail();
         $tinaInactiva = Tina::create([
-            'planta_id' => $admin->planta_id,
+            'planta_id' => $operador->planta_id,
             'codigo' => 'TINA-OFF',
             'nombre' => 'Tina En Mantenimiento',
             'capacidad_litros' => 250,
@@ -708,34 +713,34 @@ class LatFuncionalidadesTest extends TestCase
             'activa' => false,
         ]);
 
-        $this->actingAs($admin)->post("/panel/tinas/{$tinaInactiva->id}/lote", [
+        $this->actingAs($operador)->post("/panel/tinas/{$tinaInactiva->id}/lote", [
             'litros' => 100,
             'temperatura_actual' => 72.0,
         ])->assertSessionHasErrors('tina');
         $this->assertSame(0, Lote::where('tina_id', $tinaInactiva->id)->count());
 
-        $loteTerminado = Lote::where('planta_id', $admin->planta_id)
+        $loteTerminado = Lote::where('planta_id', $operador->planta_id)
             ->where('estado', 'terminado')
             ->firstOrFail();
         $tempOriginal = $loteTerminado->temperatura_actual;
 
-        $this->actingAs($admin)->post("/panel/tina/{$loteTerminado->id}", [
+        $this->actingAs($operador)->post("/panel/tina/{$loteTerminado->id}", [
             'temperatura' => 36.0,
             'litros' => 100,
         ])->assertSessionHasErrors('tina');
         $this->assertSame($tempOriginal, $loteTerminado->fresh()->temperatura_actual);
 
         $loteActivo = Lote::with('tina')
-            ->where('planta_id', $admin->planta_id)
+            ->where('planta_id', $operador->planta_id)
             ->enProceso()
             ->firstOrFail();
         $capacidadExcedida = $loteActivo->tina->capacidad_litros + 50;
 
-        $this->actingAs($admin)->post("/panel/tina/{$loteActivo->id}", [
+        $this->actingAs($operador)->post("/panel/tina/{$loteActivo->id}", [
             'litros' => $capacidadExcedida,
         ])->assertSessionHasErrors('litros');
 
-        $this->actingAs($admin)->post("/panel/tina/{$loteActivo->id}", [
+        $this->actingAs($operador)->post("/panel/tina/{$loteActivo->id}", [
             'litros' => 0,
         ])->assertSessionHasErrors('litros');
     }
@@ -907,7 +912,7 @@ class LatFuncionalidadesTest extends TestCase
         $this->assertSame('qu', session('locale'));
 
         $resLogin = $this->withCookie('lat_locale', 'qu')->post('/login', [
-            'login' => 'donjusto',
+            'login' => 'mateo.ruta',
             'password' => 'secreto123',
         ]);
         $resLogin->assertRedirect('/panel');
