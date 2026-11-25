@@ -416,7 +416,28 @@ class ExcelExportService
 
     private function cellText(string $ref, string $value, int $style): string
     {
-        return '<c r="'.$ref.'" t="inlineStr" s="'.$style.'"><is><t xml:space="preserve">'.$this->esc($value).'</t></is></c>';
+        return '<c r="'.$ref.'" t="inlineStr" s="'.$style.'"><is><t xml:space="preserve">'.$this->esc($this->sanitizeFormulaInjection($value)).'</t></is></c>';
+    }
+
+    /**
+     * Neutraliza prefijos de fórmula (=, +, -, @, tab, cr) contra Formula Injection (OWASP A03).
+     */
+    private function sanitizeFormulaInjection(string $value): string
+    {
+        if ($value === '') {
+            return '';
+        }
+
+        $primer = $value[0];
+        if (in_array($primer, ['=', '+', '-', '@', "\t", "\r"], true)) {
+            if (is_numeric($value) && $primer === '-') {
+                return $value;
+            }
+
+            return "'".$value;
+        }
+
+        return $value;
     }
 
     private function cellNum(string $ref, float|int $value, int $style): string

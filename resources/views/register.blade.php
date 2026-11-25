@@ -51,12 +51,12 @@
 
           <div class="grid-form-2">
             <div class="form-grupo">
-              <label for="reg-pass" class="form-label" data-i18n="register.pass">Contraseña (mín. 6 caracteres)</label>
-              <input type="password" id="reg-pass" name="password" class="input-lat" required autocomplete="new-password">
+              <label for="reg-pass" class="form-label" data-i18n="register.pass">Contraseña (mín. 8 caracteres)</label>
+              <input type="password" id="reg-pass" name="password" class="input-lat" required minlength="8" autocomplete="new-password">
             </div>
             <div class="form-grupo">
               <label for="reg-pass2" class="form-label" data-i18n="register.pass_confirm">Confirmar contraseña</label>
-              <input type="password" id="reg-pass2" name="password_confirmation" class="input-lat" required autocomplete="new-password">
+              <input type="password" id="reg-pass2" name="password_confirmation" class="input-lat" required minlength="8" autocomplete="new-password">
             </div>
           </div>
 

@@ -41,9 +41,10 @@ class AuthController extends Controller
 
         $loginNormalizado = strtolower(trim((string) $credenciales['login']));
         $throttleKey = Str::transliterate($loginNormalizado.'|'.$request->ip());
+        $ipThrottleKey = 'login-ip|'.$request->ip();
 
-        if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
-            $segundos = RateLimiter::availableIn($throttleKey);
+        if (RateLimiter::tooManyAttempts($throttleKey, 5) || RateLimiter::tooManyAttempts($ipThrottleKey, 20)) {
+            $segundos = max(RateLimiter::availableIn($throttleKey), RateLimiter::availableIn($ipThrottleKey));
 
             return back()->withErrors([
                 'login' => __('lat.auth_throttle', ['seconds' => $segundos]),
@@ -56,12 +57,14 @@ class AuthController extends Controller
 
         if (Auth::attempt([$campo => $valorLogin, 'password' => $credenciales['password'], 'activo' => true], $request->boolean('remember'))) {
             RateLimiter::clear($throttleKey);
+            RateLimiter::clear($ipThrottleKey);
             $request->session()->regenerate();
 
             return redirect()->intended(route('panel'))->with('exito', __('lat.auth_welcome'));
         }
 
         RateLimiter::hit($throttleKey, 60);
+        RateLimiter::hit($ipThrottleKey, 60);
 
         return back()->withErrors([
             'login' => __('lat.auth_invalid_credentials'),
@@ -95,7 +98,7 @@ class AuthController extends Controller
             'name' => ['required', 'string', 'max:120'],
             'usuario' => ['required', 'string', 'min:3', 'max:60', 'regex:/^[a-zA-Z0-9._-]+$/', 'unique:users,usuario'],
             'email' => ['nullable', 'email', 'max:255', 'unique:users,email'],
-            'password' => ['required', 'string', 'min:6', 'confirmed'],
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
             'planta_nombre' => ['required', 'string', 'max:140'],
             'planta_ubicacion' => ['required', 'string', 'max:140'],
             'precio_litro' => ['nullable', 'numeric', 'min:0.5', 'max:20'],
@@ -108,9 +111,9 @@ class AuthController extends Controller
         ]);
 
         $user = DB::transaction(function () use ($datos): User {
-            $siguienteId = (int) (Planta::query()->lockForUpdate()->max('id') ?? 0) + 1;
+            $siguienteId = (int) (Planta::withTrashed()->lockForUpdate()->max('id') ?? 0) + 1;
             $codigoPlanta = 'PLT-'.str_pad((string) $siguienteId, 2, '0', STR_PAD_LEFT);
-            while (Planta::where('codigo', $codigoPlanta)->exists()) {
+            while (Planta::withTrashed()->where('codigo', $codigoPlanta)->exists()) {
                 $siguienteId++;
                 $codigoPlanta = 'PLT-'.str_pad((string) $siguienteId, 2, '0', STR_PAD_LEFT);
             }
@@ -132,15 +135,27 @@ class AuthController extends Controller
                 'activa' => true,
             ]);
 
+            // Aislamiento multi-planta (OWASP A01): el registro público crea un supervisor de SU nueva planta,
+            // nunca un administrador global de toda la red.
+            $permisosPropiaPlanta = [
+                'dashboard.ver',
+                'acopio.ver', 'acopio.crear', 'acopio.editar', 'acopio.proveedores',
+                'calidad.ver', 'calidad.evaluar',
+                'tinas.ver', 'tinas.operar', 'tinas.gestionar',
+                'finanzas.ver', 'finanzas.registrar', 'finanzas.editar', 'finanzas.exportar', 'finanzas.enviar_excel',
+                'estadisticas.ver',
+                'admin.usuarios', 'admin.qr',
+            ];
+
             return User::create([
                 'planta_id' => $planta->id,
                 'name' => $datos['name'],
                 'usuario' => $datos['usuario'],
                 'email' => ! empty($datos['email']) ? $datos['email'] : null,
                 'password' => Hash::make($datos['password']),
-                'cargo' => 'administracion',
-                'rango' => 'administrador',
-                'permisos' => User::todasLasClavesPermisos(),
+                'cargo' => 'encargado_planta',
+                'rango' => 'supervisor',
+                'permisos' => $permisosPropiaPlanta,
                 'activo' => true,
             ]);
         });

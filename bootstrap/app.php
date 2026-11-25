@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\CheckLatPermission;
+use App\Http\Middleware\SecurityHeadersMiddleware;
 use App\Http\Middleware\SetLocaleMiddleware;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -13,9 +14,14 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->trustProxies(at: '*');
+        $proxies = env('TRUSTED_PROXIES');
+        if ($proxies !== null && $proxies !== '') {
+            $middleware->trustProxies(at: $proxies === '*' ? '*' : array_map('trim', explode(',', (string) $proxies)));
+        }
+
         $middleware->web(append: [
             SetLocaleMiddleware::class,
+            SecurityHeadersMiddleware::class,
         ]);
         $middleware->alias([
             'permiso' => CheckLatPermission::class,
