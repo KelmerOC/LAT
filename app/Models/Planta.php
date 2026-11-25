@@ -7,11 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
- * ============================================================================
- * MODELO DE DATOS: PLANTA LÁCTEA / MICROEMPRESA COMUNITARIA
- * ============================================================================
- * Representa cada planta o quesería familiar gestionada en la plataforma.
- * Permite aislar datos operativos por planta y comparar estadísticas de ventas.
+ * Planta láctea o quesería gestionada en la plataforma.
  */
 class Planta extends Model
 {
@@ -27,7 +23,7 @@ class Planta extends Model
 
     protected $casts = [
         'precio_litro' => 'float',
-        'activa'       => 'boolean',
+        'activa' => 'boolean',
     ];
 
     public function users(): HasMany

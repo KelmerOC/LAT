@@ -19,7 +19,7 @@
             <input type="text" id="reg-name" name="name" class="input-lat" value="{{ old('name') }}" required placeholder="Ej: Rosaura Quispe" data-i18n-placeholder="register.ph_name">
           </div>
 
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+          <div class="grid-form-2">
             <div class="form-grupo">
               <label for="reg-usuario" class="form-label" data-i18n="register.username">Usuario de acceso</label>
               <input type="text" id="reg-usuario" name="usuario" class="input-lat" value="{{ old('usuario') }}" required placeholder="rosaura.anta">
@@ -30,14 +30,14 @@
             </div>
           </div>
 
-          <hr style="border: none; border-top: 1px dashed var(--color-panel-dashed); margin: 1rem 0;">
+          <hr style="border: none; border-top: 1px solid var(--color-hairline); margin: 1rem 0;">
 
           <div class="form-grupo">
             <label for="reg-planta" class="form-label" data-i18n="register.plant_name">Nombre de la planta o quesería</label>
             <input type="text" id="reg-planta" name="planta_nombre" class="input-lat" value="{{ old('planta_nombre') }}" required placeholder="Ej: Quesería Familiar Santa Rosa" data-i18n-placeholder="register.ph_plant">
           </div>
 
-          <div style="display: grid; grid-template-columns: 1.4fr 1fr; gap: 0.75rem;">
+          <div class="grid-form-2-wide">
             <div class="form-grupo">
               <label for="reg-ubicacion" class="form-label" data-i18n="register.plant_loc">Ubicación / Provincia</label>
               <input type="text" id="reg-ubicacion" name="planta_ubicacion" class="input-lat" value="{{ old('planta_ubicacion', 'Cusco Provincia') }}" required>
@@ -48,7 +48,7 @@
             </div>
           </div>
 
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+          <div class="grid-form-2">
             <div class="form-grupo">
               <label for="reg-pass" class="form-label" data-i18n="register.pass">Contraseña (mín. 6 caracteres)</label>
               <input type="password" id="reg-pass" name="password" class="input-lat" required autocomplete="new-password">

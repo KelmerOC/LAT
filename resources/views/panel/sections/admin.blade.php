@@ -25,14 +25,14 @@
         <table class="tabla-plana">
           <thead>
             <tr>
-              <th>Código</th>
-              <th>Nombre de la Planta</th>
-              <th>Ubicación</th>
-              <th class="num">Precio/L</th>
-              <th class="num">Tinas</th>
-              <th class="num">Usuarios</th>
-              <th>Estado</th>
-              <th>Acciones</th>
+              <th data-i18n="m6.col_code">Código</th>
+              <th data-i18n="m6.col_plant_name">Nombre de la Planta</th>
+              <th data-i18n="m6.col_location">Ubicación</th>
+              <th class="num" data-i18n="m6.col_price">Precio/L</th>
+              <th class="num" data-i18n="m6.col_vats">Tinas</th>
+              <th class="num" data-i18n="m6.col_users">Usuarios</th>
+              <th data-i18n="m6.col_status">Estado</th>
+              <th data-i18n="m1.col_actions">Acciones</th>
             </tr>
           </thead>
           <tbody>
@@ -45,7 +45,7 @@
                 <td class="num">{{ $pl->tinas_count ?? $pl->tinas()->count() }}</td>
                 <td class="num">{{ $pl->users_count ?? $pl->users()->count() }}</td>
                 <td>
-                  <span class="chip {{ $pl->activa ? 'chip-verde' : 'chip-rojo' }}">{{ $pl->activa ? 'Activa' : 'Inactiva' }}</span>
+                  <span class="chip {{ $pl->activa ? 'chip-verde' : 'chip-rojo' }}" data-i18n="{{ $pl->activa ? 'm3.active' : 'm3.inactive' }}">{{ $pl->activa ? 'Activa' : 'Inactiva' }}</span>
                 </td>
                 <td>
                   <button type="button" class="btn-micro js-edit-planta"
@@ -55,7 +55,7 @@
                     data-ubicacion="{{ $pl->ubicacion }}"
                     data-precio="{{ $pl->precio_litro }}"
                     data-activa="{{ $pl->activa ? '1' : '0' }}">
-                    {!! $icoEditar !!} Editar
+                    {!! $icoEditar !!} <span data-i18n="common.edit">Editar</span>
                   </button>
                 </td>
               </tr>
@@ -103,9 +103,13 @@
               <tr>
                 <td>
                   <strong>{{ $u->name }}</strong>
-                  <small>{{ $u->email ?? 'Sin correo (acceso por usuario)' }}</small>
+                  @if($u->email)
+                    <small>{{ $u->email }}</small>
+                  @else
+                    <small data-i18n="m6.no_email">Sin correo (acceso por usuario)</small>
+                  @endif
                   @if($u->creador)
-                    <small>Creado por: {{ $u->creador->name }}</small>
+                    <small><span data-i18n="m6.created_by">Creado por:</span> {{ $u->creador->name }}</small>
                   @endif
                 </td>
                 <td class="num-tabular">{{ $u->usuario }}</td>
@@ -123,7 +127,7 @@
                       @empty
                         <span class="chip chip-rojo">0</span>
                       @endforelse
-                      <small style="width: 100%; margin-top: 2px;">{{ count($permsU) }} controles</small>
+                      <small style="width: 100%; margin-top: 2px;">{{ count($permsU) }} <span data-i18n="m6.controls_count">controles</span></small>
                     @endif
                   </div>
                 </td>

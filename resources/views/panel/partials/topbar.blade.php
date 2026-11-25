@@ -17,7 +17,7 @@
     </div>
 
     @if($usuario->puedeVerSeccion('dashboard'))
-      <nav class="dash-range-pills" aria-label="Filtro de período del dashboard">
+      <nav class="dash-range-pills" id="dash-range-pills" aria-label="Filtro de período del dashboard">
         @foreach(['hoy' => 'Hoy', '7d' => '7 días', 'quincena' => 'Quincena', 'mes' => 'Mes'] as $claveRango => $etqRango)
           <a href="{{ route('panel', ['rango' => $claveRango]) }}" class="dash-range-pill {{ $rango === $claveRango ? 'activo' : '' }}" data-i18n="dash.range_{{ $claveRango }}">
             {{ $etqRango }}

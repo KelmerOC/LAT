@@ -18,10 +18,8 @@
 
   @unless(View::hasSection('sin_chrome_publico'))
   <div class="header-sitio">
-    <!-- Navegación principal Swiss-Grid (altura 68px, borde 1px inferior, barra única unificada) -->
     <header class="nav-principal">
       <div class="contenedor nav-principal-inner">
-        <!-- Izquierda: Logotipo y marca LAT -->
         <a href="{{ route('inicio') }}" class="logo-lat" aria-label="LAT Lácteos, ir al inicio">
           <img src="{{ asset('brand/isotipo_queso_frasco.svg') }}" alt="" width="40" height="40" onerror="this.src='{{ asset('favicon.svg') }}'">
           <span>
@@ -30,18 +28,11 @@
           </span>
         </a>
 
-        <!-- Centro: Enlaces horizontales perfectamente centrados en el eje 50% con chevrons (⌄) -->
         <nav aria-label="Principal" class="menu-links" id="menu-links">
           <div class="menu-links-list">
             <a class="enlace-nav" href="{{ route('inicio') }}" @if(request()->routeIs('inicio')) aria-current="page" @endif data-i18n="nav.home">Inicio</a>
-            <a class="enlace-nav" href="{{ route('inicio') }}#soluciones">
-              <span data-i18n="nav.tools">Herramientas</span>
-              <svg class="chevron-nav" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
-            </a>
-            <a class="enlace-nav" href="{{ route('inicio') }}#empresas-familiares">
-              <span data-i18n="nav.families">Empresas Familiares</span>
-              <svg class="chevron-nav" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
-            </a>
+            <a class="enlace-nav" href="{{ route('inicio') }}#soluciones" data-i18n="nav.tools">Herramientas</a>
+            <a class="enlace-nav" href="{{ route('inicio') }}#empresas-familiares" data-i18n="nav.families">Empresas Familiares</a>
             <a class="enlace-nav" href="{{ route('inicio') }}#nosotros" data-i18n="nav.about">Nosotros</a>
           </div>
 
@@ -91,9 +82,7 @@
           </div>
         </nav>
 
-        <!-- Derecha: Selector de Idioma Desplegable + Enlace Auth + Botón rectangular -->
         <div class="nav-acciones nav-acciones-desktop">
-          <!-- Selector de idioma desplegable [ 🌐 ES ▾ ] -->
           <div class="lang-dropdown" id="lang-dropdown">
             <button type="button" class="btn-lang-trigger" id="btn-lang-trigger" aria-haspopup="listbox" aria-expanded="false" aria-label="Cambiar idioma de la plataforma">
               <svg class="lang-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20M2 12h20"/></svg>
@@ -195,7 +184,6 @@
     @yield('contenido')
   </main>
 
-  <!-- Pie de página monumental -->
   @unless(View::hasSection('sin_chrome_publico'))
   <footer class="footer-sitio">
     <div class="aguada" aria-hidden="true"></div>
@@ -203,16 +191,16 @@
       <div class="footer-grid">
         <div>
           <h2 class="footer-col-tit" style="font-size: 1.25rem;">LAT Lácteos</h2>
-          <p data-i18n="footer.desc">Software universitario comunitario para microempresas queseras y asociaciones ganaderas de Cusco Provincia. Comisión S/ 0.00 por principio de diseño.</p>
+          <p data-i18n="footer.desc">Herramienta de registro diario para queserías artesanales y asociaciones ganaderas de Cusco Provincia.</p>
         </div>
         <nav aria-label="Pie de página">
           <h2 class="footer-col-tit" data-i18n="footer.explore">Explorar</h2>
           <ul class="footer-links-list">
             <li><a href="{{ route('inicio') }}" data-i18n="nav.home">Inicio</a></li>
-            <li><a href="{{ route('inicio') }}#soluciones" data-i18n="nav.tools">Herramientas de campo</a></li>
-            <li><a href="{{ route('inicio') }}#empresas-familiares" data-i18n="nav.families">Empresas familiares</a></li>
+            <li><a href="{{ route('inicio') }}#soluciones" data-i18n="nav.tools">Herramientas</a></li>
+            <li><a href="{{ route('inicio') }}#empresas-familiares" data-i18n="nav.families">Empresas Familiares</a></li>
             <li><a href="{{ route('inicio') }}#nosotros" data-i18n="nav.about">Nosotros</a></li>
-            <li><a href="{{ route('login') }}" data-i18n="nav.login">Iniciar sesión</a></li>
+            <li><a href="{{ route('login') }}" data-i18n="nav.login">Iniciar Sesión</a></li>
           </ul>
         </nav>
         <div>
@@ -225,7 +213,7 @@
           </ul>
         </div>
       </div>
-      <p class="footer-bottom" data-i18n="footer.bottom">&copy; {{ date('Y') }} LAT Comunitario · Código libre académico</p>
+      <p class="footer-bottom" data-i18n="footer.bottom">&copy; {{ date('Y') }} LAT · Gestión Láctea Rural · Cusco</p>
     </div>
     <span class="footer-wordmark" aria-hidden="true">LAT</span>
   </footer>

@@ -12,11 +12,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 
 /**
- * ============================================================================
- * CONTROLADOR ADMINISTRATIVO: PLANTAS Y CREACIÓN DE USUARIOS PERSONALIZADOS
- * ============================================================================
- * Gestiona plantas lácteas (permiso 'admin.plantas') y creación/edición de
- * usuarios con credenciales propias y permisos granulares (permiso 'admin.usuarios').
+ * Gestión administrativa de plantas lácteas, usuarios y permisos granulares.
  */
 class AdminController extends Controller
 {
@@ -31,12 +27,12 @@ class AdminController extends Controller
     }
 
     /**
-     * Resuelve y valida los permisos solicitados respetando la jerarquía de rango.
+     * Resuelve y valida los permisos solicitados respetando el alcance del actor.
      *
      * @param  array<int, string>|null  $permisosInput
      * @return list<string>
      */
-    private function resolverPermisosPermitidos(User $actor, string $cargo, ?array $permisosInput): array
+    private function resolverPermisosPermitidos(User $actor, string $cargo, ?array $permisosInput, ?User $target = null): array
     {
         if ($cargo === 'administracion') {
             if (! $actor->esAdmin()) {
@@ -47,24 +43,32 @@ class AdminController extends Controller
         }
 
         $asignables = $actor->permisosAsignables();
+        $fueraDeAlcanceActuales = ($target && ! $actor->esAdmin())
+            ? array_values(array_diff($target->permisosEfectivos(), $asignables))
+            : [];
 
         if ($permisosInput === null) {
             $plantilla = User::PLANTILLAS_CARGO[$cargo] ?? [];
+            $base = array_values(array_intersect($plantilla, $asignables));
+            $combinados = array_values(array_unique(array_merge($base, $fueraDeAlcanceActuales)));
 
-            return array_values(array_intersect($plantilla, $asignables));
+            return array_values(array_intersect(User::todasLasClavesPermisos(), $combinados));
         }
 
         $limpios = array_values(array_unique(array_filter($permisosInput, fn ($p): bool => is_string($p) && $p !== '')));
-        $fueraDeRango = array_diff($limpios, $asignables);
-        if ($fueraDeRango !== []) {
+        $permitidosParaActor = array_values(array_unique(array_merge($asignables, $fueraDeAlcanceActuales)));
+
+        if (array_diff($limpios, $permitidosParaActor) !== []) {
             abort(403, 'No puedes asignar permisos que superan tu propio rango de acceso.');
         }
 
-        return array_values(array_intersect(User::todasLasClavesPermisos(), $limpios));
+        $combinados = array_values(array_unique(array_merge($limpios, $fueraDeAlcanceActuales)));
+
+        return array_values(array_intersect(User::todasLasClavesPermisos(), $combinados));
     }
 
     /**
-     * Resuelve la etiqueta de rango en base al cargo y los permisos otorgados.
+     * Resuelve la etiqueta de rango garantizando que supervisor exija admin.usuarios o administración.
      *
      * @param  list<string>  $permisos
      */
@@ -74,21 +78,39 @@ class AdminController extends Controller
             return 'administrador';
         }
 
-        if ($rangoInput && in_array($rangoInput, ['supervisor', 'operador', 'personalizado'], true)) {
-            return $rangoInput;
-        }
-
         if (in_array('admin.usuarios', $permisos, true)) {
             return 'supervisor';
+        }
+
+        if ($rangoInput && in_array($rangoInput, ['operador', 'personalizado'], true)) {
+            return $rangoInput;
         }
 
         return $cargo === 'personalizado' ? 'personalizado' : 'operador';
     }
 
-    /** Crea un nuevo usuario / operario o cuenta personalizada con credenciales propias */
+    private function normalizarUsuarioInput(Request $request): void
+    {
+        if ($request->has('usuario')) {
+            $request->merge([
+                'usuario' => strtolower(trim((string) $request->input('usuario'))),
+            ]);
+        }
+    }
+
+    private function normalizarCodigoPlantaInput(Request $request): void
+    {
+        if ($request->has('codigo')) {
+            $request->merge([
+                'codigo' => strtoupper(trim((string) $request->input('codigo'))),
+            ]);
+        }
+    }
+
     public function crearUsuario(Request $request): RedirectResponse
     {
         $actor = $this->asegurarPermiso($request, 'admin.usuarios');
+        $this->normalizarUsuarioInput($request);
 
         $datos = $request->validate([
             'name' => ['required', 'string', 'max:120'],
@@ -108,7 +130,7 @@ class AdminController extends Controller
             abort(403, 'Solo puedes crear usuarios para tu propia planta asignada.');
         }
 
-        $permisosInput = $request->has('permisos') ? ($datos['permisos'] ?? []) : null;
+        $permisosInput = $request->boolean('permisos_present') ? ($datos['permisos'] ?? []) : null;
         if ($datos['cargo'] === 'personalizado' && empty($permisosInput)) {
             return back()->withErrors(['permisos' => 'Selecciona al menos una sección o control para el usuario personalizado.']);
         }
@@ -119,7 +141,7 @@ class AdminController extends Controller
         User::create([
             'planta_id' => $actor->esAdmin() ? $datos['planta_id'] : $actor->planta_id,
             'name' => $datos['name'],
-            'usuario' => strtolower($datos['usuario']),
+            'usuario' => $datos['usuario'],
             'email' => ! empty($datos['email']) ? $datos['email'] : null,
             'password' => Hash::make($datos['password']),
             'cargo' => $datos['cargo'],
@@ -132,7 +154,6 @@ class AdminController extends Controller
         return back()->with('exito', 'Credenciales y permisos del usuario creados correctamente.');
     }
 
-    /** Actualiza cargo, permisos por sección, planta, estado o contraseña de un usuario */
     public function actualizarUsuario(Request $request, int $id): RedirectResponse
     {
         $actor = $this->asegurarPermiso($request, 'admin.usuarios');
@@ -141,6 +162,8 @@ class AdminController extends Controller
         if (! $actor->puedeGestionarUsuario($target)) {
             abort(403, 'Tu rango no permite modificar esta cuenta.');
         }
+
+        $this->normalizarUsuarioInput($request);
 
         $datos = $request->validate([
             'name' => ['required', 'string', 'max:120'],
@@ -159,30 +182,29 @@ class AdminController extends Controller
             abort(403, 'No puedes trasladar usuarios a otra planta.');
         }
 
-        $activo = $request->has('activo') ? (bool) $request->boolean('activo') : $target->activo;
+        $activo = $request->has('activo') ? $request->boolean('activo') : $target->activo;
         if ($target->id === $actor->id && ! $activo) {
             return back()->withErrors(['usuario' => 'No puedes desactivar tu propia cuenta mientras estás en sesión.']);
         }
 
-        // Si el formulario incluyó el selector granular (marcador permisos_present=1) o un arreglo permisos[],
-        // respetamos exactamente los checkboxes enviados (incluso si se desmarcan todos en cargo personalizado).
         if ($request->boolean('permisos_present') || $request->has('permisos')) {
             $permisosInput = $datos['permisos'] ?? [];
         } else {
             $permisosInput = $datos['cargo'] === $target->cargo ? $target->permisosEfectivos() : null;
         }
 
-        if ($datos['cargo'] === 'personalizado' && empty($permisosInput)) {
+        $permisosFinales = $this->resolverPermisosPermitidos($actor, $datos['cargo'], $permisosInput, $target);
+
+        if ($datos['cargo'] === 'personalizado' && $permisosFinales === []) {
             return back()->withErrors(['permisos' => 'Un usuario personalizado debe conservar al menos un permiso habilitado.']);
         }
 
-        $permisosFinales = $this->resolverPermisosPermitidos($actor, $datos['cargo'], $permisosInput);
         $rangoFinal = $this->resolverRango($datos['cargo'], $datos['rango'] ?? null, $permisosFinales);
 
         $payload = [
             'planta_id' => $actor->esAdmin() ? $datos['planta_id'] : $actor->planta_id,
             'name' => $datos['name'],
-            'usuario' => strtolower($datos['usuario']),
+            'usuario' => $datos['usuario'],
             'email' => ! empty($datos['email']) ? $datos['email'] : null,
             'cargo' => $datos['cargo'],
             'rango' => $rangoFinal,
@@ -199,10 +221,10 @@ class AdminController extends Controller
         return back()->with('exito', 'Usuario y permisos actualizados correctamente.');
     }
 
-    /** Crea una nueva planta láctea junto con su tina inicial */
     public function crearPlanta(Request $request): RedirectResponse
     {
         $this->asegurarPermiso($request, 'admin.plantas');
+        $this->normalizarCodigoPlantaInput($request);
 
         $datos = $request->validate([
             'codigo' => ['required', 'string', 'max:20', 'unique:plantas,codigo'],
@@ -213,7 +235,7 @@ class AdminController extends Controller
 
         $planta = DB::transaction(function () use ($datos): Planta {
             $p = Planta::create([
-                'codigo' => strtoupper($datos['codigo']),
+                'codigo' => $datos['codigo'],
                 'nombre' => $datos['nombre'],
                 'ubicacion' => $datos['ubicacion'],
                 'precio_litro' => $datos['precio_litro'],
@@ -237,11 +259,11 @@ class AdminController extends Controller
         return back()->with('exito', 'Planta "'.$planta->nombre.'" agregada y activada correctamente.');
     }
 
-    /** Edita los datos operativos o estado de una planta */
     public function actualizarPlanta(Request $request, int $id): RedirectResponse
     {
         $this->asegurarPermiso($request, 'admin.plantas');
         $planta = Planta::findOrFail($id);
+        $this->normalizarCodigoPlantaInput($request);
 
         $datos = $request->validate([
             'codigo' => ['required', 'string', 'max:20', Rule::unique('plantas', 'codigo')->ignore($planta->id)],
@@ -252,7 +274,7 @@ class AdminController extends Controller
         ]);
 
         $planta->update([
-            'codigo' => strtoupper($datos['codigo']),
+            'codigo' => $datos['codigo'],
             'nombre' => $datos['nombre'],
             'ubicacion' => $datos['ubicacion'],
             'precio_litro' => $datos['precio_litro'],

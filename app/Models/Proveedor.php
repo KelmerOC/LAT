@@ -8,11 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
- * ============================================================================
- * MODELO DE DATOS: PROVEEDOR GANADERO COMUNITARIO
- * ============================================================================
- * Representa a los pequeños productores lecheros de las comunidades altoandinas.
- * Privacidad ética: Se identifica por código comunitario y nombre sin requerir DNI.
+ * Productor ganadero comunitario asociado a una planta.
  */
 class Proveedor extends Model
 {

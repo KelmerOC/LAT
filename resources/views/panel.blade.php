@@ -130,11 +130,18 @@
 @push('scripts')
 <script src="{{ asset('js/chart.umd.min.js') }}"></script>
 <script>
+  // Registro compartido de gráficas Chart.js para redimensionar al cambiar de sección
+  window.__latCharts = {
+    dashboard: [],
+    estadisticas: []
+  };
+
   // 1. Navegación lateral de secciones + Drawer móvil + Persistencia por usuario
   (function () {
     const navBtns = Array.from(document.querySelectorAll('#dash-nav-list .dash-nav-btn'));
     const panels = Array.from(document.querySelectorAll('.tab-panel'));
     const topbarTitle = document.getElementById('topbar-section-title');
+    const rangePills = document.getElementById('dash-range-pills');
     const sidebar = document.getElementById('dash-sidebar');
     const backdrop = document.getElementById('dash-sidebar-backdrop');
     const btnOpen = document.getElementById('btn-sidebar-open');
@@ -159,6 +166,10 @@
 
       panels.forEach(p => { p.hidden = p.id !== sectionId; });
 
+      if (rangePills) {
+        rangePills.hidden = sectionId !== 'sec-dashboard';
+      }
+
       navBtns.forEach(btn => {
         const activa = btn.dataset.section === sectionId;
         btn.classList.toggle('activo', activa);
@@ -175,7 +186,16 @@
 
       toggleSidebar(false);
       try { sessionStorage.setItem(storageKey, sectionId); } catch (_) {}
-      window.dispatchEvent(new Event('resize'));
+
+      if (sectionId === 'sec-dashboard' || sectionId === 'sec-estadisticas') {
+        requestAnimationFrame(() => {
+          const group = sectionId === 'sec-dashboard' ? window.__latCharts.dashboard : window.__latCharts.estadisticas;
+          group.forEach(ch => {
+            if (ch && typeof ch.resize === 'function') ch.resize();
+          });
+          window.dispatchEvent(new Event('resize'));
+        });
+      }
     }
 
     if (window.LAT_I18N && window.LAT_I18N.onChange) {
@@ -199,6 +219,13 @@
     if (btnOpen) btnOpen.addEventListener('click', () => toggleSidebar(true));
     if (btnClose) btnClose.addEventListener('click', () => toggleSidebar(false));
     if (backdrop) backdrop.addEventListener('click', () => toggleSidebar(false));
+
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape' && sidebar && sidebar.classList.contains('abierto')) {
+        toggleSidebar(false);
+        if (btnOpen) btnOpen.focus();
+      }
+    });
 
     let inicial = defaultSection;
     try {
@@ -362,6 +389,9 @@
       }
     @endif
 
+    window.__latCharts.dashboard = [chartAcopio, chartVentas, chartMoldes].filter(Boolean);
+    window.__latCharts.estadisticas = [chartStatsCalidad].filter(Boolean);
+
     if (window.LAT_I18N && window.LAT_I18N.onChange) {
       window.LAT_I18N.onChange(() => {
         if (chartAcopio) {
@@ -393,13 +423,15 @@
   // 3. Modales, Confirmación JS y Matriz de Permisos de Usuarios Personalizados
   (function () {
     let pendingForm = null;
+    const modalTriggers = new Map();
     const modalConfirm = document.getElementById('modal-confirmacion-lat');
     const confirmMsgEl = document.getElementById('confirm-modal-message');
     const btnConfirmar = document.getElementById('btn-confirmar-accion-js');
 
-    function abrirModal(id) {
+    function abrirModal(id, triggerEl) {
       const el = document.getElementById(id);
       if (!el) return;
+      modalTriggers.set(id, triggerEl || document.activeElement);
       el.hidden = false;
       const focusable = el.querySelector('input:not([type="hidden"]):not([readonly]), select, button:not(.modal-close)');
       if (focusable) focusable.focus();
@@ -409,10 +441,15 @@
       const el = document.getElementById(id);
       if (el) el.hidden = true;
       if (id === 'modal-confirmacion-lat') pendingForm = null;
+      const trigger = modalTriggers.get(id);
+      modalTriggers.delete(id);
+      if (trigger && typeof trigger.focus === 'function' && trigger.offsetParent !== null) {
+        trigger.focus();
+      }
     }
 
     document.querySelectorAll('[data-open-modal]').forEach(btn => {
-      btn.addEventListener('click', () => abrirModal(btn.dataset.openModal));
+      btn.addEventListener('click', () => abrirModal(btn.dataset.openModal, btn));
     });
     document.querySelectorAll('[data-close-modal]').forEach(btn => {
       btn.addEventListener('click', () => cerrarModal(btn.dataset.closeModal));
@@ -458,7 +495,7 @@
       }
 
       if (confirmMsgEl) confirmMsgEl.textContent = msg;
-      abrirModal('modal-confirmacion-lat');
+      abrirModal('modal-confirmacion-lat', form.querySelector('button[type="submit"]'));
     });
 
     if (btnConfirmar) {
@@ -474,7 +511,11 @@
     // Sub-tabs del modal Editar Datos
     document.querySelectorAll('.subtab-btn').forEach(btn => {
       btn.addEventListener('click', () => {
-        document.querySelectorAll('.subtab-btn').forEach(b => b.classList.toggle('activo', b === btn));
+        document.querySelectorAll('.subtab-btn').forEach(b => {
+          const activa = b === btn;
+          b.classList.toggle('activo', activa);
+          b.setAttribute('aria-selected', activa ? 'true' : 'false');
+        });
         document.querySelectorAll('.subtab-panel').forEach(p => { p.hidden = p.id !== btn.dataset.subtab; });
       });
     });
@@ -556,6 +597,8 @@
     const btnNuevoUsuario = document.getElementById('btn-abrir-nuevo-usuario');
     if (btnNuevoUsuario) {
       btnNuevoUsuario.addEventListener('click', () => {
+        const formNuevo = document.querySelector('#modal-nuevo-usuario form');
+        if (formNuevo) formNuevo.reset();
         aplicarPermisosEnMatriz('nu', []);
       });
     }
@@ -571,8 +614,23 @@
         document.getElementById('edit-ac-calidad').value = btn.dataset.calidad;
         document.getElementById('edit-ac-metodo').value = btn.dataset.metodo;
         document.getElementById('edit-ac-hora').value = btn.dataset.hora;
+        const fallbackTrigger = btn.closest('#modal-editar-datos') ? document.getElementById('btn-abrir-editar-datos') : btn;
         cerrarModal('modal-editar-datos');
-        abrirModal('modal-edit-acopio');
+        abrirModal('modal-edit-acopio', fallbackTrigger || btn);
+      });
+    });
+    @endif
+
+    @if($usuario->tienePermiso('acopio.proveedores'))
+    const baseProvUrl = @json(url('/panel/proveedor'));
+    document.querySelectorAll('.js-edit-proveedor').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.getElementById('form-edit-proveedor').action = baseProvUrl + '/' + btn.dataset.id;
+        document.getElementById('ep-prv-cod').value = btn.dataset.codigo || '';
+        document.getElementById('ep-prv-nom').value = btn.dataset.nombre || '';
+        document.getElementById('ep-prv-sec').value = btn.dataset.sector || '';
+        cerrarModal('modal-editar-datos');
+        abrirModal('modal-edit-proveedor', document.getElementById('btn-abrir-editar-datos') || btn);
       });
     });
     @endif
@@ -587,8 +645,9 @@
         document.getElementById('edit-mov-concepto').value = btn.dataset.concepto;
         document.getElementById('edit-mov-unidades').value = btn.dataset.unidades;
         document.getElementById('edit-mov-monto').value = btn.dataset.monto;
+        const fallbackTrigger = btn.closest('#modal-editar-datos') ? document.getElementById('btn-abrir-editar-datos') : btn;
         cerrarModal('modal-editar-datos');
-        abrirModal('modal-edit-mov');
+        abrirModal('modal-edit-mov', fallbackTrigger || btn);
       });
     });
     @endif
@@ -603,7 +662,7 @@
         document.getElementById('et-cap').value = btn.dataset.capacidad;
         document.getElementById('et-tipo').value = btn.dataset.tipo;
         document.getElementById('et-activa').value = btn.dataset.activa;
-        abrirModal('modal-edit-tina');
+        abrirModal('modal-edit-tina', btn);
       });
     });
     @endif
@@ -618,7 +677,7 @@
         document.getElementById('ep-ubi').value = btn.dataset.ubicacion;
         document.getElementById('ep-pre').value = btn.dataset.precio;
         document.getElementById('ep-act').value = btn.dataset.activa;
-        abrirModal('modal-edit-planta');
+        abrirModal('modal-edit-planta', btn);
       });
     });
     @endif
@@ -641,64 +700,138 @@
         let perms = [];
         try { perms = JSON.parse(btn.dataset.permisos || '[]'); } catch (_) {}
         aplicarPermisosEnMatriz('eu', perms);
-        abrirModal('modal-edit-usuario');
+        abrirModal('modal-edit-usuario', btn);
       });
     });
     @endif
   })();
 
-  // 4. Botonera táctil de una mano
-  document.querySelectorAll('.botonera button').forEach(b => {
-    b.addEventListener('click', () => {
-      const input = document.getElementById('input-litros');
-      if (input) {
-        input.value = ((parseFloat(input.value) || 0) + parseFloat(b.dataset.litros)).toFixed(1);
-      }
+  // 4. Botonera táctil de una mano e ingreso manual
+  (function () {
+    const inputLitros = document.getElementById('input-litros');
+    const inputMetodo = document.getElementById('input-metodo');
+    if (inputLitros && inputMetodo) {
+      inputLitros.addEventListener('input', () => {
+        inputMetodo.value = 'manual';
+      });
+    }
+    document.querySelectorAll('.botonera button').forEach(b => {
+      b.addEventListener('click', () => {
+        if (inputLitros) {
+          inputLitros.value = ((parseFloat(inputLitros.value) || 0) + parseFloat(b.dataset.litros)).toFixed(1);
+        }
+        if (inputMetodo) {
+          inputMetodo.value = 'manual';
+        }
+      });
     });
-  });
+  })();
 
-  // 5. Reconocimiento de voz (Web Speech API) con confirmación hablada
+  // 5. Reconocimiento de voz (Web Speech API) con confirmación hablada y emparejamiento de productor
   (function () {
     const btnVoz = document.getElementById('btn-voz');
     const txtBtn = document.getElementById('txt-btn-voz');
     const transcripcion = document.getElementById('transcripcion-voz');
+    const selectProv = document.getElementById('select-proveedor');
     if (!btnVoz) return;
 
+    let escuchando = false;
+
+    function normalizarTexto(txt) {
+      return (txt || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .replace(/[^a-z0-9\s]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    }
+
+    function emparejarProveedor(frase) {
+      if (!selectProv) return;
+      const normFrase = normalizarTexto(frase);
+      if (!normFrase) return;
+
+      let mejorVal = null;
+      let mejorPuntaje = 0;
+
+      Array.from(selectProv.options).forEach(opt => {
+        if (!opt.value) return;
+        const textoOpt = opt.textContent.replace(/^[^-]+-\s*/, '').replace(/\([^)]*\)/g, '');
+        const tokens = normalizarTexto(textoOpt).split(' ').filter(t => t.length >= 3 && t !== 'don' && t !== 'sra');
+        let hits = 0;
+        tokens.forEach(tok => {
+          if (normFrase.includes(tok)) hits++;
+        });
+        if (hits > mejorPuntaje) {
+          mejorPuntaje = hits;
+          mejorVal = opt.value;
+        }
+      });
+
+      if (mejorVal && mejorPuntaje > 0) {
+        selectProv.value = mejorVal;
+      }
+    }
+
     function reposo() {
+      escuchando = false;
       txtBtn.textContent = window.LAT_I18N ? window.LAT_I18N.t('m1.voice_btn') : 'Dictar acopio por voz';
       btnVoz.setAttribute('aria-pressed', 'false');
     }
 
     btnVoz.addEventListener('click', () => {
+      if (escuchando) return;
+      const tr = (key, fallback, vars) => (window.LAT_I18N ? window.LAT_I18N.t(key, vars) : fallback);
       const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (!SR) {
-        transcripcion.textContent = 'Este navegador no admite dictado por voz. Use la botonera táctil o escriba los litros.';
+        transcripcion.removeAttribute('data-i18n');
+        transcripcion.textContent = tr('m1.voice_unsupported', 'Este navegador no admite dictado por voz. Use la botonera táctil o escriba los litros.');
         return;
       }
+
+      const langActual = window.LAT_I18N ? window.LAT_I18N.getLang() : 'es';
+      const speechLang = langActual === 'en' ? 'en-US' : 'es-PE';
+
       const rec = new SR();
-      rec.lang = 'es-PE';
+      rec.lang = speechLang;
       rec.interimResults = false;
 
-      txtBtn.textContent = 'Escuchando… hable ahora';
+      escuchando = true;
+      transcripcion.removeAttribute('data-i18n');
+      txtBtn.textContent = tr('m1.voice_listening', 'Escuchando… hable ahora');
       btnVoz.setAttribute('aria-pressed', 'true');
 
       rec.onresult = e => {
         const frase = e.results[0][0].transcript;
-        transcripcion.textContent = 'Escuchado: “' + frase + '”';
+        transcripcion.removeAttribute('data-i18n');
+        transcripcion.textContent = tr('m1.voice_heard', 'Escuchado: “{frase}”', { frase });
         document.getElementById('input-frase').value = frase;
         document.getElementById('input-metodo').value = 'voz';
         const m = frase.match(/(\d+([\.,]\d+)?)/);
         if (m) document.getElementById('input-litros').value = parseFloat(m[1].replace(',', '.'));
+        emparejarProveedor(frase);
         if ('speechSynthesis' in window) {
-          const u = new SpeechSynthesisUtterance('Acopio capturado correctamente');
-          u.lang = 'es-PE';
+          const u = new SpeechSynthesisUtterance(tr('m1.voice_spoken_ok', 'Acopio capturado correctamente'));
+          u.lang = speechLang;
           window.speechSynthesis.speak(u);
         }
         reposo();
       };
-      rec.onerror = () => { transcripcion.textContent = 'No se pudo escuchar. Intente de nuevo o use la botonera táctil.'; reposo(); };
+      rec.onerror = () => {
+        transcripcion.removeAttribute('data-i18n');
+        transcripcion.textContent = tr('m1.voice_error', 'No se pudo escuchar. Intente de nuevo o use la botonera táctil.');
+        reposo();
+      };
       rec.onend = reposo;
-      rec.start();
+
+      try {
+        rec.start();
+      } catch (_) {
+        transcripcion.removeAttribute('data-i18n');
+        transcripcion.textContent = tr('m1.voice_error', 'No se pudo iniciar el micrófono. Intente de nuevo o use la botonera táctil.');
+        reposo();
+      }
     });
   })();
 </script>

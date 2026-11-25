@@ -5,22 +5,22 @@ namespace App\Http\Controllers;
 use App\Models\Planta;
 use App\Models\Tina;
 use App\Models\User;
+use Illuminate\Contracts\View\View;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Str;
 
 /**
- * ============================================================================
- * CONTROLADOR: AUTENTICACIÓN, REGISTRO PÚBLICO E IDIOMA
- * ============================================================================
- * Gestiona inicio/cierre de sesión, registro público de nuevas plantas/cuentas
- * y persistencia del idioma elegido (es / qu / en).
+ * Controlador de autenticación, registro público de plantas e idioma.
  */
 class AuthController extends Controller
 {
-    /** Muestra el formulario de acceso */
-    public function index()
+    public function index(): View|RedirectResponse
     {
         if (Auth::check()) {
             return redirect()->route('panel');
@@ -29,8 +29,7 @@ class AuthController extends Controller
         return view('login');
     }
 
-    /** Procesa las credenciales de ingreso */
-    public function login(Request $request)
+    public function login(Request $request): RedirectResponse
     {
         $credenciales = $request->validate([
             'login' => ['required', 'string'],
@@ -40,21 +39,36 @@ class AuthController extends Controller
             'password.required' => 'Ingrese su contraseña.',
         ]);
 
-        $campo = filter_var($credenciales['login'], FILTER_VALIDATE_EMAIL) ? 'email' : 'usuario';
+        $loginNormalizado = strtolower(trim((string) $credenciales['login']));
+        $throttleKey = Str::transliterate($loginNormalizado.'|'.$request->ip());
 
-        if (Auth::attempt([$campo => $credenciales['login'], 'password' => $credenciales['password'], 'activo' => true], $request->boolean('remember'))) {
+        if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
+            $segundos = RateLimiter::availableIn($throttleKey);
+
+            return back()->withErrors([
+                'login' => "Demasiados intentos de acceso. Intenta nuevamente en {$segundos} segundos.",
+            ])->onlyInput('login');
+        }
+
+        $esCorreo = filter_var(trim((string) $credenciales['login']), FILTER_VALIDATE_EMAIL) !== false;
+        $campo = $esCorreo ? 'email' : 'usuario';
+        $valorLogin = $esCorreo ? trim((string) $credenciales['login']) : $loginNormalizado;
+
+        if (Auth::attempt([$campo => $valorLogin, 'password' => $credenciales['password'], 'activo' => true], $request->boolean('remember'))) {
+            RateLimiter::clear($throttleKey);
             $request->session()->regenerate();
 
             return redirect()->intended(route('panel'))->with('exito', 'Bienvenido a Mi Panel Lácteo.');
         }
+
+        RateLimiter::hit($throttleKey, 60);
 
         return back()->withErrors([
             'login' => 'Credenciales no válidas o cuenta inactiva.',
         ])->onlyInput('login');
     }
 
-    /** Muestra el formulario de registro público */
-    public function showRegister()
+    public function showRegister(): View|RedirectResponse
     {
         if (Auth::check()) {
             return redirect()->route('panel');
@@ -63,9 +77,20 @@ class AuthController extends Controller
         return view('register');
     }
 
-    /** Registra un nuevo usuario administrador junto con su planta láctea inicial */
-    public function register(Request $request)
+    public function register(Request $request): RedirectResponse
     {
+        $merge = [];
+        if ($request->has('usuario')) {
+            $merge['usuario'] = strtolower(trim((string) $request->input('usuario')));
+        }
+        if ($request->has('email') && $request->input('email') !== null) {
+            $emailTrim = trim((string) $request->input('email'));
+            $merge['email'] = $emailTrim === '' ? null : strtolower($emailTrim);
+        }
+        if ($merge !== []) {
+            $request->merge($merge);
+        }
+
         $datos = $request->validate([
             'name' => ['required', 'string', 'max:120'],
             'usuario' => ['required', 'string', 'min:3', 'max:60', 'regex:/^[a-zA-Z0-9._-]+$/', 'unique:users,usuario'],
@@ -82,8 +107,8 @@ class AuthController extends Controller
             'planta_nombre.required' => 'Ingrese el nombre de su planta o quesería.',
         ]);
 
-        $user = DB::transaction(function () use ($datos) {
-            $siguienteId = (Planta::max('id') ?? 0) + 1;
+        $user = DB::transaction(function () use ($datos): User {
+            $siguienteId = (int) (Planta::query()->lockForUpdate()->max('id') ?? 0) + 1;
             $codigoPlanta = 'PLT-'.str_pad((string) $siguienteId, 2, '0', STR_PAD_LEFT);
             while (Planta::where('codigo', $codigoPlanta)->exists()) {
                 $siguienteId++;
@@ -110,12 +135,12 @@ class AuthController extends Controller
             return User::create([
                 'planta_id' => $planta->id,
                 'name' => $datos['name'],
-                'usuario' => strtolower($datos['usuario']),
+                'usuario' => $datos['usuario'],
                 'email' => ! empty($datos['email']) ? $datos['email'] : null,
                 'password' => Hash::make($datos['password']),
                 'cargo' => 'administracion',
                 'rango' => 'administrador',
-                'permisos' => User::PLANTILLAS_CARGO['administracion'],
+                'permisos' => User::todasLasClavesPermisos(),
                 'activo' => true,
             ]);
         });
@@ -126,8 +151,7 @@ class AuthController extends Controller
         return redirect()->route('panel')->with('exito', 'Cuenta y planta registradas correctamente.');
     }
 
-    /** Cierra la sesión activa */
-    public function logout(Request $request)
+    public function logout(Request $request): RedirectResponse
     {
         Auth::logout();
         $request->session()->invalidate();
@@ -136,8 +160,7 @@ class AuthController extends Controller
         return redirect()->route('inicio')->with('info', 'Sesión cerrada correctamente.');
     }
 
-    /** Persiste la selección de idioma en la sesión del servidor */
-    public function cambiarIdioma(Request $request, string $lang)
+    public function cambiarIdioma(Request $request, string $lang): RedirectResponse|JsonResponse
     {
         if (! in_array($lang, ['es', 'qu', 'en'], true)) {
             $lang = 'es';

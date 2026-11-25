@@ -1,9 +1,5 @@
 /* ==============================================================================
-   LAT · DASHBOARD OPERATIVO MODERNO (SIDEBAR + TARJETAS + GRÁFICAS + RBAC)
-   ==============================================================================
-   Combina la estructura intuitiva del tablero analítico moderno con la paleta
-   oficial de LAT (Azul Marino #0a2f4d, Oceánico #0d4068, Celeste #0284c7,
-   Naranja Ember #c2410c / #ff5900 y Verde #15803d).
+   LAT · PANEL OPERATIVO Y TABLERO DE PLANTA
    ============================================================================== */
 
 body.dash-body {
@@ -24,7 +20,7 @@ body.dash-body {
    ============================================================================== */
 .dash-sidebar {
   background: #ffffff;
-  border-right: 1px solid #e2e8f0;
+  border-right: 1px solid var(--color-hairline);
   display: flex;
   flex-direction: column;
   position: sticky;
@@ -40,7 +36,7 @@ body.dash-body {
   justify-content: space-between;
   gap: 0.75rem;
   padding: 1.15rem 1.25rem;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--color-hairline);
 }
 
 .dash-brand-link {
@@ -83,8 +79,8 @@ body.dash-body {
   align-items: center;
   justify-content: center;
   background: var(--color-fog);
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-sharp);
   color: var(--color-ink);
   font-size: 1.25rem;
   cursor: pointer;
@@ -106,7 +102,7 @@ body.dash-body {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: #64748b;
+  color: var(--color-graphite);
 }
 
 .dash-nav-group:first-child {
@@ -123,7 +119,7 @@ body.dash-body {
   background: transparent;
   color: var(--color-ink);
   border: 1px solid transparent;
-  border-radius: 8px;
+  border-radius: var(--radius-sharp);
   font-family: var(--font-sans);
   font-size: 0.9rem;
   font-weight: 600;
@@ -173,7 +169,7 @@ body.dash-body {
   min-width: 22px;
   height: 22px;
   padding-inline: 6px;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   background: var(--amarillo-fill);
   color: var(--amarillo-text);
   font-size: 0.72rem;
@@ -182,7 +178,7 @@ body.dash-body {
 
 .dash-sidebar-foot {
   padding: 0.9rem 1rem 1.1rem;
-  border-top: 1px solid #e2e8f0;
+  border-top: 1px solid var(--color-hairline);
   background: #f8fbfe;
   display: flex;
   flex-direction: column;
@@ -198,7 +194,7 @@ body.dash-body {
 .dash-user-avatar {
   width: 38px;
   height: 38px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: var(--color-ocean);
   color: #ffffff;
   display: grid;
@@ -239,8 +235,8 @@ body.dash-body {
 
 .dash-lang-pill {
   min-height: 34px;
-  border: 1px solid #cbd5e1;
-  border-radius: 6px;
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-sharp);
   background: #ffffff;
   color: var(--color-ink);
   font-family: var(--font-sans);
@@ -280,9 +276,8 @@ body.dash-body {
   position: sticky;
   top: 0;
   z-index: 400;
-  background: rgba(243, 246, 250, 0.92);
-  backdrop-filter: blur(8px);
-  border-bottom: 1px solid #e2e8f0;
+  background: #ffffff;
+  border-bottom: 1px solid var(--color-hairline);
   padding: 0.85rem 1.75rem;
   display: flex;
   align-items: center;
@@ -305,8 +300,8 @@ body.dash-body {
   align-items: center;
   justify-content: center;
   background: #ffffff;
-  border: 1px solid #cbd5e1;
-  border-radius: 8px;
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-sharp);
   color: var(--color-ink);
   cursor: pointer;
 }
@@ -320,7 +315,7 @@ body.dash-body {
 .dash-breadcrumb-trail {
   font-size: 0.78rem;
   font-weight: 600;
-  color: #64748b;
+  color: var(--color-graphite);
 }
 
 .dash-breadcrumb-title {
@@ -335,22 +330,28 @@ body.dash-body {
   align-items: center;
   gap: 0.6rem;
   flex-wrap: wrap;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .dash-range-pills {
   display: inline-flex;
   background: #ffffff;
-  border: 1px solid #cbd5e1;
-  border-radius: 8px;
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-sharp);
   padding: 3px;
   gap: 2px;
+}
+
+.dash-range-pills[hidden] {
+  display: none;
 }
 
 .dash-topbar-lang {
   display: inline-flex;
   background: #ffffff;
-  border: 1px solid #cbd5e1;
-  border-radius: 8px;
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-sharp);
   padding: 3px;
   gap: 2px;
 }
@@ -366,7 +367,7 @@ body.dash-body {
   align-items: center;
   min-height: 36px;
   padding: 0 0.75rem;
-  border-radius: 6px;
+  border-radius: var(--radius-sharp);
   font-size: 0.8rem;
   font-weight: 600;
   color: var(--color-graphite);
@@ -387,14 +388,17 @@ body.dash-body {
   min-height: 42px;
   padding: 0.5rem 0.95rem;
   font-size: 0.85rem;
-  border-radius: 8px;
+  border-radius: var(--radius-sharp);
 }
 
 .dash-topbar .plant-switcher-select {
   min-height: 42px;
-  border-radius: 8px;
+  max-width: 100%;
+  min-width: 0;
+  text-overflow: ellipsis;
+  border-radius: var(--radius-sharp);
   background: #ffffff;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--color-hairline);
 }
 
 .dash-content {
@@ -405,7 +409,7 @@ body.dash-body {
 }
 
 /* ==============================================================================
-   TARJETAS KPI SUPERIORES (ESTILO REFERENCIA CON INSIGNIAS DE ICONO)
+   TARJETAS KPI SUPERIORES
    ============================================================================== */
 .dash-kpi-grid {
   display: grid;
@@ -416,8 +420,8 @@ body.dash-body {
 
 .dash-kpi-card {
   background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-sharp);
   padding: 1.2rem 1.25rem;
   display: flex;
   flex-direction: column;
@@ -436,7 +440,7 @@ body.dash-body {
   display: block;
   font-size: 0.82rem;
   font-weight: 600;
-  color: #64748b;
+  color: var(--color-graphite);
   margin-bottom: 0.3rem;
 }
 
@@ -461,7 +465,7 @@ body.dash-body {
 .dash-kpi-icon {
   width: 44px;
   height: 44px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   display: grid;
   place-items: center;
   flex-shrink: 0;
@@ -475,7 +479,7 @@ body.dash-body {
 
 .dash-kpi-foot {
   padding-top: 0.75rem;
-  border-top: 1px solid #f1f5f9;
+  border-top: 1px solid var(--color-hairline);
   display: flex;
   align-items: center;
   gap: 0.45rem;
@@ -505,8 +509,8 @@ body.dash-body {
 
 .dash-card {
   background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-sharp);
   padding: 1.25rem;
   min-width: 0;
 }
@@ -529,7 +533,7 @@ body.dash-body {
 
 .dash-card-sub {
   font-size: 0.8125rem;
-  color: #64748b;
+  color: var(--color-graphite);
   margin-top: 0.2rem;
 }
 
@@ -542,13 +546,13 @@ body.dash-body {
 .dash-chart-foot {
   margin-top: 0.85rem;
   padding-top: 0.75rem;
-  border-top: 1px solid #f1f5f9;
+  border-top: 1px solid var(--color-hairline);
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
   font-size: 0.78rem;
-  color: #64748b;
+  color: var(--color-graphite);
 }
 
 /* ==============================================================================
@@ -565,7 +569,7 @@ body.dash-body {
   width: 100%;
   height: 8px;
   background: #e2e8f0;
-  border-radius: 4px;
+  border-radius: var(--radius-sharp);
   overflow: hidden;
   margin-top: 0.3rem;
 }
@@ -573,7 +577,7 @@ body.dash-body {
 .dash-progress-fill {
   height: 100%;
   background: var(--color-celeste-action);
-  border-radius: 4px;
+  border-radius: var(--radius-sharp);
 }
 
 .dash-progress-fill.is-ember { background: var(--color-ember-action); }
@@ -589,7 +593,7 @@ body.dash-body {
 .dash-timeline-item {
   position: relative;
   padding: 0.7rem 0 0.7rem 1.85rem;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--color-hairline);
 }
 
 .dash-timeline-item:last-child {
@@ -612,7 +616,7 @@ body.dash-body {
   top: 0.95rem;
   width: 13px;
   height: 13px;
-  border-radius: 50%;
+  border-radius: var(--radius-sm);
   background: var(--color-celeste-action);
   border: 2px solid #ffffff;
 }
@@ -631,19 +635,18 @@ body.dash-body {
 .dash-timeline-meta {
   display: block;
   font-size: 0.78rem;
-  color: #64748b;
+  color: var(--color-graphite);
   margin-top: 0.15rem;
 }
 
 /* ==============================================================================
-   MEJORA VISUAL DE MÓDULOS OPERATIVOS DENTRO DEL DASHBOARD
+   MÓDULOS OPERATIVOS DENTRO DEL PANEL
    ============================================================================== */
 body.dash-body .panel-card,
 body.dash-body .panel-tabla-wrap,
 body.dash-body .tina-card {
-  border-style: solid;
-  border-color: #e2e8f0;
-  border-radius: 10px;
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-sharp);
   min-width: 0;
 }
 
@@ -654,29 +657,71 @@ body.dash-body .tabla-plana {
 body.dash-body .tabla-plana th,
 body.dash-body .tabla-plana td {
   padding: 0.7rem 0.75rem;
+  border-bottom: 1px solid var(--color-hairline);
 }
 
 body.dash-body .btn {
-  border-radius: 8px;
+  border-radius: var(--radius-sharp);
 }
 
 body.dash-body .input-lat,
 body.dash-body .select-lat {
-  border-radius: 8px;
+  border-radius: var(--radius-sharp);
 }
 
 body.dash-body .tabla-region {
-  border-radius: 8px;
-  border-color: #e2e8f0;
+  border-radius: var(--radius-sharp);
+  border-color: var(--color-hairline);
 }
 
 body.dash-body .modal-swiss {
-  border-radius: 10px;
-  border-color: #cbd5e1;
+  border-radius: var(--radius-sharp);
+  border-color: var(--color-hairline-strong);
 }
 
+body.dash-body .tina-card-header,
+body.dash-body .tina-receta-mini,
+body.dash-body .modal-head,
+body.dash-body .modal-foot,
+body.dash-body .subtabs-edit {
+  border-color: var(--color-hairline);
+  border-style: solid;
+}
+
+.tina-lote-box {
+  background: var(--color-ocean);
+  color: var(--color-white);
+  padding: 1.15rem;
+  border-radius: var(--radius-sharp);
+  border: 1px solid var(--color-hairline);
+}
+
+.tina-idle-box {
+  padding: 1rem;
+  background: var(--color-fog);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-sharp);
+}
+
+.tina-finish-form {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-end;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--color-hairline);
+}
+
+.stats-quality-box {
+  padding: 1rem;
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-sharp);
+}
+.stats-quality-box.is-good { background: var(--verde-fill); }
+.stats-quality-box.is-acid { background: var(--amarillo-fill); }
+.stats-quality-box.is-voice { background: var(--color-sky-wash); }
+
 /* ==============================================================================
-   CONSTRUCTOR VISUAL DE PERMISOS POR SECCIÓN Y CONTROL (RBAC MATRIX)
+   MATRIZ DE PERMISOS POR SECCIÓN Y CONTROL
    ============================================================================== */
 .modal-swiss.modal-lg {
   max-width: 820px;
@@ -690,8 +735,8 @@ body.dash-body .modal-swiss {
   gap: 0.5rem;
   padding: 0.75rem 1rem;
   background: var(--color-sky-wash);
-  border: 1px solid #bae6fd;
-  border-radius: 8px;
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-sharp);
   margin-bottom: 1rem;
   font-size: 0.85rem;
 }
@@ -704,8 +749,8 @@ body.dash-body .modal-swiss {
 
 .perm-section-card {
   background: #f8fbfe;
-  border: 1px solid #dbeafe;
-  border-radius: 8px;
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-sharp);
   padding: 0.85rem 0.95rem;
 }
 
@@ -716,7 +761,7 @@ body.dash-body .modal-swiss {
   gap: 0.5rem;
   padding-bottom: 0.55rem;
   margin-bottom: 0.55rem;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--color-hairline);
 }
 
 .perm-section-head strong {
@@ -726,8 +771,8 @@ body.dash-body .modal-swiss {
 
 .perm-toggle-all {
   background: #ffffff;
-  border: 1px solid #cbd5e1;
-  border-radius: 6px;
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-sm);
   padding: 0.2rem 0.55rem;
   font-size: 0.72rem;
   font-weight: 700;
@@ -753,7 +798,7 @@ body.dash-body .modal-swiss {
   color: var(--color-ink);
   cursor: pointer;
   padding: 0.3rem 0.35rem;
-  border-radius: 6px;
+  border-radius: var(--radius-sharp);
 }
 
 .perm-check:hover {
@@ -777,7 +822,7 @@ body.dash-body .modal-swiss {
 .perm-check small {
   display: block;
   font-size: 0.73rem;
-  color: #64748b;
+  color: var(--color-graphite);
   line-height: 1.3;
 }
 
@@ -843,6 +888,21 @@ body.dash-body .modal-swiss {
     grid-template-columns: 1fr;
   }
 
+  .dash-topbar-right {
+    width: 100%;
+  }
+
+  .plant-switcher-form {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .dash-topbar .plant-switcher-select {
+    width: 100%;
+    max-width: 100%;
+  }
+
   .dash-range-pills {
     width: 100%;
     justify-content: space-between;
@@ -852,5 +912,16 @@ body.dash-body .modal-swiss {
     flex: 1;
     justify-content: center;
     padding-inline: 0.35rem;
+  }
+}
+
+@media (max-width: 420px) {
+  .dash-range-pill {
+    font-size: 0.74rem;
+    padding-inline: 0.25rem;
+  }
+
+  .dash-topbar .btn {
+    max-width: 100%;
   }
 }

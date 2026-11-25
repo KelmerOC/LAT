@@ -1,3 +1,13 @@
+@php
+  $estadosTinaLabels = [
+    'libre' => 'Libre',
+    'pasteurizando' => 'Pasteurizando',
+    'enfriando' => 'Enfriando',
+    'lista_para_cuajo' => 'Lista para cuajo',
+    'muy_fria' => 'Muy fría',
+  ];
+@endphp
+
 <section id="sec-tina" class="tab-panel" aria-label="Control de múltiples tinas y receta" hidden>
   <div class="panel-card" style="margin-bottom: 1.5rem;">
     <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem;">
@@ -14,7 +24,7 @@
   </div>
 
   <div class="tinas-grid">
-    @foreach($tinasPanel as $item)
+    @forelse($tinasPanel as $item)
       @php
         $tina = $item->tina;
         $lote = $item->lote;
@@ -44,11 +54,13 @@
           @endif
         </div>
 
-        @if($lote)
-          <div style="background: var(--color-ocean); color: var(--color-white); padding: 1.15rem; border-radius: 8px;">
+        @if($lote && $tTerm && $tRec)
+          <div class="tina-lote-box">
             <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
-              <small style="color: #bae6fd; font-weight: 600;">Lote {{ $lote->codigo }}</small>
-              <span class="chip {{ $tTerm['apta'] ? 'chip-verde' : 'chip-amarillo' }}">{{ strtoupper($tTerm['estado']) }} · {{ $tTerm['porcentaje'] }}%</span>
+              <small style="color: #bae6fd; font-weight: 600;"><span data-i18n="m3.batch_label">Lote</span> {{ $lote->codigo }}</small>
+              <span class="chip {{ $tTerm['apta'] ? 'chip-verde' : 'chip-amarillo' }}">
+                <span data-i18n="tina.state_{{ $tTerm['estado'] }}">{{ $estadosTinaLabels[$tTerm['estado']] ?? str_replace('_', ' ', $tTerm['estado']) }}</span> · {{ $tTerm['porcentaje'] }}%
+              </span>
             </div>
             <div style="font-size: 2.3rem; font-weight: 300; font-variant-numeric: tabular-nums; margin: 0.4rem 0;">
               {{ number_format($lote->temperatura_actual, 1) }} °C
@@ -67,45 +79,44 @@
           </div>
 
           @if($usuario->tienePermiso('tinas.operar'))
-            <form method="POST" action="{{ route('panel.tina', $lote->id) }}" style="display: grid; grid-template-columns: 1fr 1fr auto; gap: 0.5rem; align-items: end;">
+            <form method="POST" action="{{ route('panel.tina', $lote->id) }}" class="grid-form-tina-sensor">
               @csrf
               <div>
-                <label class="form-label" style="font-size: 0.78rem;" for="temp-{{ $lote->id }}">Sensor (°C)</label>
+                <label class="form-label" style="font-size: 0.78rem;" for="temp-{{ $lote->id }}" data-i18n="m3.lbl_sensor">Sensor (°C)</label>
                 <input type="number" step="0.5" id="temp-{{ $lote->id }}" name="temperatura" class="input-lat" value="{{ $lote->temperatura_actual }}" style="min-height: 42px; padding: 0.45rem 0.65rem;">
               </div>
               <div>
-                <label class="form-label" style="font-size: 0.78rem;" for="lit-{{ $lote->id }}">Litros (L)</label>
+                <label class="form-label" style="font-size: 0.78rem;" for="lit-{{ $lote->id }}" data-i18n="m3.lbl_liters">Litros (L)</label>
                 <input type="number" step="0.5" min="5" id="lit-{{ $lote->id }}" name="litros" class="input-lat" value="{{ $lote->litros }}" style="min-height: 42px; padding: 0.45rem 0.65rem;">
               </div>
               <button type="submit" class="btn btn-ocean btn-compacto" data-i18n="m3.update_sensor">Actualizar</button>
             </form>
 
             <form method="POST" action="{{ route('panel.tina', $lote->id) }}"
-              class="js-confirm-form"
+              class="js-confirm-form tina-finish-form"
               data-confirm-kind="finish_batch"
-              data-codigo="{{ $lote->codigo }}"
-              style="display: flex; gap: 0.5rem; align-items: end; padding-top: 0.75rem; border-top: 1px dashed var(--color-panel-dashed);">
+              data-codigo="{{ $lote->codigo }}">
               @csrf
               <div style="flex: 1;">
-                <label class="form-label" style="font-size: 0.78rem;" for="moldes-{{ $lote->id }}">Moldes obtenidos (para cerrar lote)</label>
+                <label class="form-label" style="font-size: 0.78rem;" for="moldes-{{ $lote->id }}" data-i18n="m3.lbl_molds_obtained">Moldes obtenidos (para cerrar lote)</label>
                 <input type="number" min="0" id="moldes-{{ $lote->id }}" name="moldes" class="input-lat" value="{{ $tRec['moldes_estimados'] }}" style="min-height: 42px; padding: 0.45rem 0.65rem;">
               </div>
               <button type="submit" class="btn btn-verde btn-compacto" data-i18n="m3.finish_batch">Finalizar lote</button>
             </form>
           @endif
         @else
-          <div style="padding: 1rem; background: var(--color-fog); border-radius: 8px;">
+          <div class="tina-idle-box">
             <p style="margin: 0; font-weight: 600; color: var(--color-graphite);" data-i18n="m3.no_batch">Tina libre (sin lote en proceso)</p>
           </div>
           @if($tina->activa && $usuario->tienePermiso('tinas.operar'))
-            <form method="POST" action="{{ route('panel.tinas.lote', $tina->id) }}" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; align-items: end;">
+            <form method="POST" action="{{ route('panel.tinas.lote', $tina->id) }}" class="grid-form-2" style="align-items: end;">
               @csrf
               <div>
-                <label class="form-label" style="font-size: 0.78rem;" for="start-lit-{{ $tina->id }}">Litros a cargar (máx {{ (int) $tina->capacidad_litros }})</label>
+                <label class="form-label" style="font-size: 0.78rem;" for="start-lit-{{ $tina->id }}"><span data-i18n="m3.lbl_liters_load">Litros a cargar</span> (máx {{ (int) $tina->capacidad_litros }})</label>
                 <input type="number" step="0.5" min="5" max="{{ $tina->capacidad_litros }}" id="start-lit-{{ $tina->id }}" name="litros" class="input-lat" value="{{ min($tina->capacidad_litros, max(50, $litrosHoy ?: 100)) }}" required style="min-height: 42px;">
               </div>
               <div>
-                <label class="form-label" style="font-size: 0.78rem;" for="start-temp-{{ $tina->id }}">Temp. inicial (°C)</label>
+                <label class="form-label" style="font-size: 0.78rem;" for="start-temp-{{ $tina->id }}" data-i18n="m3.lbl_temp_init">Temp. inicial (°C)</label>
                 <input type="number" step="0.5" min="4" max="95" id="start-temp-{{ $tina->id }}" name="temperatura_actual" class="input-lat" value="72.0" required style="min-height: 42px;">
               </div>
               <button type="submit" class="btn btn-ember btn-bloque" style="grid-column: 1 / -1;" data-i18n="m3.start_batch">Iniciar lote en tina</button>
@@ -113,6 +124,10 @@
           @endif
         @endif
       </article>
-    @endforeach
+    @empty
+      <div class="panel-card">
+        <p style="margin: 0; color: var(--color-graphite);" data-i18n="dash.no_vats">Sin tinas registradas.</p>
+      </div>
+    @endforelse
   </div>
 </section>

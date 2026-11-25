@@ -160,6 +160,15 @@
             </tr>
           </thead>
           <tbody>
+            @php
+              $estadosTinaDash = [
+                'libre' => 'Libre',
+                'pasteurizando' => 'Pasteurizando',
+                'enfriando' => 'Enfriando',
+                'lista_para_cuajo' => 'Lista para cuajo',
+                'muy_fria' => 'Muy fría',
+              ];
+            @endphp
             @forelse($dashboardData['tinas_resumen'] as $tr)
               <tr>
                 <td>
@@ -167,8 +176,8 @@
                   <small>{{ $tr->codigo }} · @if($tr->lote) {{ $tr->lote }} @else <span data-i18n="dash.no_batch">Sin lote activo</span> @endif</small>
                 </td>
                 <td>
-                  <span class="chip {{ $tr->apta_cuajo ? 'chip-verde' : ($tr->lote ? 'chip-amarillo' : 'chip-fog') }}">
-                    {{ strtoupper(str_replace('_', ' ', $tr->estado)) }}
+                  <span class="chip {{ $tr->apta_cuajo ? 'chip-verde' : ($tr->lote ? 'chip-amarillo' : 'chip-fog') }}" data-i18n="tina.state_{{ $tr->estado }}">
+                    {{ $estadosTinaDash[$tr->estado] ?? str_replace('_', ' ', $tr->estado) }}
                   </span>
                 </td>
                 <td class="num">{{ $tr->temp !== null ? number_format($tr->temp, 1).' °C' : '—' }}</td>
@@ -249,7 +258,7 @@
       <div class="dash-card-head">
         <div>
           <h2 data-i18n="dash.activity_title">Actividad reciente</h2>
-          <p class="dash-card-sub" data-i18n="dash.c1_sub">Últimos registros de acopio, ventas y alertas</p>
+          <p class="dash-card-sub" data-i18n="dash.activity_sub">Últimos registros de acopio, ventas y alertas</p>
         </div>
         <span class="chip chip-celeste">{{ $dashboardData['actividad_reciente']->count() }} <span data-i18n="dash.events_count">eventos</span></span>
       </div>
@@ -262,7 +271,7 @@
             <span class="dash-timeline-meta">{{ $ev->detalle }} · {{ $ev->fecha_txt }}</span>
           </li>
         @empty
-          <li style="padding: 1.5rem 0; text-align: center; color: #64748b;" data-i18n="dash.no_activity">Aún no hay actividad registrada en esta planta.</li>
+          <li style="padding: 1.5rem 0; text-align: center; color: var(--color-graphite);" data-i18n="dash.no_activity">Aún no hay actividad registrada en esta planta.</li>
         @endforelse
       </ul>
     </article>

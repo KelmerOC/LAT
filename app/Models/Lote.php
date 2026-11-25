@@ -7,11 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * ============================================================================
- * MODELO DE DATOS: LOTE DE TINA QUESERA Y MONITOR TÉRMICO
- * ============================================================================
- * Controla el ciclo térmico de pasteurización (72 °C) y enfriamiento hacia
- * el punto óptimo de cuajado (36-40 °C), además de registrar los insumos.
+ * Lote de tina quesera con monitoreo térmico e insumos calculados.
  */
 class Lote extends Model
 {

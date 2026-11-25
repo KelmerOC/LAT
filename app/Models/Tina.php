@@ -9,11 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
- * ============================================================================
- * MODELO DE DATOS: TINA DE PASTEURIZACIÓN Y TRANSFORMACIÓN
- * ============================================================================
- * Permite gestionar múltiples tinas por planta (queso, quesillo, yogur, etc.),
- * controlar lotes independientes y calcular recetas según capacidad/volumen.
+ * Tina de pasteurización y transformación láctea por planta.
  */
 class Tina extends Model
 {
@@ -30,7 +26,7 @@ class Tina extends Model
 
     protected $casts = [
         'capacidad_litros' => 'float',
-        'activa'           => 'boolean',
+        'activa' => 'boolean',
     ];
 
     public function planta(): BelongsTo

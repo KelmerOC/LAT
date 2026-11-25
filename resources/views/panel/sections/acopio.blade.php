@@ -47,8 +47,12 @@
 
     <div class="panel-tabla-wrap">
       <div class="panel-tabla-cab">
-        <h3><span data-i18n="m1.today_list">Entregas de hoy</span> ({{ Carbon\Carbon::today()->format('d/m/Y') }})</h3>
-        <span class="chip chip-celeste num-tabular">Total: {{ number_format($litrosHoy, 1) }} L</span>
+        @if($usuario->tienePermiso('acopio.crear'))
+          <h3><span data-i18n="m1.today_list">Entregas de hoy</span> ({{ Carbon\Carbon::today()->format('d/m/Y') }})</h3>
+        @else
+          <h2><span data-i18n="m1.today_list">Entregas de hoy</span> ({{ Carbon\Carbon::today()->format('d/m/Y') }})</h2>
+        @endif
+        <span class="chip chip-celeste num-tabular"><span data-i18n="m1.total">Total:</span> {{ number_format($litrosHoy, 1) }} L</span>
       </div>
       <div class="tabla-region" role="region" aria-label="Entregas de leche de hoy" tabindex="0">
         <table class="tabla-plana">

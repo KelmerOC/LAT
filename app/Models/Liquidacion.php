@@ -7,11 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * ============================================================================
- * MODELO DE DATOS: LIQUIDACIÓN QUINCENAL Y MOVIMIENTOS FINANCIEROS
- * ============================================================================
- * Maneja adelantos, pagos netos a ganaderos (comisión S/ 0.00), ventas y
- * gastos operativos de mano de obra eventual ("Pago de Ayuda del Día").
+ * Movimiento financiero o liquidación quincenal asociado a una planta.
  */
 class Liquidacion extends Model
 {
@@ -31,12 +27,12 @@ class Liquidacion extends Model
     ];
 
     protected $casts = [
-        'fecha'             => 'date',
-        'litros'            => 'float',
+        'fecha' => 'date',
+        'litros' => 'float',
         'cantidad_unidades' => 'integer',
-        'monto'             => 'float',
-        'comision'          => 'float',
-        'descontado'        => 'boolean',
+        'monto' => 'float',
+        'comision' => 'float',
+        'descontado' => 'boolean',
     ];
 
     public function planta(): BelongsTo

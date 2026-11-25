@@ -3,7 +3,7 @@
     <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.25rem;">
       <div>
         <h2><span data-i18n="m4.title">Liquidación quincenal de proveedores</span> ({{ $desde }} al {{ $hasta }})</h2>
-        <p style="margin: 0;" data-i18n="m4.sub">Cálculo neto transparente: bruto menos adelantos en efectivo o queso. <strong>Comisión: S/ 0.00.</strong></p>
+        <p style="margin: 0;"><span data-i18n="m4.sub">Cálculo neto transparente: bruto menos adelantos en efectivo o queso.</span> <strong data-i18n="m4.sub_comm">Comisión: S/ 0.00.</strong></p>
       </div>
       <div style="display: flex; flex-wrap: wrap; gap: 0.65rem;">
         @if($usuario->tieneAlgunPermiso(['acopio.editar', 'finanzas.editar', 'acopio.proveedores']))
@@ -46,7 +46,7 @@
               <td class="num" style="font-size: 1.15rem; background: #f7fbfe;">S/ {{ number_format($liq->neto, 2) }}</td>
             </tr>
           @empty
-            <tr><td colspan="8" style="text-align: center; padding: 2rem; color: var(--color-graphite);">No hay liquidaciones en este período.</td></tr>
+            <tr><td colspan="8" style="text-align: center; padding: 2rem; color: var(--color-graphite);" data-i18n="m4.empty_liq">No hay liquidaciones en este período.</td></tr>
           @endforelse
         </tbody>
       </table>
@@ -60,7 +60,7 @@
         <form method="POST" action="{{ route('panel.movimiento') }}" class="movimiento-form">
           @csrf
           <div class="form-grupo">
-            <label for="mov-tipo" class="form-label">Tipo</label>
+            <label for="mov-tipo" class="form-label" data-i18n="m4.lbl_type">Tipo</label>
             <select name="tipo" id="mov-tipo" class="select-lat">
               <option value="venta_producto">Venta de producto lácteo (queso / yogur)</option>
               <option value="adelanto_efectivo">Adelanto en efectivo</option>
@@ -70,7 +70,7 @@
             </select>
           </div>
           <div class="form-grupo">
-            <label for="mov-proveedor" class="form-label">Productor (si aplica)</label>
+            <label for="mov-proveedor" class="form-label" data-i18n="m4.lbl_prov">Productor (si aplica)</label>
             <select name="proveedor_id" id="mov-proveedor" class="select-lat">
               <option value="">Ninguno / venta o faena externa</option>
               @foreach($proveedores as $prov)
@@ -79,15 +79,15 @@
             </select>
           </div>
           <div class="form-grupo">
-            <label for="mov-concepto" class="form-label">Concepto</label>
+            <label for="mov-concepto" class="form-label" data-i18n="m4.lbl_concept">Concepto</label>
             <input type="text" name="concepto" id="mov-concepto" class="input-lat" required maxlength="160" placeholder="Ej: Venta 25 moldes feria Cusco">
           </div>
           <div class="form-grupo">
-            <label for="mov-unidades" class="form-label">Moldes / Und.</label>
+            <label for="mov-unidades" class="form-label" data-i18n="m4.lbl_units">Moldes / Und.</label>
             <input type="number" min="0" name="cantidad_unidades" id="mov-unidades" class="input-lat" value="0">
           </div>
           <div class="form-grupo">
-            <label for="mov-monto" class="form-label">Monto (S/)</label>
+            <label for="mov-monto" class="form-label" data-i18n="m4.lbl_amount">Monto (S/)</label>
             <input type="number" step="0.5" min="0.5" inputmode="decimal" name="monto" id="mov-monto" class="input-lat" required placeholder="0.00">
           </div>
           <button type="submit" class="btn btn-ocean" data-i18n="m4.mov_btn">Asentar movimiento</button>
@@ -148,7 +148,7 @@
               @endif
             </tr>
           @empty
-            <tr><td colspan="{{ $usuario->tienePermiso('finanzas.editar') ? 7 : 6 }}" style="text-align: center; padding: 1.5rem;">No hay movimientos registrados.</td></tr>
+            <tr><td colspan="{{ $usuario->tienePermiso('finanzas.editar') ? 7 : 6 }}" style="text-align: center; padding: 1.5rem;" data-i18n="m4.empty_mov">No hay movimientos registrados.</td></tr>
           @endforelse
         </tbody>
       </table>

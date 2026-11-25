@@ -74,7 +74,7 @@
                   <strong>#{{ $idx + 1 }} · {{ $rp->nombre }}</strong>
                   <span class="chip {{ $idx === 0 ? 'chip-verde' : 'chip-fog' }}">{{ $rp->ubicacion }}</span>
                   @if($idx === 0)
-                    <span class="chip chip-amarillo">Mayor vendedor</span>
+                    <span class="chip chip-amarillo" data-i18n="m5.top_seller">Mayor vendedor</span>
                   @endif
                 </div>
                 <div class="num-tabular" style="font-size: 0.92rem;">
@@ -126,7 +126,7 @@
                 <td class="num">{{ $tp->porcentaje }}%</td>
               </tr>
             @empty
-              <tr><td colspan="4" style="text-align: center; padding: 1.5rem;">Sin entregas en el período.</td></tr>
+              <tr><td colspan="4" style="text-align: center; padding: 1.5rem;" data-i18n="m5.no_deliveries">Sin entregas en el período.</td></tr>
             @endforelse
           </tbody>
         </table>
@@ -136,15 +136,15 @@
     <div class="panel-card">
       <h3 data-i18n="m5.quality_split">Calidad sanitaria y método de captura</h3>
       <div style="display: grid; gap: 0.9rem; margin-top: 1rem;">
-        <div style="padding: 1rem; background: var(--verde-fill); border-radius: 8px;">
+        <div class="stats-quality-box is-good">
           <strong data-i18n="m5.good_milk">Leche óptima (Tina principal):</strong>
           <span class="num-tabular">{{ number_format($estadisticas['calidad']['buena_litros'], 1) }} L ({{ $estadisticas['calidad']['buena_pct'] }}%)</span>
         </div>
-        <div style="padding: 1rem; background: var(--amarillo-fill); border-radius: 8px;">
+        <div class="stats-quality-box is-acid">
           <strong data-i18n="m5.acid_milk">Leche con acidez (Quesillo 4 días):</strong>
           <span class="num-tabular">{{ number_format($estadisticas['calidad']['acida_litros'], 1) }} L ({{ $estadisticas['calidad']['acida_pct'] }}%)</span>
         </div>
-        <div style="padding: 1rem; background: var(--color-sky-wash); border-radius: 8px;">
+        <div class="stats-quality-box is-voice">
           <strong data-i18n="m5.voice_vs_manual">Uso de dictado por voz vs manual:</strong>
           <span class="num-tabular">{{ $estadisticas['metodos']['voz_count'] }} (<span data-i18n="common.voice">Voz</span> · {{ $estadisticas['metodos']['voz_pct'] }}%) · {{ $estadisticas['metodos']['manual_count'] }} (<span data-i18n="common.manual">Manual</span>)</span>
         </div>

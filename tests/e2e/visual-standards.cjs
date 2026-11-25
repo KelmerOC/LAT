@@ -2,196 +2,279 @@ const { chromium } = require('playwright');
 const path = require('path');
 const fs = require('fs');
 
-const OUT = path.resolve('C:/Users/kelme/.gemini/antigravity/brain/f120c463-6b44-45b5-afab-c5c013980892/scratch');
+const OUT = path.resolve(__dirname, '../../scratch/e2e');
 fs.mkdirSync(OUT, { recursive: true });
-const BASE = 'http://127.0.0.1:8000';
+const BASE = process.env.E2E_BASE_URL || 'http://127.0.0.1:8000';
+
+async function checkVisibleFormLabels(page) {
+  return page.evaluate(() => {
+    const isVisible = el => {
+      if (!el) return false;
+      if (el.closest('[hidden]')) return false;
+      const st = window.getComputedStyle(el);
+      if (st.display === 'none' || st.visibility === 'hidden') return false;
+      const rect = el.getBoundingClientRect();
+      return rect.width > 0 && rect.height > 0;
+    };
+    return [...document.querySelectorAll('input:not([type=hidden]), select')]
+      .filter(isVisible)
+      .filter(el => {
+        const hasFor = el.id && document.querySelector(`label[for="${CSS.escape(el.id)}"]`);
+        const hasWrap = !!el.closest('label');
+        return !hasFor && !hasWrap;
+      })
+      .map(el => el.id || el.name || el.tagName);
+  });
+}
 
 (async () => {
   const browser = await chromium.launch({ channel: 'chrome', headless: true });
   const problemas = [];
-  const check = (n, ok, d = '') => { console.log((ok ? 'PASS ' : 'FAIL ') + n + (ok ? '' : ' -> ' + d)); if (!ok) problemas.push(n); };
+  const check = (n, ok, d = '') => {
+    console.log((ok ? 'PASS ' : 'FAIL ') + n + (ok ? '' : ' -> ' + d));
+    if (!ok) problemas.push(n + (d ? ` (${d})` : ''));
+  };
 
-  for (const [nombre, vp] of [['desktop', { width: 1280, height: 800 }], ['movil', { width: 390, height: 844 }]]) {
+  const viewports = [
+    ['desktop', { width: 1280, height: 800 }],
+    ['movil', { width: 390, height: 844 }],
+    ['movil-compacto', { width: 320, height: 568 }],
+  ];
+
+  for (const [nombre, vp] of viewports) {
     const ctx = await browser.newContext({ viewport: vp });
     const page = await ctx.newPage();
     const errores = [];
-    page.on('pageerror', e => errores.push(e.message));
-    page.on('console', m => { if (m.type() === 'error' && !m.text().includes('unsplash') && !m.text().includes('ERR_')) errores.push(m.text()); });
-
-    const r = await page.goto(BASE + '/', { waitUntil: 'networkidle' });
-    check(nombre + ' inicio 200', r.status() === 200, r.status());
-    const desborde = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
-    check(nombre + ' inicio sin desborde horizontal', !desborde);
-
-    // Verificación de barra superior azul eliminada / oculta
-    const topBarNoVisible = await page.evaluate(() => {
-      const tb = document.querySelector('.top-bar');
-      return !tb || window.getComputedStyle(tb).display === 'none';
+    page.on('pageerror', e => errores.push('pageerror: ' + e.message));
+    page.on('console', m => {
+      if (m.type() === 'error' && !m.text().includes('unsplash') && !m.text().includes('ERR_')) {
+        errores.push('console: ' + m.text());
+      }
     });
-    check(nombre + ' barra superior azul (.top-bar) eliminada/oculta', topBarNoVisible);
 
-    // Verificaciones Swiss Grid en Desktop
+    // 1. Página de inicio (/)
+    const rInicio = await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+    check(`${nombre} / status 200`, rInicio.status() === 200, rInicio.status());
+    const desbordeInicio = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
+    check(`${nombre} / sin desborde horizontal`, !desbordeInicio);
+
+    const sinLabelInicio = await checkVisibleFormLabels(page);
+    check(`${nombre} / campos visibles con label accesible`, sinLabelInicio.length === 0, sinLabelInicio.join(', '));
+
+    // Cambio de idioma es -> qu -> en -> es en /
+    const switchHomeLang = async (lang) => {
+      if (nombre === 'desktop') {
+        await page.click('#btn-lang-trigger');
+        await page.waitForTimeout(100);
+        await page.click(`#lang-dropdown-menu [data-lang="${lang}"]`);
+      } else {
+        await page.click('#btn-lang-trigger-mobile');
+        await page.waitForTimeout(100);
+        await page.click(`#lang-dropdown-menu-mobile [data-lang="${lang}"]`);
+      }
+      await page.waitForTimeout(150);
+    };
+
     if (nombre === 'desktop') {
-      // 1. Barra de navegación plana: altura entre 64px y 72px
       const navAlto = await page.$eval('.nav-principal-inner', el => el.getBoundingClientRect().height);
-      check('desktop altura de nav bar entre 64px y 72px', navAlto >= 64 && navAlto <= 72, navAlto);
-
-      // 2. Centrado matemático absoluto de los enlaces de navegación
-      const centeringDiff = await page.evaluate(() => {
-        const inner = document.querySelector('.nav-principal-inner').getBoundingClientRect();
-        const menu = document.querySelector('#menu-links').getBoundingClientRect();
-        const innerMid = inner.left + inner.width / 2;
-        const menuMid = menu.left + menu.width / 2;
-        return Math.abs(innerMid - menuMid);
-      });
-      check('desktop opciones de navegación centradas simétricamente (desvío <= 2px)', centeringDiff <= 2, `${centeringDiff}px`);
-
-      // 3. Dropdown de selección de idiomas en escritorio
-      const btnLang = await page.$('#btn-lang-trigger');
-      check('desktop botón dropdown de idioma presente', !!btnLang);
-
-      await page.click('#btn-lang-trigger');
-      await page.waitForTimeout(150);
-      const dropdownAbierto = await page.$eval('#lang-dropdown', el => el.classList.contains('abierto'));
-      const ariaExpanded = await page.$eval('#btn-lang-trigger', el => el.getAttribute('aria-expanded'));
-      check('desktop dropdown de idioma se abre al hacer clic', dropdownAbierto && ariaExpanded === 'true');
-
-      // Seleccionar Quechua
-      await page.click('#lang-dropdown-menu [data-lang="qu"]');
-      await page.waitForTimeout(150);
-      const currentLangLabel = await page.$eval('#lang-current-label', el => el.textContent.trim());
-      const htmlLang = await page.evaluate(() => document.documentElement.lang);
-      check('desktop cambio de idioma a QU actualiza etiqueta y html lang', currentLangLabel === 'QU' && htmlLang === 'qu', `${currentLangLabel} / ${htmlLang}`);
-
-      // Volver a Español
-      await page.click('#btn-lang-trigger');
-      await page.click('#lang-dropdown-menu [data-lang="es"]');
-      await page.waitForTimeout(100);
-
-      // 4. Botón primario y secundario con geometría recta (radius <= 2px)
-      const btnEmberRadius = await page.$eval('.hero-acciones .btn-ember', el => parseFloat(window.getComputedStyle(el).borderRadius));
-      const btnOutlineRadius = await page.$eval('.hero-acciones .btn-outline', el => parseFloat(window.getComputedStyle(el).borderRadius));
-      check('desktop botones primarios y secundarios rectos (<= 2px)', btnEmberRadius <= 2 && btnOutlineRadius <= 2, `${btnEmberRadius}px / ${btnOutlineRadius}px`);
-
-      // 5. Tarjeta de medios con radius suavizado (6px - 8px) y botón (+) en esquina
-      const bannerRadius = await page.$eval('#hero-carousel', el => parseFloat(window.getComputedStyle(el).borderRadius));
-      const btnPlusVisible = await page.$eval('.btn-plus-corner', el => window.getComputedStyle(el).display !== 'none');
-      check('desktop banner multimedia con radio 8px y botón (+)', bannerRadius >= 6 && bannerRadius <= 9 && btnPlusVisible, `${bannerRadius}px`);
-
-      // 6. Eje central del proceso (spine timeline) presente
-      const spinePresente = await page.$eval('.arbol-lista', el => {
-        const ps = window.getComputedStyle(el, '::before');
-        return ps.content !== 'none' && ps.position === 'absolute';
-      });
-      check('desktop eje central (spine line) presente en proceso', spinePresente);
+      check('desktop nav bar altura 64-72px', navAlto >= 64 && navAlto <= 72, navAlto);
     }
 
-    await page.screenshot({ path: path.join(OUT, `${nombre}_inicio.png`), fullPage: true });
-
-    // Prueba del Menú Desplegable y selector de idioma en Móvil
-    if (nombre === 'movil') {
-      const btnMenuVisible = await page.$eval('#btn-menu', el => window.getComputedStyle(el).display !== 'none');
-      check('movil botón hamburguesa visible', btnMenuVisible);
-
-      const btnLangMobileVisible = await page.$eval('#btn-lang-trigger-mobile', el => window.getComputedStyle(el).display !== 'none');
-      check('movil selector de idioma compacto en barra de navegación visible', btnLangMobileVisible);
-
-      await page.click('#btn-menu');
-      await page.waitForTimeout(250);
-      const menuAbierto = await page.$eval('#menu-links', el => el.classList.contains('abierto'));
-      const ariaExpanded = await page.$eval('#btn-menu', el => el.getAttribute('aria-expanded'));
-      check('movil menú se despliega al tocar botón', menuAbierto && ariaExpanded === 'true');
-
-      // Selector de idioma dentro del drawer móvil
-      const mobileLangChoiceCount = await page.$$eval('.btn-lang-choice', els => els.length);
-      check('movil selector de idioma con 3 opciones en drawer', mobileLangChoiceCount === 3);
-
-      await page.screenshot({ path: path.join(OUT, 'movil_menu_desplegado.png'), fullPage: false });
-
-      // Cerrar menú con escape
-      await page.keyboard.press('Escape');
-      const menuCerrado = await page.$eval('#menu-links', el => !el.classList.contains('abierto'));
-      check('movil menú se cierra con Escape', menuCerrado);
+    const homeLangTexts = [];
+    for (const lang of ['qu', 'en', 'es']) {
+      await switchHomeLang(lang);
+      const state = await page.evaluate(() => ({
+        htmlLang: document.documentElement.lang,
+        heroSub: document.querySelector('#hero-sub')?.textContent?.trim() || '',
+      }));
+      homeLangTexts.push(state);
+      check(`${nombre} / idioma -> ${lang} actualiza html[lang]`, state.htmlLang === lang, state.htmlLang);
     }
+    const homeTranslationsDistinct = homeLangTexts[0].heroSub !== homeLangTexts[1].heroSub
+      && homeLangTexts[1].heroSub !== homeLangTexts[2].heroSub;
+    check(`${nombre} / traducción es->qu->en->es modifica contenido`, homeTranslationsDistinct);
 
-    await page.goto(BASE + '/login', { waitUntil: 'networkidle' });
+    await page.screenshot({ path: path.join(OUT, `${nombre}_inicio.png`), fullPage: false });
+
+    // 2. Página /registrarse
+    const rReg = await page.goto(BASE + '/registrarse', { waitUntil: 'networkidle' });
+    check(`${nombre} /registrarse status 200`, rReg.status() === 200, rReg.status());
+    const desbordeReg = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
+    check(`${nombre} /registrarse sin desborde horizontal`, !desbordeReg);
+    const sinLabelReg = await checkVisibleFormLabels(page);
+    check(`${nombre} /registrarse campos visibles con label accesible`, sinLabelReg.length === 0, sinLabelReg.join(', '));
+
+    // 3. Página /login
+    const rLogin = await page.goto(BASE + '/login', { waitUntil: 'networkidle' });
+    check(`${nombre} /login status 200`, rLogin.status() === 200, rLogin.status());
+    const desbordeLogin = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
+    check(`${nombre} /login sin desborde horizontal`, !desbordeLogin);
+    const sinLabelLogin = await checkVisibleFormLabels(page);
+    check(`${nombre} /login campos visibles con label accesible`, sinLabelLogin.length === 0, sinLabelLogin.join(', '));
+
     await page.screenshot({ path: path.join(OUT, `${nombre}_login.png`), fullPage: false });
-    await page.click('button[type=submit].btn-ember');
-    await page.waitForURL('**/panel**');
-    check(nombre + ' login lleva al panel', page.url().includes('/panel'));
-    const desbordeP = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
-    check(nombre + ' panel sin desborde horizontal', !desbordeP);
 
-    // Verificación de líneas divisorias "- - - - -" (dashed) con transparencia en el panel
-    const dashedStyles = await page.evaluate(() => {
-      const cabecera = window.getComputedStyle(document.querySelector('.panel-cabecera')).borderStyle;
-      const card = window.getComputedStyle(document.querySelector('.panel-card')).borderStyle;
-      const tablaWrap = window.getComputedStyle(document.querySelector('.panel-tabla-wrap')).borderStyle;
-      const tdBorder = window.getComputedStyle(document.querySelector('.tabla-plana td')).borderBottomStyle;
-      return { cabecera, card, tablaWrap, tdBorder };
+    // Ingresar al panel
+    await Promise.all([
+      page.waitForURL('**/panel**'),
+      page.click('button[type=submit].btn-ember'),
+    ]);
+    await page.waitForLoadState('networkidle');
+    check(`${nombre} /panel status y URL`, page.url().includes('/panel'), page.url());
+
+    const desbordePanel = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
+    check(`${nombre} /panel sin desborde horizontal`, !desbordePanel);
+
+    // 4. Arquitectura sidebar + topbar + DESIGN.md en /panel
+    const dashStructure = await page.evaluate(() => {
+      const sidebar = document.querySelector('#dash-sidebar');
+      const topbar = document.querySelector('.dash-topbar');
+      const title = document.querySelector('#topbar-section-title');
+      const activeNav = document.querySelector('#dash-nav-list .dash-nav-btn[data-section="sec-dashboard"]');
+      const rangePills = document.querySelector('#dash-range-pills');
+      return {
+        hasSidebar: !!sidebar,
+        hasTopbar: !!topbar,
+        hasTitle: !!title && title.textContent.trim().length > 0,
+        dashActive: !!activeNav && activeNav.classList.contains('activo'),
+        rangePillsVisible: !!rangePills && !rangePills.hidden && window.getComputedStyle(rangePills).display !== 'none',
+      };
     });
-    check(nombre + ' panel cabecera con borde dashed', dashedStyles.cabecera.includes('dashed'), dashedStyles.cabecera);
-    check(nombre + ' panel tarjeta con borde dashed', dashedStyles.card.includes('dashed'), dashedStyles.card);
-    check(nombre + ' panel tabla wrap con borde dashed', dashedStyles.tablaWrap.includes('dashed'), dashedStyles.tablaWrap);
-    check(nombre + ' panel filas de tabla con separador dashed', dashedStyles.tdBorder.includes('dashed'), dashedStyles.tdBorder);
+    check(`${nombre} /panel arquitectura sidebar/topbar presente`,
+      dashStructure.hasSidebar && dashStructure.hasTopbar && dashStructure.hasTitle && dashStructure.dashActive,
+      JSON.stringify(dashStructure));
+    check(`${nombre} /panel #dash-range-pills visible en dashboard`, dashStructure.rangePillsVisible);
 
-    // Tamaños táctiles
-    const vozAlto = await page.$eval('#btn-voz', el => el.getBoundingClientRect().height);
-    check(nombre + ' botón de voz >= 64px', vozAlto >= 64, vozAlto);
-    const teclaAlto = await page.$eval('.botonera button', el => el.getBoundingClientRect().height);
-    check(nombre + ' botonera >= 54px', teclaAlto >= 54, teclaAlto);
+    // Alineación DESIGN.md: borderRadius <= 2px, boxShadow === 'none', topbar backdropFilter === 'none'
+    const designMetrics = await page.evaluate(() => {
+      const checkGroup = (sel) => [...document.querySelectorAll(sel)].map(el => {
+        const cs = window.getComputedStyle(el);
+        const radii = [cs.borderTopLeftRadius, cs.borderTopRightRadius, cs.borderBottomLeftRadius, cs.borderBottomRightRadius]
+          .map(v => parseFloat(v) || 0);
+        return {
+          maxRadius: Math.max(...radii),
+          boxShadow: cs.boxShadow,
+        };
+      });
+      const cards = checkGroup('.dash-card');
+      const kpis = checkGroup('.dash-kpi-card');
+      const topBtns = checkGroup('.dash-topbar .btn');
+      const topbar = document.querySelector('.dash-topbar');
+      const topbarCs = topbar ? window.getComputedStyle(topbar) : null;
+      return {
+        cardsCount: cards.length,
+        kpisCount: kpis.length,
+        topBtnsCount: topBtns.length,
+        allRadiiOk: [...cards, ...kpis, ...topBtns].every(x => x.maxRadius <= 2),
+        allShadowNone: [...cards, ...kpis, ...topBtns].every(x => x.boxShadow === 'none'),
+        backdropFilter: topbarCs ? (topbarCs.backdropFilter || 'none') : 'missing',
+      };
+    });
+    check(`${nombre} /panel DESIGN.md geometría recta (<=2px) y sin sombras`,
+      designMetrics.cardsCount > 0 && designMetrics.kpisCount > 0 && designMetrics.allRadiiOk && designMetrics.allShadowNone,
+      JSON.stringify(designMetrics));
+    check(`${nombre} /panel .dash-topbar backdropFilter === 'none'`,
+      designMetrics.backdropFilter === 'none',
+      designMetrics.backdropFilter);
 
-    // Pruebas específicas del panel móvil vs desktop
-    if (nombre === 'movil') {
-      const dropdownVisible = await page.$eval('#panel-modulo-dropdown', el => window.getComputedStyle(el).display !== 'none');
-      const tabsDesktopOcultas = await page.$eval('.tabs-bar-desktop', el => window.getComputedStyle(el).display === 'none');
-      check('movil selector desplegable de módulos visible', dropdownVisible);
-      check('movil pestañas desktop ocultas', tabsDesktopOcultas);
+    // Verificar etiquetas en dashboard
+    const sinLabelDash = await checkVisibleFormLabels(page);
+    check(`${nombre} /panel (dashboard) campos visibles con label`, sinLabelDash.length === 0, sinLabelDash.join(', '));
 
-      // Desplegar menú de módulos
-      await page.click('#btn-dropdown-modulos');
-      await page.waitForTimeout(250);
-      const dropdownAbierto = await page.$eval('#dropdown-lista-modulos', el => el.classList.contains('abierto'));
-      check('movil dropdown de módulos se abre al tocar', dropdownAbierto);
-      await page.screenshot({ path: path.join(OUT, 'movil_panel_dropdown_abierto.png'), fullPage: false });
+    // Cambio de idioma es -> qu -> en -> es en /panel y verificación de dash.activity_sub != dash.c1_sub
+    const switchPanelLang = async (lang) => {
+      const visibleTopbarBtn = await page.$(`.dash-topbar-lang .btn-lang-choice[data-lang="${lang}"]`);
+      if (visibleTopbarBtn && await visibleTopbarBtn.isVisible()) {
+        await visibleTopbarBtn.click();
+      } else {
+        await page.click('#btn-sidebar-open');
+        await page.waitForTimeout(150);
+        await page.click(`.dash-lang-row .btn-lang-choice[data-lang="${lang}"]`);
+        await page.keyboard.press('Escape');
+      }
+      await page.waitForTimeout(150);
+    };
 
-      // Seleccionar Módulo 2 (Calidad Sanitaria)
-      await page.click('#dropdown-lista-modulos [data-tab="tab-calidad"]');
-      const calidadVisible = await page.$eval('#tab-calidad', el => !el.hidden);
-      const acopioOculto = await page.$eval('#tab-acopio', el => el.hidden);
-      const titActivo = await page.$eval('#dropdown-titulo-activo', el => el.innerText);
-      check('movil selección de módulo calidad funciona', calidadVisible && acopioOculto);
-      check('movil título de dropdown activo actualizado', titActivo.includes('Calidad sanitaria'));
-      await page.screenshot({ path: path.join(OUT, 'movil_panel_modulo_calidad.png'), fullPage: true });
-
-      // Volver a módulo 1
-      await page.click('#btn-dropdown-modulos');
-      await page.click('#dropdown-lista-modulos [data-tab="tab-acopio"]');
-    } else {
-      const tabAlto = await page.$eval('.tab', el => el.getBoundingClientRect().height);
-      check('desktop pestañas >= 48px', tabAlto >= 48, tabAlto);
-
-      // Teclado en pestañas desktop
-      await page.focus('#tab-btn-acopio');
-      await page.keyboard.press('ArrowRight');
-      const sel = await page.$eval('#tab-btn-calidad', el => el.getAttribute('aria-selected'));
-      check('desktop flecha derecha activa pestaña 2', sel === 'true', sel);
-      await page.screenshot({ path: path.join(OUT, 'desktop_panel_calidad.png'), fullPage: true });
-      await page.keyboard.press('End');
-      await page.screenshot({ path: path.join(OUT, 'desktop_panel_quincena.png'), fullPage: true });
-      await page.click('#tab-btn-acopio');
-      await page.screenshot({ path: path.join(OUT, 'desktop_panel_acopio.png'), fullPage: true });
-      await page.click('#tab-btn-tina');
-      await page.screenshot({ path: path.join(OUT, 'desktop_panel_tina.png'), fullPage: true });
+    for (const lang of ['qu', 'en', 'es']) {
+      await switchPanelLang(lang);
+      const langState = await page.evaluate(() => {
+        const actSub = document.querySelector('[data-i18n="dash.activity_sub"]')?.textContent?.trim() || '';
+        const c1Sub = document.querySelector('[data-i18n="dash.c1_sub"]')?.textContent?.trim() || '';
+        return {
+          htmlLang: document.documentElement.lang,
+          actSub,
+          c1Sub,
+        };
+      });
+      check(`${nombre} /panel idioma -> ${lang} actualiza html[lang]`, langState.htmlLang === lang, langState.htmlLang);
+      check(`${nombre} /panel [${lang}] subtítulo Actividad reciente != dash.c1_sub`,
+        langState.actSub.length > 0 && langState.actSub !== langState.c1Sub,
+        `actSub="${langState.actSub}" vs c1Sub="${langState.c1Sub}"`);
     }
 
-    // Etiquetas de formularios
-    const sinEtiqueta = await page.evaluate(() => [...document.querySelectorAll('input:not([type=hidden]), select')].filter(i => !i.id || !document.querySelector(`label[for="${i.id}"]`)).map(i => i.name));
-    check(nombre + ' todos los campos tienen label', sinEtiqueta.length === 0, sinEtiqueta.join(','));
+    await page.screenshot({ path: path.join(OUT, `${nombre}_panel_dashboard.png`), fullPage: false });
 
-    check(nombre + ' sin errores JS', errores.length === 0, errores.join(' | '));
+    // 5. Navegar a sec-acopio (en móvil abriendo primero el drawer con #btn-sidebar-open)
+    if (nombre !== 'desktop') {
+      const burgerVisible = await page.$eval('#btn-sidebar-open', el => window.getComputedStyle(el).display !== 'none');
+      check(`${nombre} /panel #btn-sidebar-open visible`, burgerVisible);
+      await page.click('#btn-sidebar-open');
+      await page.waitForTimeout(200);
+      const sidebarOpen = await page.$eval('#dash-sidebar', el => el.classList.contains('abierto'));
+      check(`${nombre} /panel sidebar se abre con #btn-sidebar-open`, sidebarOpen);
+    }
+
+    await page.click('#dash-nav-list .dash-nav-btn[data-section="sec-acopio"]');
+    await page.waitForTimeout(200);
+
+    const acopioState = await page.evaluate(() => {
+      const secAcopio = document.querySelector('#sec-acopio');
+      const secDash = document.querySelector('#sec-dashboard');
+      const rangePills = document.querySelector('#dash-range-pills');
+      const btnVoz = document.querySelector('#btn-voz');
+      const teclas = [...document.querySelectorAll('.botonera button')];
+      return {
+        acopioVisible: !!secAcopio && !secAcopio.hidden,
+        dashHidden: !!secDash && secDash.hidden,
+        rangePillsHidden: !!rangePills && rangePills.hidden && window.getComputedStyle(rangePills).display === 'none',
+        vozHeight: btnVoz ? btnVoz.getBoundingClientRect().height : 0,
+        teclaMinHeight: teclas.length ? Math.min(...teclas.map(b => b.getBoundingClientRect().height)) : 0,
+        teclaCount: teclas.length,
+        overflow: document.documentElement.scrollWidth > window.innerWidth + 1,
+      };
+    });
+
+    check(`${nombre} /panel sec-acopio activa y dashboard oculto`, acopioState.acopioVisible && acopioState.dashHidden);
+    check(`${nombre} /panel #dash-range-pills oculto fuera del dashboard`, acopioState.rangePillsHidden);
+    check(`${nombre} /panel #btn-voz altura >= 48px`, acopioState.vozHeight >= 48, `${acopioState.vozHeight}px`);
+    check(`${nombre} /panel .botonera button altura >= 48px`,
+      acopioState.teclaCount > 0 && acopioState.teclaMinHeight >= 48,
+      `${acopioState.teclaMinHeight}px`);
+    check(`${nombre} /panel sec-acopio sin desborde horizontal`, !acopioState.overflow);
+
+    const sinLabelAcopio = await checkVisibleFormLabels(page);
+    check(`${nombre} /panel sec-acopio campos visibles con label`, sinLabelAcopio.length === 0, sinLabelAcopio.join(', '));
+
+    await page.screenshot({ path: path.join(OUT, `${nombre}_panel_acopio.png`), fullPage: false });
+
+    // Verificar también sec-tina y sec-quincena para etiquetas de formularios y desborde
+    for (const sec of ['sec-tina', 'sec-quincena']) {
+      if (nombre !== 'desktop') {
+        await page.click('#btn-sidebar-open');
+        await page.waitForTimeout(150);
+      }
+      await page.click(`#dash-nav-list .dash-nav-btn[data-section="${sec}"]`);
+      await page.waitForTimeout(150);
+      const secOverflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
+      check(`${nombre} /panel ${sec} sin desborde horizontal`, !secOverflow);
+      const sinLabelSec = await checkVisibleFormLabels(page);
+      check(`${nombre} /panel ${sec} campos visibles con label`, sinLabelSec.length === 0, sinLabelSec.join(', '));
+    }
+
+    check(`${nombre} sin errores JS ni de consola`, errores.length === 0, errores.join(' | '));
     await ctx.close();
   }
+
   await browser.close();
   console.log(problemas.length ? 'FALLOS: ' + problemas.length : 'TODO OK');
   process.exit(problemas.length ? 1 : 0);

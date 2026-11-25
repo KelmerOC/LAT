@@ -2,23 +2,20 @@
 
 namespace App\Models;
 
+use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
 /**
- * ============================================================================
- * MODELO DE DATOS: USUARIO, RANGO Y CONTROL DE ACCESO GRANULAR (RBAC)
- * ============================================================================
- * Representa al personal de la microempresa quesera.
- * Los operadores se autentican mediante su identificador 'usuario' o 'email'.
- * Cada usuario puede usar un cargo predefinido o un perfil 'personalizado'
- * con permisos granulares por sección y control específico.
+ * Usuario del sistema con cargo, rango y permisos granulares por planta.
  */
 class User extends Authenticatable
 {
-    use Notifiable;
+    /** @use HasFactory<UserFactory> */
+    use HasFactory, Notifiable;
 
     /** @var list<string> */
     public const CARGOS_VALIDOS = [
@@ -181,7 +178,7 @@ class User extends Authenticatable
         return $this->belongsTo(self::class, 'creado_por');
     }
 
-    /** Scope de optimización: Solo usuarios autorizados y activos */
+    /** Solo usuarios autorizados y activos. */
     public function scopeActivos(Builder $query): Builder
     {
         return $query->where('activo', true);
@@ -211,6 +208,10 @@ class User extends Authenticatable
      */
     public function permisosEfectivos(): array
     {
+        if (! $this->activo) {
+            return [];
+        }
+
         if ($this->cargo === 'administracion') {
             return self::todasLasClavesPermisos();
         }
@@ -321,10 +322,14 @@ class User extends Authenticatable
     }
 
     /**
-     * Verifica jerarquía para evitar escalamiento de privilegios entre plantas o hacia admin.
+     * Verifica jerarquía para evitar escalamiento de privilegios o edición horizontal entre supervisores.
      */
     public function puedeGestionarUsuario(self $objetivo): bool
     {
+        if (! $this->activo) {
+            return false;
+        }
+
         if ($this->esAdmin()) {
             return true;
         }
@@ -333,7 +338,15 @@ class User extends Authenticatable
             return false;
         }
 
-        if ($objetivo->esAdmin()) {
+        if ($objetivo->id === $this->id || $objetivo->esAdmin()) {
+            return false;
+        }
+
+        if (! in_array($objetivo->rango, ['operador', 'personalizado'], true)) {
+            return false;
+        }
+
+        if ($objetivo->tienePermiso('admin.usuarios')) {
             return false;
         }
 
@@ -363,29 +376,8 @@ class User extends Authenticatable
         };
     }
 
-    // Métodos semánticos para verificación rápida de permisos (compatibilidad + granularidad)
     public function esAdmin(): bool
     {
         return $this->cargo === 'administracion';
-    }
-
-    public function puedeRegistrarAcopio(): bool
-    {
-        return $this->tienePermiso('acopio.crear');
-    }
-
-    public function puedeEvaluarCalidad(): bool
-    {
-        return $this->tienePermiso('calidad.evaluar');
-    }
-
-    public function puedeGestionarTina(): bool
-    {
-        return $this->tieneAlgunPermiso(['tinas.operar', 'tinas.gestionar']);
-    }
-
-    public function puedeVerFinanzas(): bool
-    {
-        return $this->tieneAlgunPermiso(['finanzas.ver', 'finanzas.registrar', 'finanzas.exportar']);
     }
 }

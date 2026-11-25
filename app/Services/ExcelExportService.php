@@ -2,29 +2,16 @@
 
 namespace App\Services;
 
-use App\Models\Acopio;
-use App\Models\Liquidacion;
 use App\Models\Planta;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
+use RuntimeException;
 
 /**
- * ============================================================================
- * SERVICIO DE EXPORTACIÓN EXCEL NATIVA (.XLSX / OOXML)
- * ============================================================================
- * Genera libros Excel (.xlsx) reales, ordenados y entendibles sin depender de
- * extensiones opcionales (funciona con zlib estándar en PHP/XAMPP y ZipArchive).
- * Incluye 4 hojas estructuradas:
- *  1. Liquidación Quincenal (con fórmulas SUM y moneda S/)
- *  2. Detalle de Acopios
- *  3. Movimientos y Ventas
- *  4. Comparativa de Plantas
+ * Genera archivos Excel (.xlsx / OOXML) en memoria sin dependencias externas.
  */
 class ExcelExportService
 {
-    /**
-     * Construye el binario .xlsx completo para descarga directa.
-     */
     public function generarBalanceXlsx(
         Planta $planta,
         string $desde,
@@ -37,28 +24,28 @@ class ExcelExportService
         $sheets = [
             [
                 'name' => 'Liquidacion Quincenal',
-                'xml'  => $this->buildLiquidacionSheet($planta, $desde, $hasta, $liquidaciones),
+                'xml' => $this->buildLiquidacionSheet($planta, $desde, $hasta, $liquidaciones),
             ],
             [
                 'name' => 'Detalle Acopios',
-                'xml'  => $this->buildAcopiosSheet($planta, $desde, $hasta, $acopios),
+                'xml' => $this->buildAcopiosSheet($planta, $desde, $hasta, $acopios),
             ],
             [
                 'name' => 'Movimientos y Ventas',
-                'xml'  => $this->buildMovimientosSheet($planta, $desde, $hasta, $movimientos),
+                'xml' => $this->buildMovimientosSheet($planta, $desde, $hasta, $movimientos),
             ],
             [
                 'name' => 'Comparativa Plantas',
-                'xml'  => $this->buildPlantasSheet($desde, $hasta, $rankingPlantas),
+                'xml' => $this->buildPlantasSheet($desde, $hasta, $rankingPlantas),
             ],
         ];
 
         $entries = [
-            '[Content_Types].xml'        => $this->buildContentTypes(count($sheets)),
-            '_rels/.rels'                => $this->buildRootRels(),
-            'xl/workbook.xml'            => $this->buildWorkbookXml($sheets),
+            '[Content_Types].xml' => $this->buildContentTypes(count($sheets)),
+            '_rels/.rels' => $this->buildRootRels(),
+            'xl/workbook.xml' => $this->buildWorkbookXml($sheets),
             'xl/_rels/workbook.xml.rels' => $this->buildWorkbookRels(count($sheets)),
-            'xl/styles.xml'              => $this->buildStylesXml(),
+            'xl/styles.xml' => $this->buildStylesXml(),
         ];
 
         foreach ($sheets as $idx => $sheet) {
@@ -123,25 +110,26 @@ class ExcelExportService
             $r++;
         }
 
-        if ($r === 5) {
+        $lastDataRow = $r - 1;
+        if ($lastDataRow < 5) {
             $rows[] = $this->rowXml($r, [$this->cellText("A{$r}", 'Sin registros en este período.', 4)], 20);
-            $r++;
+            $autoFilterRef = null;
         } else {
-            $last = $r - 1;
             $rows[] = $this->rowXml($r, [
                 $this->cellText("A{$r}", 'TOTALES', 10),
-                $this->cellText("B{$r}", ($last - 4).' productores', 10),
+                $this->cellText("B{$r}", ($lastDataRow - 4).' productores', 10),
                 $this->cellText("C{$r}", '', 10),
-                $this->cellFormula("D{$r}", "SUM(D5:D{$last})", $sumLitros, 12),
+                $this->cellFormula("D{$r}", "SUM(D5:D{$lastDataRow})", $sumLitros, 12),
                 $this->cellText("E{$r}", '-', 10),
-                $this->cellFormula("F{$r}", "SUM(F5:F{$last})", $sumBruto, 11),
-                $this->cellFormula("G{$r}", "SUM(G5:G{$last})", $sumAdelantos, 11),
-                $this->cellFormula("H{$r}", "SUM(H5:H{$last})", 0.0, 11),
-                $this->cellFormula("I{$r}", "SUM(I5:I{$last})", $sumNeto, 11),
+                $this->cellFormula("F{$r}", "SUM(F5:F{$lastDataRow})", $sumBruto, 11),
+                $this->cellFormula("G{$r}", "SUM(G5:G{$lastDataRow})", $sumAdelantos, 11),
+                $this->cellFormula("H{$r}", "SUM(H5:H{$lastDataRow})", 0.0, 11),
+                $this->cellFormula("I{$r}", "SUM(I5:I{$lastDataRow})", $sumNeto, 11),
             ], 22);
+            $autoFilterRef = "A4:I{$lastDataRow}";
         }
 
-        return $this->wrapWorksheet($rows, [14, 28, 22, 18, 18, 18, 22, 18, 20], 4, "A4:I{$r}");
+        return $this->wrapWorksheet($rows, [14, 28, 22, 18, 18, 18, 22, 18, 20], 4, $autoFilterRef);
     }
 
     private function buildAcopiosSheet(Planta $planta, string $desde, string $hasta, Collection $acopios): string
@@ -168,7 +156,11 @@ class ExcelExportService
                 'acida' => 'Con acidez (74°)',
                 default => 'Pendiente',
             };
-            $destinoTxt = $acopio->destino === 'quesillo_4_dias' ? 'Quesillo fresco 4 días' : 'Tina principal (Queso/Yogur)';
+            $destinoTxt = match ($acopio->calidad) {
+                'acida' => 'Quesillo fresco (4 días)',
+                'pendiente' => 'Pendiente de prueba',
+                default => 'Tina principal (Queso/Yogur)',
+            };
 
             $rows[] = $this->rowXml($r, [
                 $this->cellText("A{$r}", $acopio->fecha?->format('d/m/Y') ?? (string) $acopio->fecha, $sTxt),
@@ -184,22 +176,26 @@ class ExcelExportService
             $r++;
         }
 
-        if ($r > 5) {
-            $last = $r - 1;
+        $lastDataRow = $r - 1;
+        if ($lastDataRow < 5) {
+            $rows[] = $this->rowXml($r, [$this->cellText("A{$r}", 'Sin acopios en este período.', 4)], 20);
+            $autoFilterRef = null;
+        } else {
             $rows[] = $this->rowXml($r, [
                 $this->cellText("A{$r}", 'TOTAL LITROS', 10),
                 $this->cellText("B{$r}", '', 10),
                 $this->cellText("C{$r}", '', 10),
-                $this->cellText("D{$r}", ($last - 4).' entregas', 10),
+                $this->cellText("D{$r}", ($lastDataRow - 4).' entregas', 10),
                 $this->cellText("E{$r}", '', 10),
-                $this->cellFormula("F{$r}", "SUM(F5:F{$last})", $sumLitros, 12),
+                $this->cellFormula("F{$r}", "SUM(F5:F{$lastDataRow})", $sumLitros, 12),
                 $this->cellText("G{$r}", '', 10),
                 $this->cellText("H{$r}", '', 10),
                 $this->cellText("I{$r}", '', 10),
             ], 22);
+            $autoFilterRef = "A4:I{$lastDataRow}";
         }
 
-        return $this->wrapWorksheet($rows, [13, 10, 12, 26, 18, 14, 18, 20, 26], 4, "A4:I{$r}");
+        return $this->wrapWorksheet($rows, [13, 10, 12, 26, 18, 14, 18, 20, 26], 4, $autoFilterRef);
     }
 
     private function buildMovimientosSheet(Planta $planta, string $desde, string $hasta, Collection $movimientos): string
@@ -214,16 +210,18 @@ class ExcelExportService
         ]);
 
         $r = 5;
-        $sumMonto = 0.0;
-        $sumUnidades = 0;
+        $sumIngresos = 0.0;
+        $sumEgresos = 0.0;
+        $sumUnidadesIngresos = 0;
+        $sumUnidadesEgresos = 0;
 
         $tipoLabels = [
             'adelanto_efectivo' => 'Adelanto en efectivo',
-            'adelanto_queso'    => 'Adelanto en queso',
-            'ayuda_del_dia'     => 'Ayuda del día (sin DNI)',
-            'gasto_operativo'   => 'Gasto operativo',
-            'venta_producto'    => 'Venta de producto lácteo',
-            'quincena'          => 'Liquidación quincenal',
+            'adelanto_queso' => 'Adelanto en queso',
+            'ayuda_del_dia' => 'Ayuda del día (sin DNI)',
+            'gasto_operativo' => 'Gasto operativo',
+            'venta_producto' => 'Venta de producto lácteo',
+            'quincena' => 'Liquidación quincenal',
         ];
 
         foreach ($movimientos as $idx => $mov) {
@@ -232,33 +230,68 @@ class ExcelExportService
             $sInt = $zebra ? 14 : 13;
             $sCur = $zebra ? 9 : 8;
 
-            $sumMonto += (float) $mov->monto;
-            $sumUnidades += (int) ($mov->cantidad_unidades ?? 0);
+            $monto = (float) $mov->monto;
+            $unidades = (int) ($mov->cantidad_unidades ?? 0);
+
+            if ($mov->tipo === 'venta_producto') {
+                $sumIngresos += $monto;
+                $sumUnidadesIngresos += $unidades;
+            } else {
+                $sumEgresos += $monto;
+                $sumUnidadesEgresos += $unidades;
+            }
 
             $rows[] = $this->rowXml($r, [
                 $this->cellText("A{$r}", $mov->fecha?->format('d/m/Y') ?? (string) $mov->fecha, $sTxt),
                 $this->cellText("B{$r}", $tipoLabels[$mov->tipo] ?? $mov->tipo, $sTxt),
                 $this->cellText("C{$r}", (string) ($mov->proveedor?->nombre ?? 'Planta / Faena externa'), $sTxt),
                 $this->cellText("D{$r}", (string) $mov->concepto, $sTxt),
-                $this->cellNum("E{$r}", (int) ($mov->cantidad_unidades ?? 0), $sInt),
-                $this->cellNum("F{$r}", (float) $mov->monto, $sCur),
+                $this->cellNum("E{$r}", $unidades, $sInt),
+                $this->cellNum("F{$r}", $monto, $sCur),
             ], 20);
             $r++;
         }
 
-        if ($r > 5) {
-            $last = $r - 1;
-            $rows[] = $this->rowXml($r, [
-                $this->cellText("A{$r}", 'TOTAL MOVIMIENTOS', 10),
-                $this->cellText("B{$r}", ($last - 4).' registros', 10),
-                $this->cellText("C{$r}", '', 10),
-                $this->cellText("D{$r}", '', 10),
-                $this->cellFormula("E{$r}", "SUM(E5:E{$last})", $sumUnidades, 12),
-                $this->cellFormula("F{$r}", "SUM(F5:F{$last})", $sumMonto, 11),
+        $lastDataRow = $r - 1;
+        if ($lastDataRow < 5) {
+            $rows[] = $this->rowXml($r, [$this->cellText("A{$r}", 'Sin movimientos en este período.', 4)], 20);
+            $autoFilterRef = null;
+        } else {
+            $filaIngresos = $r;
+            $filaEgresos = $r + 1;
+            $filaNeto = $r + 2;
+
+            $rows[] = $this->rowXml($filaIngresos, [
+                $this->cellText("A{$filaIngresos}", 'TOTAL INGRESOS', 10),
+                $this->cellText("B{$filaIngresos}", 'Ventas de producto', 10),
+                $this->cellText("C{$filaIngresos}", '', 10),
+                $this->cellText("D{$filaIngresos}", ($lastDataRow - 4).' movimientos totales', 10),
+                $this->cellFormula("E{$filaIngresos}", "SUMIF(B5:B{$lastDataRow},\"Venta de producto lácteo\",E5:E{$lastDataRow})", $sumUnidadesIngresos, 12),
+                $this->cellFormula("F{$filaIngresos}", "SUMIF(B5:B{$lastDataRow},\"Venta de producto lácteo\",F5:F{$lastDataRow})", round($sumIngresos, 2), 11),
             ], 22);
+
+            $rows[] = $this->rowXml($filaEgresos, [
+                $this->cellText("A{$filaEgresos}", 'TOTAL EGRESOS', 10),
+                $this->cellText("B{$filaEgresos}", 'Gastos, ayudas y adelantos', 10),
+                $this->cellText("C{$filaEgresos}", '', 10),
+                $this->cellText("D{$filaEgresos}", '', 10),
+                $this->cellFormula("E{$filaEgresos}", "SUMIF(B5:B{$lastDataRow},\"<>Venta de producto lácteo\",E5:E{$lastDataRow})", $sumUnidadesEgresos, 12),
+                $this->cellFormula("F{$filaEgresos}", "SUMIF(B5:B{$lastDataRow},\"<>Venta de producto lácteo\",F5:F{$lastDataRow})", round($sumEgresos, 2), 11),
+            ], 22);
+
+            $rows[] = $this->rowXml($filaNeto, [
+                $this->cellText("A{$filaNeto}", 'BALANCE NETO', 10),
+                $this->cellText("B{$filaNeto}", 'Ingresos menos egresos', 10),
+                $this->cellText("C{$filaNeto}", '', 10),
+                $this->cellText("D{$filaNeto}", '', 10),
+                $this->cellText("E{$filaNeto}", '-', 10),
+                $this->cellFormula("F{$filaNeto}", "F{$filaIngresos}-F{$filaEgresos}", round($sumIngresos - $sumEgresos, 2), 11),
+            ], 22);
+
+            $autoFilterRef = "A4:F{$lastDataRow}";
         }
 
-        return $this->wrapWorksheet($rows, [13, 24, 24, 42, 18, 18], 4, "A4:F{$r}");
+        return $this->wrapWorksheet($rows, [13, 24, 24, 42, 18, 18], 4, $autoFilterRef);
     }
 
     private function buildPlantasSheet(string $desde, string $hasta, Collection $rankingPlantas): string
@@ -302,24 +335,32 @@ class ExcelExportService
             $r++;
         }
 
-        if ($r > 5) {
-            $last = $r - 1;
+        $lastDataRow = $r - 1;
+        if ($lastDataRow < 5) {
+            $rows[] = $this->rowXml($r, [$this->cellText("A{$r}", 'Sin plantas registradas en este período.', 4)], 20);
+            $autoFilterRef = null;
+        } else {
+            $etiquetaTotal = $rankingPlantas->count() === 1 ? 'TOTAL PLANTA' : 'TOTAL RED DE PLANTAS';
             $rows[] = $this->rowXml($r, [
                 $this->cellText("A{$r}", 'RED', 10),
                 $this->cellText("B{$r}", '', 10),
-                $this->cellText("C{$r}", 'TOTAL RED DE PLANTAS', 10),
+                $this->cellText("C{$r}", $etiquetaTotal, 10),
                 $this->cellText("D{$r}", '', 10),
-                $this->cellFormula("E{$r}", "SUM(E5:E{$last})", $sumVentas, 11),
-                $this->cellNum("F{$r}", 100.0, 12),
-                $this->cellFormula("G{$r}", "SUM(G5:G{$last})", (int) $rankingPlantas->sum('ventas_unidades'), 12),
-                $this->cellFormula("H{$r}", "SUM(H5:H{$last})", $sumLitros, 12),
-                $this->cellFormula("I{$r}", "SUM(I5:I{$last})", $sumMoldes, 12),
+                $this->cellFormula("E{$r}", "SUM(E5:E{$lastDataRow})", $sumVentas, 11),
+                $this->cellNum("F{$r}", $sumVentas > 0 ? 100.0 : 0.0, 12),
+                $this->cellFormula("G{$r}", "SUM(G5:G{$lastDataRow})", (int) $rankingPlantas->sum('ventas_unidades'), 12),
+                $this->cellFormula("H{$r}", "SUM(H5:H{$lastDataRow})", $sumLitros, 12),
+                $this->cellFormula("I{$r}", "SUM(I5:I{$lastDataRow})", $sumMoldes, 12),
             ], 22);
+            $autoFilterRef = "A4:I{$lastDataRow}";
         }
 
-        return $this->wrapWorksheet($rows, [10, 12, 30, 24, 20, 16, 18, 18, 18], 4, "A4:I{$r}");
+        return $this->wrapWorksheet($rows, [10, 12, 30, 24, 20, 16, 18, 18, 18], 4, $autoFilterRef);
     }
 
+    /**
+     * @param  array<int, string>  $headers
+     */
     private function headerRowXml(int $rowNum, array $headers): string
     {
         $cells = [];
@@ -331,6 +372,9 @@ class ExcelExportService
         return $this->rowXml($rowNum, $cells, 24);
     }
 
+    /**
+     * @param  array<int, string>  $cells
+     */
     private function rowXml(int $rowNum, array $cells, int $height = 19): string
     {
         return '<row r="'.$rowNum.'" ht="'.$height.'" customHeight="1">'.implode('', $cells).'</row>';
@@ -338,7 +382,7 @@ class ExcelExportService
 
     private function cellText(string $ref, string $value, int $style): string
     {
-        return '<c r="'.$ref.'" t="inlineStr" s="'.$style.'"><is><t>'.$this->esc($value).'</t></is></c>';
+        return '<c r="'.$ref.'" t="inlineStr" s="'.$style.'"><is><t xml:space="preserve">'.$this->esc($value).'</t></is></c>';
     }
 
     private function cellNum(string $ref, float|int $value, int $style): string
@@ -351,7 +395,11 @@ class ExcelExportService
         return '<c r="'.$ref.'" s="'.$style.'"><f>'.$this->esc($formula).'</f><v>'.$cached.'</v></c>';
     }
 
-    private function wrapWorksheet(array $rows, array $widths, int $freezeRow, string $autoFilterRef): string
+    /**
+     * @param  array<int, string>  $rows
+     * @param  array<int, int>  $widths
+     */
+    private function wrapWorksheet(array $rows, array $widths, int $freezeRow, ?string $autoFilterRef = null): string
     {
         $colsXml = '<cols>';
         foreach ($widths as $i => $w) {
@@ -359,6 +407,8 @@ class ExcelExportService
             $colsXml .= '<col min="'.$idx.'" max="'.$idx.'" width="'.$w.'" customWidth="1"/>';
         }
         $colsXml .= '</cols>';
+
+        $autoFilterXml = $autoFilterRef !== null ? '<autoFilter ref="'.$autoFilterRef.'"/>' : '';
 
         return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
             .'<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
@@ -368,7 +418,7 @@ class ExcelExportService
             .'<sheetFormatPr defaultRowHeight="19"/>'
             .$colsXml
             .'<sheetData>'.implode('', $rows).'</sheetData>'
-            .'<autoFilter ref="'.$autoFilterRef.'"/>'
+            .$autoFilterXml
             .'</worksheet>';
     }
 
@@ -385,7 +435,11 @@ class ExcelExportService
 
     private function esc(string $text): string
     {
-        $clean = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F]/u', '', $text) ?? '';
+        $utf8 = mb_check_encoding($text, 'UTF-8')
+            ? $text
+            : mb_convert_encoding($text, 'UTF-8', 'UTF-8');
+
+        $clean = preg_replace('/[^\x09\x0A\x0D\x20-\x{D7FF}\x{E000}-\x{FFFD}\x{10000}-\x{10FFFF}]/u', '', $utf8) ?? '';
 
         return htmlspecialchars($clean, ENT_XML1 | ENT_QUOTES, 'UTF-8');
     }
@@ -415,6 +469,9 @@ class ExcelExportService
             .'</Relationships>';
     }
 
+    /**
+     * @param  array<int, array{name: string, xml: string}>  $sheets
+     */
     private function buildWorkbookXml(array $sheets): string
     {
         $sheetNodes = '';
@@ -427,6 +484,7 @@ class ExcelExportService
             .'<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" '
             .'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
             .'<sheets>'.$sheetNodes.'</sheets>'
+            .'<calcPr fullCalcOnLoad="1"/>'
             .'</workbook>';
     }
 
@@ -474,21 +532,21 @@ class ExcelExportService
             .'</borders>'
             .'<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'
             .'<cellXfs count="15">'
-            .'<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'                                                                 // 0: default
-            .'<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/>'                                                   // 1: title
-            .'<xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1"/>'                                                   // 2: subtitle
-            .'<xf numFmtId="0" fontId="3" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center" wrapText="1"/></xf>' // 3: header
-            .'<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1"><alignment vertical="center"/></xf>'                // 4: text
-            .'<xf numFmtId="0" fontId="0" fillId="3" borderId="1" xfId="0" applyFill="1" applyBorder="1"><alignment vertical="center"/></xf>'  // 5: text zebra
-            .'<xf numFmtId="164" fontId="0" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyBorder="1"><alignment horizontal="right" vertical="center"/></xf>' // 6: num
-            .'<xf numFmtId="164" fontId="0" fillId="3" borderId="1" xfId="0" applyNumberFormat="1" applyFill="1" applyBorder="1"><alignment horizontal="right" vertical="center"/></xf>' // 7: num zebra
-            .'<xf numFmtId="165" fontId="0" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyBorder="1"><alignment horizontal="right" vertical="center"/></xf>' // 8: currency
-            .'<xf numFmtId="165" fontId="0" fillId="3" borderId="1" xfId="0" applyNumberFormat="1" applyFill="1" applyBorder="1"><alignment horizontal="right" vertical="center"/></xf>' // 9: currency zebra
-            .'<xf numFmtId="0" fontId="4" fillId="4" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1"><alignment vertical="center"/></xf>' // 10: total text
-            .'<xf numFmtId="165" fontId="4" fillId="4" borderId="2" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1"><alignment horizontal="right" vertical="center"/></xf>' // 11: total currency
-            .'<xf numFmtId="164" fontId="4" fillId="4" borderId="2" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1"><alignment horizontal="right" vertical="center"/></xf>' // 12: total num
-            .'<xf numFmtId="166" fontId="0" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyBorder="1"><alignment horizontal="right" vertical="center"/></xf>' // 13: int
-            .'<xf numFmtId="166" fontId="0" fillId="3" borderId="1" xfId="0" applyNumberFormat="1" applyFill="1" applyBorder="1"><alignment horizontal="right" vertical="center"/></xf>' // 14: int zebra
+            .'<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'
+            .'<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/>'
+            .'<xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1"/>'
+            .'<xf numFmtId="0" fontId="3" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center" wrapText="1"/></xf>'
+            .'<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1"><alignment vertical="center"/></xf>'
+            .'<xf numFmtId="0" fontId="0" fillId="3" borderId="1" xfId="0" applyFill="1" applyBorder="1"><alignment vertical="center"/></xf>'
+            .'<xf numFmtId="164" fontId="0" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyBorder="1"><alignment horizontal="right" vertical="center"/></xf>'
+            .'<xf numFmtId="164" fontId="0" fillId="3" borderId="1" xfId="0" applyNumberFormat="1" applyFill="1" applyBorder="1"><alignment horizontal="right" vertical="center"/></xf>'
+            .'<xf numFmtId="165" fontId="0" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyBorder="1"><alignment horizontal="right" vertical="center"/></xf>'
+            .'<xf numFmtId="165" fontId="0" fillId="3" borderId="1" xfId="0" applyNumberFormat="1" applyFill="1" applyBorder="1"><alignment horizontal="right" vertical="center"/></xf>'
+            .'<xf numFmtId="0" fontId="4" fillId="4" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1"><alignment vertical="center"/></xf>'
+            .'<xf numFmtId="165" fontId="4" fillId="4" borderId="2" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1"><alignment horizontal="right" vertical="center"/></xf>'
+            .'<xf numFmtId="164" fontId="4" fillId="4" borderId="2" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1"><alignment horizontal="right" vertical="center"/></xf>'
+            .'<xf numFmtId="166" fontId="0" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyBorder="1"><alignment horizontal="right" vertical="center"/></xf>'
+            .'<xf numFmtId="166" fontId="0" fillId="3" borderId="1" xfId="0" applyNumberFormat="1" applyFill="1" applyBorder="1"><alignment horizontal="right" vertical="center"/></xf>'
             .'</cellXfs>'
             .'</styleSheet>';
     }
@@ -496,10 +554,18 @@ class ExcelExportService
     /**
      * Empaqueta archivos XML en un contenedor PKZIP estándar sin requerir ext-zip.
      *
-     * @param array<string, string> $files
+     * @param  array<string, string>  $files
      */
     private function packZip(array $files): string
     {
+        $now = Carbon::now();
+        $dosTime = (($now->hour & 0x1F) << 11)
+            | (($now->minute & 0x3F) << 5)
+            | (intdiv($now->second, 2) & 0x1F);
+        $dosDate = ((max(0, $now->year - 1980) & 0x7F) << 9)
+            | (($now->month & 0x0F) << 5)
+            | ($now->day & 0x1F);
+
         $data = '';
         $central = '';
         $offset = 0;
@@ -510,17 +576,19 @@ class ExcelExportService
             $uncompressed = strlen($content);
             $crc = crc32($content) & 0xFFFFFFFF;
             $compressed = gzdeflate($content, 6);
+            if ($compressed === false) {
+                throw new RuntimeException("No se pudo comprimir la entrada '{$name}' del archivo XLSX.");
+            }
             $compLen = strlen($compressed);
 
-            // Local file header (30 bytes + name)
             $localHeader = pack(
                 'VvvvvvVVVvv',
                 0x04034B50,
-                20,       // version needed
-                0x0800,   // UTF-8 flag
-                8,        // deflate
-                0,
-                0,
+                20,
+                0x0800,
+                8,
+                $dosTime,
+                $dosDate,
                 $crc,
                 $compLen,
                 $uncompressed,
@@ -530,7 +598,6 @@ class ExcelExportService
 
             $data .= $localHeader.$name.$compressed;
 
-            // Central directory header (46 bytes + name)
             $central .= pack(
                 'VvvvvvvVVVvvvvvVV',
                 0x02014B50,
@@ -538,8 +605,8 @@ class ExcelExportService
                 20,
                 0x0800,
                 8,
-                0,
-                0,
+                $dosTime,
+                $dosDate,
                 $crc,
                 $compLen,
                 $uncompressed,

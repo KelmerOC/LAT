@@ -1,7 +1,7 @@
 <section id="sec-calidad" class="tab-panel" aria-label="Control de calidad sanitaria" hidden>
   <div class="panel-card">
     <h2 data-i18n="m2.title">Control sanitario en recepción (prueba de alcohol a 74°)</h2>
-    <p data-i18n="m2.sub"><strong>Principio de cero desperdicio:</strong> la leche con acidez no se desecha ni se multa al productor. Se clasifica de inmediato y se deriva a quesillos frescos de 4 días.</p>
+    <p><strong data-i18n="m2.sub_lead">Principio de cero desperdicio:</strong> <span data-i18n="m2.sub_body">la leche con acidez no se desecha ni se multa al productor. Se clasifica de inmediato y se deriva a quesillos frescos de 4 días.</span></p>
 
     <div class="tabla-region" role="region" aria-label="Clasificación sanitaria de las entregas de hoy" tabindex="0">
       <table class="tabla-plana">

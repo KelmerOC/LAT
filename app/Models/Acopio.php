@@ -8,11 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * ============================================================================
- * MODELO DE DATOS: ACOPIO DIARIO DE LECHE Y TRIAGE DE CALIDAD
- * ============================================================================
- * Registra cada entrega de leche (por voz o manual) y su evaluación sanitaria
- * mediante la prueba rápida de alcohol (buena -> tina queso / ácida -> quesillos).
+ * Entrega diaria de leche y evaluación sanitaria por prueba de alcohol.
  */
 class Acopio extends Model
 {

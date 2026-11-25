@@ -2,17 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
+use Illuminate\Contracts\View\View;
 
-/**
- * ============================================================================
- * CONTROLADOR: PORTAL PÚBLICO INSTITUCIONAL
- * ============================================================================
- * Presenta la vitrina comunitaria, propuesta de valor real y selector trilingüe.
- */
 class HomeController extends Controller
 {
-    public function index()
+    public function index(): View
     {
         return view('inicio');
     }

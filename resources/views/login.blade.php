@@ -33,9 +33,9 @@
         </p>
 
         <div class="perfiles">
-          <h3 data-i18n="login.profiles_title">Perfiles de prueba sembrados</h3>
-          <p class="ayuda" data-i18n="login.profiles_help">Rellenan el formulario con un clic. Solo para demostración universitaria.</p>
-          <div class="perfiles-grid" role="group" aria-label="Perfiles de prueba">
+          <h3 data-i18n="login.profiles_title">Accesos rápidos por cargo</h3>
+          <p class="ayuda" data-i18n="login.profiles_help">Seleccione un perfil para ingresar al panel.</p>
+          <div class="perfiles-grid" role="group" aria-label="Accesos rápidos por cargo">
             <button type="button" class="perfil-btn" data-usuario="donjusto@sanborreal.pe" aria-pressed="true"><strong>Don Justo</strong><span data-i18n="login.role_admin">Administración total</span></button>
             <button type="button" class="perfil-btn" data-usuario="carlos.anta" aria-pressed="false"><strong>Carlos</strong><span data-i18n="login.role_manager">Encargado de planta</span></button>
             <button type="button" class="perfil-btn" data-usuario="sabina.tina" aria-pressed="false"><strong>Sabina</strong><span data-i18n="login.role_vat">Tina / Calidad</span></button>
