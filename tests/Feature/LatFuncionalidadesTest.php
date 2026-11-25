@@ -898,4 +898,113 @@ class LatFuncionalidadesTest extends TestCase
             Carbon::setTestNow();
         }
     }
+
+    public function test_idioma_qu_persiste_en_cookie_tras_logout_y_traduce_flashes_y_validaciones(): void
+    {
+        $resLang = $this->get('/idioma/qu');
+        $resLang->assertStatus(302);
+        $resLang->assertCookie('lat_locale', 'qu');
+        $this->assertSame('qu', session('locale'));
+
+        $resLogin = $this->withCookie('lat_locale', 'qu')->post('/login', [
+            'login' => 'donjusto',
+            'password' => 'secreto123',
+        ]);
+        $resLogin->assertRedirect('/panel');
+        $resLogin->assertSessionHas('exito', __('lat.auth_welcome', [], 'qu'));
+        $this->assertStringNotContainsString('Bienvenido', (string) session('exito'));
+
+        $resInvalid = $this->withCookie('lat_locale', 'qu')->post('/panel/acopio', [
+            'proveedor_id' => 999999,
+            'litros' => 0,
+        ]);
+        $resInvalid->assertSessionHasErrors(['proveedor_id', 'litros']);
+
+        $errors = session('errors');
+        $this->assertNotNull($errors);
+        $provError = $errors->first('proveedor_id');
+        $litrosError = $errors->first('litros');
+
+        $this->assertStringContainsString('manam kanchu', $provError);
+        $this->assertStringContainsString('yupayllapas utaq aswan hatun kananmi', $litrosError);
+        $this->assertStringNotContainsString('El campo', $provError);
+        $this->assertStringNotContainsString('debe ser', $litrosError);
+
+        $resLogout = $this->withCookie('lat_locale', 'qu')->post('/logout');
+        $resLogout->assertRedirect('/');
+        $resLogout->assertCookie('lat_locale', 'qu');
+        $resLogout->assertSessionHas('info', __('lat.auth_logout', [], 'qu'));
+        $this->assertGuest();
+
+        $this->withCookie('lat_locale', 'qu')
+            ->get('/')
+            ->assertStatus(200)
+            ->assertSee('<html lang="qu" data-server-locale="qu">', false)
+            ->assertSee(__('lat.auth_logout', [], 'qu'));
+
+        $this->withCookie('lat_locale', 'qu')
+            ->get('/login')
+            ->assertStatus(200)
+            ->assertSee('<html lang="qu" data-server-locale="qu">', false);
+    }
+
+    public function test_exportar_excel_en_quechua_genera_ooxml_y_sumif_coherente(): void
+    {
+        $admin = User::where('usuario', 'donjusto')->firstOrFail();
+
+        $this->get('/idioma/qu')->assertStatus(302)->assertCookie('lat_locale', 'qu');
+
+        $excelRes = $this->actingAs($admin)
+            ->withCookie('lat_locale', 'qu')
+            ->get('/panel/exportar-excel');
+        $excelRes->assertStatus(200);
+        $excelRes->assertHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+
+        $bytes = $excelRes->getContent();
+        $this->assertSame("PK\x03\x04", substr($bytes, 0, 4));
+
+        $tmp = tempnam(sys_get_temp_dir(), 'lat_qu_');
+        $this->assertNotFalse($tmp);
+        file_put_contents($tmp, $bytes);
+
+        $zip = new ZipArchive;
+        $this->assertTrue($zip->open($tmp) === true);
+
+        try {
+            $workbook = $zip->getFromName('xl/workbook.xml');
+            $sheet1 = $zip->getFromName('xl/worksheets/sheet1.xml');
+            $sheet2 = $zip->getFromName('xl/worksheets/sheet2.xml');
+            $sheet3 = $zip->getFromName('xl/worksheets/sheet3.xml');
+            $sheet4 = $zip->getFromName('xl/worksheets/sheet4.xml');
+
+            $this->assertIsString($workbook);
+            $this->assertIsString($sheet1);
+            $this->assertIsString($sheet2);
+            $this->assertIsString($sheet3);
+            $this->assertIsString($sheet4);
+
+            $this->assertStringContainsString(__('lat.excel_sheet_settlement', [], 'qu'), $workbook);
+            $this->assertStringContainsString(__('lat.excel_sheet_intake', [], 'qu'), $workbook);
+            $this->assertStringContainsString(__('lat.excel_sheet_movements', [], 'qu'), $workbook);
+            $this->assertStringContainsString(__('lat.excel_sheet_plants', [], 'qu'), $workbook);
+
+            $this->assertStringContainsString('QUINCENA PAGAMANTAPACHA WILLAKUY', $sheet1);
+            $this->assertStringContainsString(__('lat.excel_totals', [], 'qu'), $sheet1);
+            $this->assertStringContainsString("SAPA P'UNCHAW LICHI HUÑUY", html_entity_decode($sheet2, ENT_XML1 | ENT_QUOTES, 'UTF-8'));
+            $this->assertStringContainsString('KISU RUWANA WASIKUNA TUPACHIY', $sheet4);
+
+            $sheet3Decoded = html_entity_decode($sheet3, ENT_XML1 | ENT_QUOTES, 'UTF-8');
+            $ventaLabelQu = __('lat.mov_venta_producto', [], 'qu');
+            $this->assertSame('Lichi ruru rantikuy', $ventaLabelQu);
+            $this->assertStringContainsString($ventaLabelQu, $sheet3Decoded);
+            $this->assertStringContainsString('SUMIF(B5:B', $sheet3Decoded);
+            $this->assertStringContainsString("\"{$ventaLabelQu}\"", $sheet3Decoded);
+            $this->assertStringContainsString('"<>'.$ventaLabelQu.'"', $sheet3Decoded);
+            $this->assertStringContainsString(__('lat.excel_total_income', [], 'qu'), $sheet3Decoded);
+            $this->assertStringContainsString(__('lat.excel_net_balance', [], 'qu'), $sheet3Decoded);
+        } finally {
+            $zip->close();
+            @unlink($tmp);
+        }
+    }
 }

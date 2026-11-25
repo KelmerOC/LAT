@@ -3,7 +3,7 @@
   <div class="modal-swiss modal-sm">
     <div class="modal-head">
       <h2 id="confirm-modal-title" data-i18n="confirm.title">Confirmar cambio</h2>
-      <button type="button" class="modal-close" data-close-modal="modal-confirmacion-lat" aria-label="Cerrar">&times;</button>
+      <button type="button" class="modal-close" data-close-modal="modal-confirmacion-lat" aria-label="Cerrar" data-i18n-aria="modal.close_aria">&times;</button>
     </div>
     <div class="modal-body">
       <p id="confirm-modal-message" style="font-size: 1rem; color: var(--color-ink); margin: 0;"></p>
@@ -21,7 +21,7 @@
   <div class="modal-swiss">
     <div class="modal-head">
       <h2 id="edit-modal-title" data-i18n="edit_modal.title">Editar datos registrados (Corrección rápida)</h2>
-      <button type="button" class="modal-close" data-close-modal="modal-editar-datos" aria-label="Cerrar">&times;</button>
+      <button type="button" class="modal-close" data-close-modal="modal-editar-datos" aria-label="Cerrar" data-i18n-aria="modal.close_aria">&times;</button>
     </div>
     <div class="modal-body">
       <p style="margin-bottom: 1rem; color: var(--color-graphite);" data-i18n="edit_modal.sub">Corrija aquí entregas, movimientos o ganaderos si ocurrió un error al registrar.</p>
@@ -31,15 +31,15 @@
           : ($usuario->tienePermiso('finanzas.editar') ? 'subtab-movimientos' : 'subtab-ganaderos');
       @endphp
 
-      <div class="subtabs-edit" role="tablist" aria-label="Categorías de corrección">
+      <div class="subtabs-edit" role="tablist" aria-label="Categorías de corrección" data-i18n-aria="modal.subtabs_aria">
         @if($usuario->tienePermiso('acopio.editar'))
-          <button type="button" role="tab" id="tab-btn-subtab-acopios" aria-controls="subtab-acopios" aria-selected="{{ $primeraSubtab === 'subtab-acopios' ? 'true' : 'false' }}" class="subtab-btn {{ $primeraSubtab === 'subtab-acopios' ? 'activo' : '' }}" data-subtab="subtab-acopios">Entregas de hoy ({{ $acopiosHoy->count() }})</button>
+          <button type="button" role="tab" id="tab-btn-subtab-acopios" aria-controls="subtab-acopios" aria-selected="{{ $primeraSubtab === 'subtab-acopios' ? 'true' : 'false' }}" class="subtab-btn {{ $primeraSubtab === 'subtab-acopios' ? 'activo' : '' }}" data-subtab="subtab-acopios"><span data-i18n="modal.tab_acopios">Entregas de hoy</span> <span>({{ $acopiosHoy->count() }})</span></button>
         @endif
         @if($usuario->tienePermiso('finanzas.editar'))
-          <button type="button" role="tab" id="tab-btn-subtab-movimientos" aria-controls="subtab-movimientos" aria-selected="{{ $primeraSubtab === 'subtab-movimientos' ? 'true' : 'false' }}" class="subtab-btn {{ $primeraSubtab === 'subtab-movimientos' ? 'activo' : '' }}" data-subtab="subtab-movimientos">Movimientos y ventas ({{ $movimientos->count() }})</button>
+          <button type="button" role="tab" id="tab-btn-subtab-movimientos" aria-controls="subtab-movimientos" aria-selected="{{ $primeraSubtab === 'subtab-movimientos' ? 'true' : 'false' }}" class="subtab-btn {{ $primeraSubtab === 'subtab-movimientos' ? 'activo' : '' }}" data-subtab="subtab-movimientos"><span data-i18n="modal.tab_movs">Movimientos y ventas</span> <span>({{ $movimientos->count() }})</span></button>
         @endif
         @if($usuario->tienePermiso('acopio.proveedores'))
-          <button type="button" role="tab" id="tab-btn-subtab-ganaderos" aria-controls="subtab-ganaderos" aria-selected="{{ $primeraSubtab === 'subtab-ganaderos' ? 'true' : 'false' }}" class="subtab-btn {{ $primeraSubtab === 'subtab-ganaderos' ? 'activo' : '' }}" data-subtab="subtab-ganaderos">Ganaderos ({{ $proveedores->count() }})</button>
+          <button type="button" role="tab" id="tab-btn-subtab-ganaderos" aria-controls="subtab-ganaderos" aria-selected="{{ $primeraSubtab === 'subtab-ganaderos' ? 'true' : 'false' }}" class="subtab-btn {{ $primeraSubtab === 'subtab-ganaderos' ? 'activo' : '' }}" data-subtab="subtab-ganaderos"><span data-i18n="modal.tab_farmers">Ganaderos</span> <span>({{ $proveedores->count() }})</span></button>
         @endif
       </div>
 
@@ -54,7 +54,7 @@
                   <td class="num-tabular">{{ substr($a->hora, 0, 5) }}</td>
                   <td>{{ $a->proveedor->nombre }}</td>
                   <td class="num"><strong>{{ number_format($a->litros, 1) }} L</strong></td>
-                  <td>{{ $a->calidad }}</td>
+                  <td><span data-i18n="calidad.state_{{ $a->calidad }}">{{ $a->calidad }}</span></td>
                   <td style="display: flex; gap: 0.35rem;">
                     <button type="button" class="btn-micro js-edit-acopio"
                       data-id="{{ $a->id }}"
@@ -63,7 +63,7 @@
                       data-calidad="{{ $a->calidad }}"
                       data-metodo="{{ $a->metodo }}"
                       data-hora="{{ substr($a->hora, 0, 5) }}" data-i18n="common.edit">Editar</button>
-                    <form method="POST" action="{{ route('panel.acopio.delete', $a->id) }}" class="js-confirm-form" data-confirm-kind="delete" data-detalle="acopio de {{ $a->proveedor->nombre }}">
+                    <form method="POST" action="{{ route('panel.acopio.delete', $a->id) }}" class="js-confirm-form" data-confirm-kind="delete" data-detalle-tipo="acopio" data-detalle-nombre="{{ $a->proveedor->nombre ?? '' }}" data-detalle="acopio de {{ $a->proveedor->nombre }}">
                       @csrf @method('DELETE')
                       <button type="submit" class="btn-micro btn-micro-danger" data-i18n="common.erase">Borrar</button>
                     </form>
@@ -86,7 +86,7 @@
             <tbody>
               @forelse($movimientos as $m)
                 <tr>
-                  <td>{{ $tiposMovLabels[$m->tipo] ?? $m->tipo }}</td>
+                  <td data-i18n="m4.mov_type_{{ $m->tipo }}">{{ $tiposMovLabels[$m->tipo] ?? $m->tipo }}</td>
                   <td>{{ $m->concepto }}</td>
                   <td class="num">S/ {{ number_format($m->monto, 2) }}</td>
                   <td>
@@ -114,15 +114,15 @@
           @csrf
           <div>
             <label class="form-label" for="np-prv-cod" style="font-size: 0.78rem;" data-i18n="modal.prov_code">Código</label>
-            <input type="text" id="np-prv-cod" name="codigo" class="input-lat" required placeholder="PRV-06" style="min-height: 40px;">
+            <input type="text" id="np-prv-cod" name="codigo" class="input-lat" required placeholder="PRV-06" data-i18n-placeholder="modal.ph_prov_code" style="min-height: 40px;">
           </div>
           <div>
             <label class="form-label" for="np-prv-nom" style="font-size: 0.78rem;" data-i18n="modal.prov_name">Nombre del ganadero</label>
-            <input type="text" id="np-prv-nom" name="nombre" class="input-lat" required placeholder="Sra. Elena Quispe" style="min-height: 40px;">
+            <input type="text" id="np-prv-nom" name="nombre" class="input-lat" required placeholder="Sra. Elena Quispe" data-i18n-placeholder="modal.ph_prov_name" style="min-height: 40px;">
           </div>
           <div>
             <label class="form-label" for="np-prv-sec" style="font-size: 0.78rem;" data-i18n="modal.prov_sector">Sector</label>
-            <input type="text" id="np-prv-sec" name="sector" class="input-lat" placeholder="Markjo" style="min-height: 40px;">
+            <input type="text" id="np-prv-sec" name="sector" class="input-lat" placeholder="Markjo" data-i18n-placeholder="modal.ph_prov_sector" style="min-height: 40px;">
           </div>
           <button type="submit" class="btn btn-ocean btn-compacto" data-i18n="modal.add_short">+ Agregar</button>
         </form>
@@ -160,7 +160,7 @@
   <div class="modal-swiss modal-sm">
     <div class="modal-head">
       <h2 id="title-edit-proveedor" data-i18n="modal.edit_prov_title">Editar ganadero</h2>
-      <button type="button" class="modal-close" data-close-modal="modal-edit-proveedor" aria-label="Cerrar">&times;</button>
+      <button type="button" class="modal-close" data-close-modal="modal-edit-proveedor" aria-label="Cerrar" data-i18n-aria="modal.close_aria">&times;</button>
     </div>
     <form method="POST" id="form-edit-proveedor" action="">
       @csrf @method('PUT')
@@ -194,8 +194,8 @@
 <div class="modal-overlay" id="modal-edit-acopio" hidden role="dialog" aria-modal="true" aria-labelledby="title-edit-acopio">
   <div class="modal-swiss modal-sm">
     <div class="modal-head">
-      <h2 id="title-edit-acopio">Corregir entrega de leche</h2>
-      <button type="button" class="modal-close" data-close-modal="modal-edit-acopio" aria-label="Cerrar">&times;</button>
+      <h2 id="title-edit-acopio" data-i18n="modal.edit_acopio_title">Corregir entrega de leche</h2>
+      <button type="button" class="modal-close" data-close-modal="modal-edit-acopio" aria-label="Cerrar" data-i18n-aria="modal.close_aria">&times;</button>
     </div>
     <form method="POST" id="form-edit-acopio" action="">
       @csrf @method('PUT')
@@ -222,16 +222,16 @@
           <div class="form-grupo">
             <label class="form-label" for="edit-ac-calidad" data-i18n="m1.col_quality">Calidad</label>
             <select name="calidad" id="edit-ac-calidad" class="select-lat">
-              <option value="buena">Aprobada (Tina principal)</option>
-              <option value="acida">Ácida (Quesillo 4 días)</option>
-              <option value="pendiente">Pendiente</option>
+              <option value="buena" data-i18n="calidad.state_buena">Aprobada (Tina principal)</option>
+              <option value="acida" data-i18n="calidad.state_acida">Ácida (Quesillo 4 días)</option>
+              <option value="pendiente" data-i18n="calidad.state_pendiente">Pendiente</option>
             </select>
           </div>
           <div class="form-grupo">
             <label class="form-label" for="edit-ac-metodo" data-i18n="m1.col_method">Método</label>
             <select name="metodo" id="edit-ac-metodo" class="select-lat">
-              <option value="manual">Manual</option>
-              <option value="voz">Voz</option>
+              <option value="manual" data-i18n="common.manual">Manual</option>
+              <option value="voz" data-i18n="common.voice">Voz</option>
             </select>
           </div>
         </div>
@@ -250,8 +250,8 @@
 <div class="modal-overlay" id="modal-edit-mov" hidden role="dialog" aria-modal="true" aria-labelledby="title-edit-mov">
   <div class="modal-swiss modal-sm">
     <div class="modal-head">
-      <h2 id="title-edit-mov">Corregir movimiento / venta</h2>
-      <button type="button" class="modal-close" data-close-modal="modal-edit-mov" aria-label="Cerrar">&times;</button>
+      <h2 id="title-edit-mov" data-i18n="modal.edit_mov_title">Corregir movimiento / venta</h2>
+      <button type="button" class="modal-close" data-close-modal="modal-edit-mov" aria-label="Cerrar" data-i18n-aria="modal.close_aria">&times;</button>
     </div>
     <form method="POST" id="form-edit-mov" action="">
       @csrf @method('PUT')
@@ -259,17 +259,17 @@
         <div class="form-grupo">
           <label class="form-label" for="edit-mov-tipo" data-i18n="m4.lbl_type">Tipo</label>
           <select name="tipo" id="edit-mov-tipo" class="select-lat">
-            <option value="venta_producto">Venta de producto lácteo</option>
-            <option value="adelanto_efectivo">Adelanto en efectivo</option>
-            <option value="adelanto_queso">Adelanto en moldes de queso</option>
-            <option value="ayuda_del_dia">Ayuda del día (sin DNI)</option>
-            <option value="gasto_operativo">Gasto operativo</option>
+            <option value="venta_producto" data-i18n="m4.mov_type_venta_producto">Venta de producto lácteo</option>
+            <option value="adelanto_efectivo" data-i18n="m4.mov_type_adelanto_efectivo">Adelanto en efectivo</option>
+            <option value="adelanto_queso" data-i18n="m4.mov_type_adelanto_queso">Adelanto en moldes de queso</option>
+            <option value="ayuda_del_dia" data-i18n="m4.mov_type_ayuda_del_dia">Ayuda del día (sin DNI)</option>
+            <option value="gasto_operativo" data-i18n="m4.mov_type_gasto_operativo">Gasto operativo</option>
           </select>
         </div>
         <div class="form-grupo">
           <label class="form-label" for="edit-mov-prov" data-i18n="m4.lbl_prov">Productor (si aplica)</label>
           <select name="proveedor_id" id="edit-mov-prov" class="select-lat">
-            <option value="">Ninguno / planta</option>
+            <option value="" data-i18n="m4.opt_none_plant">Ninguno / planta</option>
             @foreach($proveedores as $prov)
               <option value="{{ $prov->id }}">{{ $prov->nombre }}</option>
             @endforeach
@@ -304,41 +304,41 @@
 <div class="modal-overlay" id="modal-nueva-tina" hidden role="dialog" aria-modal="true" aria-labelledby="title-nueva-tina">
   <div class="modal-swiss modal-sm">
     <div class="modal-head">
-      <h2 id="title-nueva-tina">Agregar nueva tina</h2>
-      <button type="button" class="modal-close" data-close-modal="modal-nueva-tina" aria-label="Cerrar">&times;</button>
+      <h2 id="title-nueva-tina" data-i18n="modal.new_tina_title">Agregar nueva tina</h2>
+      <button type="button" class="modal-close" data-close-modal="modal-nueva-tina" aria-label="Cerrar" data-i18n-aria="modal.close_aria">&times;</button>
     </div>
     <form method="POST" action="{{ route('panel.tinas.store') }}">
       @csrf
       <div class="modal-body">
         <div class="grid-form-2-code">
           <div class="form-grupo">
-            <label class="form-label" for="nt-codigo">Código</label>
-            <input type="text" name="codigo" id="nt-codigo" class="input-lat" required placeholder="TINA-04">
+            <label class="form-label" for="nt-codigo" data-i18n="modal.tina_code">Código</label>
+            <input type="text" name="codigo" id="nt-codigo" class="input-lat" required placeholder="TINA-04" data-i18n-placeholder="modal.ph_tina_code">
           </div>
           <div class="form-grupo">
-            <label class="form-label" for="nt-nombre">Nombre de la tina</label>
-            <input type="text" name="nombre" id="nt-nombre" class="input-lat" required placeholder="Tina Queso Fresco">
+            <label class="form-label" for="nt-nombre" data-i18n="modal.tina_name">Nombre de la tina</label>
+            <input type="text" name="nombre" id="nt-nombre" class="input-lat" required placeholder="Tina Queso Fresco" data-i18n-placeholder="modal.ph_tina_name">
           </div>
         </div>
         <div class="grid-form-2">
           <div class="form-grupo">
-            <label class="form-label" for="nt-cap">Capacidad (L)</label>
+            <label class="form-label" for="nt-cap" data-i18n="modal.tina_cap">Capacidad (L)</label>
             <input type="number" step="10" min="20" max="10000" name="capacidad_litros" id="nt-cap" class="input-lat" value="300" required>
           </div>
           <div class="form-grupo">
-            <label class="form-label" for="nt-tipo">Tipo de uso</label>
+            <label class="form-label" for="nt-tipo" data-i18n="modal.tina_type">Tipo de uso</label>
             <select name="tipo" id="nt-tipo" class="select-lat">
-              <option value="principal_queso">Queso principal</option>
-              <option value="quesillo">Quesillo 4 días</option>
-              <option value="yogur">Yogur</option>
-              <option value="multiproposito">Multipropósito</option>
+              <option value="principal_queso" data-i18n="tina.type_principal_queso">Queso principal</option>
+              <option value="quesillo" data-i18n="tina.type_quesillo">Quesillo 4 días</option>
+              <option value="yogur" data-i18n="tina.type_yogur">Yogur</option>
+              <option value="multiproposito" data-i18n="tina.type_multiproposito">Multipropósito</option>
             </select>
           </div>
         </div>
       </div>
       <div class="modal-foot">
         <button type="button" class="btn btn-outline" data-close-modal="modal-nueva-tina" data-i18n="common.cancel">Cancelar</button>
-        <button type="submit" class="btn btn-ember">Crear tina</button>
+        <button type="submit" class="btn btn-ember" data-i18n="modal.create_tina_btn">Crear tina</button>
       </div>
     </form>
   </div>
@@ -348,41 +348,41 @@
   <div class="modal-swiss modal-sm">
     <div class="modal-head">
       <h2 id="title-edit-tina" data-i18n="m3.edit_tina">Editar tina</h2>
-      <button type="button" class="modal-close" data-close-modal="modal-edit-tina" aria-label="Cerrar">&times;</button>
+      <button type="button" class="modal-close" data-close-modal="modal-edit-tina" aria-label="Cerrar" data-i18n-aria="modal.close_aria">&times;</button>
     </div>
     <form method="POST" id="form-edit-tina" action="">
       @csrf @method('PUT')
       <div class="modal-body">
         <div class="grid-form-2-code">
           <div class="form-grupo">
-            <label class="form-label" for="et-codigo">Código</label>
+            <label class="form-label" for="et-codigo" data-i18n="modal.tina_code">Código</label>
             <input type="text" name="codigo" id="et-codigo" class="input-lat" required>
           </div>
           <div class="form-grupo">
-            <label class="form-label" for="et-nombre">Nombre</label>
+            <label class="form-label" for="et-nombre" data-i18n="modal.tina_name">Nombre</label>
             <input type="text" name="nombre" id="et-nombre" class="input-lat" required>
           </div>
         </div>
         <div class="grid-form-2">
           <div class="form-grupo">
-            <label class="form-label" for="et-cap">Capacidad (L)</label>
+            <label class="form-label" for="et-cap" data-i18n="modal.tina_cap">Capacidad (L)</label>
             <input type="number" step="10" min="20" max="10000" name="capacidad_litros" id="et-cap" class="input-lat" required>
           </div>
           <div class="form-grupo">
-            <label class="form-label" for="et-tipo">Tipo</label>
+            <label class="form-label" for="et-tipo" data-i18n="modal.tina_type">Tipo</label>
             <select name="tipo" id="et-tipo" class="select-lat">
-              <option value="principal_queso">Queso principal</option>
-              <option value="quesillo">Quesillo 4 días</option>
-              <option value="yogur">Yogur</option>
-              <option value="multiproposito">Multipropósito</option>
+              <option value="principal_queso" data-i18n="tina.type_principal_queso">Queso principal</option>
+              <option value="quesillo" data-i18n="tina.type_quesillo">Quesillo 4 días</option>
+              <option value="yogur" data-i18n="tina.type_yogur">Yogur</option>
+              <option value="multiproposito" data-i18n="tina.type_multiproposito">Multipropósito</option>
             </select>
           </div>
         </div>
         <div class="form-grupo">
-          <label class="form-label" for="et-activa">Estado operativo</label>
+          <label class="form-label" for="et-activa" data-i18n="modal.tina_status">Estado operativo</label>
           <select name="activa" id="et-activa" class="select-lat">
-            <option value="1">Activa</option>
-            <option value="0">Inactiva / Mantenimiento</option>
+            <option value="1" data-i18n="m3.active">Activa</option>
+            <option value="0" data-i18n="modal.tina_inactive_maint">Inactiva / Mantenimiento</option>
           </select>
         </div>
       </div>
@@ -400,8 +400,8 @@
 <div class="modal-overlay" id="modal-nueva-planta" hidden role="dialog" aria-modal="true" aria-labelledby="title-nueva-planta">
   <div class="modal-swiss modal-sm">
     <div class="modal-head">
-      <h2 id="title-nueva-planta">Agregar nueva planta</h2>
-      <button type="button" class="modal-close" data-close-modal="modal-nueva-planta" aria-label="Cerrar">&times;</button>
+      <h2 id="title-nueva-planta" data-i18n="modal.new_plant_title">Agregar nueva planta</h2>
+      <button type="button" class="modal-close" data-close-modal="modal-nueva-planta" aria-label="Cerrar" data-i18n-aria="modal.close_aria">&times;</button>
     </div>
     <form method="POST" action="{{ route('admin.plantas.store') }}">
       @csrf
@@ -409,11 +409,11 @@
         <div class="grid-form-2-code">
           <div class="form-grupo">
             <label class="form-label" for="np-cod" data-i18n="m6.col_code">Código</label>
-            <input type="text" name="codigo" id="np-cod" class="input-lat" required placeholder="PLT-04">
+            <input type="text" name="codigo" id="np-cod" class="input-lat" required placeholder="PLT-04" data-i18n-placeholder="modal.ph_plant_code">
           </div>
           <div class="form-grupo">
             <label class="form-label" for="np-nom" data-i18n="m6.col_plant_name">Nombre de planta</label>
-            <input type="text" name="nombre" id="np-nom" class="input-lat" required placeholder="Quesería Maras">
+            <input type="text" name="nombre" id="np-nom" class="input-lat" required placeholder="Quesería Maras" data-i18n-placeholder="modal.ph_plant_name">
           </div>
         </div>
         <div class="grid-form-2-wide">
@@ -429,7 +429,7 @@
       </div>
       <div class="modal-foot">
         <button type="button" class="btn btn-outline" data-close-modal="modal-nueva-planta" data-i18n="common.cancel">Cancelar</button>
-        <button type="submit" class="btn btn-ember">Crear planta</button>
+        <button type="submit" class="btn btn-ember" data-i18n="modal.create_plant_btn">Crear planta</button>
       </div>
     </form>
   </div>
@@ -438,8 +438,8 @@
 <div class="modal-overlay" id="modal-edit-planta" hidden role="dialog" aria-modal="true" aria-labelledby="title-edit-planta">
   <div class="modal-swiss modal-sm">
     <div class="modal-head">
-      <h2 id="title-edit-planta">Editar planta láctea</h2>
-      <button type="button" class="modal-close" data-close-modal="modal-edit-planta" aria-label="Cerrar">&times;</button>
+      <h2 id="title-edit-planta" data-i18n="modal.edit_plant_title">Editar planta láctea</h2>
+      <button type="button" class="modal-close" data-close-modal="modal-edit-planta" aria-label="Cerrar" data-i18n-aria="modal.close_aria">&times;</button>
     </div>
     <form method="POST" id="form-edit-planta" action="">
       @csrf @method('PUT')
@@ -467,8 +467,8 @@
         <div class="form-grupo">
           <label class="form-label" for="ep-act" data-i18n="m6.col_status">Estado</label>
           <select name="activa" id="ep-act" class="select-lat">
-            <option value="1">Activa</option>
-            <option value="0">Inactiva</option>
+            <option value="1" data-i18n="m3.active">Activa</option>
+            <option value="0" data-i18n="m3.inactive">Inactiva</option>
           </select>
         </div>
       </div>
@@ -487,7 +487,7 @@
   <div class="modal-swiss modal-lg">
     <div class="modal-head">
       <h2 id="title-nuevo-usuario" data-i18n="modal.new_user_title">Crear usuario personalizado y permisos</h2>
-      <button type="button" class="modal-close" data-close-modal="modal-nuevo-usuario" aria-label="Cerrar">&times;</button>
+      <button type="button" class="modal-close" data-close-modal="modal-nuevo-usuario" aria-label="Cerrar" data-i18n-aria="modal.close_aria">&times;</button>
     </div>
     <form method="POST" action="{{ route('admin.usuarios.store') }}" class="js-user-perm-form" data-prefix="nu">
       @csrf
@@ -495,46 +495,46 @@
       <div class="modal-body">
         <div class="grid-form-3">
           <div class="form-grupo">
-            <label class="form-label" for="nu-name">Nombre completo</label>
-            <input type="text" name="name" id="nu-name" class="input-lat" required placeholder="Ej: Juana Condori">
+            <label class="form-label" for="nu-name" data-i18n="modal.user_fullname">Nombre completo</label>
+            <input type="text" name="name" id="nu-name" class="input-lat" required placeholder="Ej: Juana Condori" data-i18n-placeholder="modal.ph_user_fullname">
           </div>
           <div class="form-grupo">
-            <label class="form-label" for="nu-user">Usuario de acceso</label>
-            <input type="text" name="usuario" id="nu-user" class="input-lat" required placeholder="juana.acopio">
+            <label class="form-label" for="nu-user" data-i18n="modal.user_login">Usuario de acceso</label>
+            <input type="text" name="usuario" id="nu-user" class="input-lat" required placeholder="juana.acopio" data-i18n-placeholder="modal.ph_user_login">
           </div>
           <div class="form-grupo">
-            <label class="form-label" for="nu-pass">Contraseña inicial</label>
-            <input type="password" name="password" id="nu-pass" class="input-lat" required minlength="6" placeholder="Mín. 6 caracteres">
+            <label class="form-label" for="nu-pass" data-i18n="modal.user_pass_init">Contraseña inicial</label>
+            <input type="password" name="password" id="nu-pass" class="input-lat" required minlength="6" placeholder="Mín. 6 caracteres" data-i18n-placeholder="modal.ph_user_pass_init">
           </div>
         </div>
 
         <div class="grid-form-4">
           <div class="form-grupo">
-            <label class="form-label" for="nu-cargo">Plantilla / Cargo</label>
+            <label class="form-label" for="nu-cargo" data-i18n="modal.user_role_tpl">Plantilla / Cargo</label>
             <select name="cargo" id="nu-cargo" class="select-lat js-cargo-template" data-prefix="nu">
-              <option value="personalizado">Personalizado (Manual)</option>
-              <option value="recolector_ruta">Recolector en ruta</option>
-              <option value="control_tina">Control de tina / calidad</option>
-              <option value="encargado_planta">Encargado de planta</option>
-              <option value="contador_externo">Contador externo</option>
+              <option value="personalizado" data-i18n="m6.role_personalizado">Personalizado (Manual)</option>
+              <option value="recolector_ruta" data-i18n="m6.role_recolector_ruta">Recolector en ruta</option>
+              <option value="control_tina" data-i18n="m6.role_control_tina">Control de tina / calidad</option>
+              <option value="encargado_planta" data-i18n="m6.role_encargado_planta">Encargado de planta</option>
+              <option value="contador_externo" data-i18n="m6.role_contador_externo">Contador externo</option>
               @if($usuario->esAdmin())
-                <option value="administracion">Administración total</option>
+                <option value="administracion" data-i18n="m6.role_administracion">Administración total</option>
               @endif
             </select>
           </div>
           <div class="form-grupo">
-            <label class="form-label" for="nu-rango">Rango jerárquico</label>
+            <label class="form-label" for="nu-rango" data-i18n="modal.user_rank">Rango jerárquico</label>
             <select name="rango" id="nu-rango" class="select-lat">
-              <option value="personalizado">Acceso Personalizado</option>
-              <option value="operador">Operador</option>
-              <option value="supervisor">Supervisor con Rango</option>
+              <option value="personalizado" data-i18n="m6.rank_personalizado">Acceso Personalizado</option>
+              <option value="operador" data-i18n="m6.rank_operador">Operador</option>
+              <option value="supervisor" data-i18n="m6.rank_supervisor">Supervisor con Rango</option>
               @if($usuario->esAdmin())
-                <option value="administrador">Administrador Total</option>
+                <option value="administrador" data-i18n="m6.rank_administrador">Administrador Total</option>
               @endif
             </select>
           </div>
           <div class="form-grupo">
-            <label class="form-label" for="nu-planta">Planta asignada</label>
+            <label class="form-label" for="nu-planta" data-i18n="modal.user_plant">Planta asignada</label>
             @if($usuario->esAdmin())
               <select name="planta_id" id="nu-planta" class="select-lat">
                 @foreach($plantas as $pl)
@@ -548,7 +548,7 @@
           </div>
           <div class="form-grupo">
             <label class="form-label" for="nu-email" data-i18n="modal.email_opt">Correo (opcional)</label>
-            <input type="email" name="email" id="nu-email" class="input-lat" placeholder="opcional@planta.pe">
+            <input type="email" name="email" id="nu-email" class="input-lat" placeholder="opcional@planta.pe" data-i18n-placeholder="modal.ph_user_email">
           </div>
         </div>
 
@@ -602,7 +602,7 @@
   <div class="modal-swiss modal-lg">
     <div class="modal-head">
       <h2 id="title-edit-usuario" data-i18n="modal.edit_user_title">Editar usuario y permisos por sección</h2>
-      <button type="button" class="modal-close" data-close-modal="modal-edit-usuario" aria-label="Cerrar">&times;</button>
+      <button type="button" class="modal-close" data-close-modal="modal-edit-usuario" aria-label="Cerrar" data-i18n-aria="modal.close_aria">&times;</button>
     </div>
     <form method="POST" id="form-edit-usuario" action="" class="js-user-perm-form" data-prefix="eu">
       @csrf @method('PUT')
@@ -610,46 +610,46 @@
       <div class="modal-body">
         <div class="grid-form-3">
           <div class="form-grupo">
-            <label class="form-label" for="eu-name">Nombre completo</label>
+            <label class="form-label" for="eu-name" data-i18n="modal.user_fullname">Nombre completo</label>
             <input type="text" name="name" id="eu-name" class="input-lat" required>
           </div>
           <div class="form-grupo">
-            <label class="form-label" for="eu-user">Usuario</label>
+            <label class="form-label" for="eu-user" data-i18n="modal.user_login_short">Usuario</label>
             <input type="text" name="usuario" id="eu-user" class="input-lat" required>
           </div>
           <div class="form-grupo">
-            <label class="form-label" for="eu-pass">Nueva contraseña (opcional)</label>
-            <input type="password" name="password" id="eu-pass" class="input-lat" minlength="6" placeholder="Mantener actual">
+            <label class="form-label" for="eu-pass" data-i18n="modal.user_pass_new">Nueva contraseña (opcional)</label>
+            <input type="password" name="password" id="eu-pass" class="input-lat" minlength="6" placeholder="Mantener actual" data-i18n-placeholder="modal.ph_user_pass_keep">
           </div>
         </div>
 
         <div class="grid-form-4">
           <div class="form-grupo">
-            <label class="form-label" for="eu-cargo">Plantilla / Cargo</label>
+            <label class="form-label" for="eu-cargo" data-i18n="modal.user_role_tpl">Plantilla / Cargo</label>
             <select name="cargo" id="eu-cargo" class="select-lat js-cargo-template" data-prefix="eu">
-              <option value="personalizado">Personalizado (Manual)</option>
-              <option value="recolector_ruta">Recolector en ruta</option>
-              <option value="control_tina">Control de tina / calidad</option>
-              <option value="encargado_planta">Encargado de planta</option>
-              <option value="contador_externo">Contador externo</option>
+              <option value="personalizado" data-i18n="m6.role_personalizado">Personalizado (Manual)</option>
+              <option value="recolector_ruta" data-i18n="m6.role_recolector_ruta">Recolector en ruta</option>
+              <option value="control_tina" data-i18n="m6.role_control_tina">Control de tina / calidad</option>
+              <option value="encargado_planta" data-i18n="m6.role_encargado_planta">Encargado de planta</option>
+              <option value="contador_externo" data-i18n="m6.role_contador_externo">Contador externo</option>
               @if($usuario->esAdmin())
-                <option value="administracion">Administración total</option>
+                <option value="administracion" data-i18n="m6.role_administracion">Administración total</option>
               @endif
             </select>
           </div>
           <div class="form-grupo">
-            <label class="form-label" for="eu-rango">Rango</label>
+            <label class="form-label" for="eu-rango" data-i18n="modal.user_rank_short">Rango</label>
             <select name="rango" id="eu-rango" class="select-lat">
-              <option value="personalizado">Acceso Personalizado</option>
-              <option value="operador">Operador</option>
-              <option value="supervisor">Supervisor con Rango</option>
+              <option value="personalizado" data-i18n="m6.rank_personalizado">Acceso Personalizado</option>
+              <option value="operador" data-i18n="m6.rank_operador">Operador</option>
+              <option value="supervisor" data-i18n="m6.rank_supervisor">Supervisor con Rango</option>
               @if($usuario->esAdmin())
-                <option value="administrador">Administrador Total</option>
+                <option value="administrador" data-i18n="m6.rank_administrador">Administrador Total</option>
               @endif
             </select>
           </div>
           <div class="form-grupo">
-            <label class="form-label" for="eu-planta">Planta</label>
+            <label class="form-label" for="eu-planta" data-i18n="m6.col_plant">Planta</label>
             @if($usuario->esAdmin())
               <select name="planta_id" id="eu-planta" class="select-lat">
                 @foreach($plantas as $pl)
@@ -664,15 +664,15 @@
           <div class="form-grupo">
             <label class="form-label" for="eu-activo" data-i18n="m6.col_status">Estado</label>
             <select name="activo" id="eu-activo" class="select-lat">
-              <option value="1">Activo</option>
-              <option value="0">Inactivo</option>
+              <option value="1" data-i18n="m3.active">Activo</option>
+              <option value="0" data-i18n="m3.inactive">Inactivo</option>
             </select>
           </div>
         </div>
 
         <div class="form-grupo">
           <label class="form-label" for="eu-email" data-i18n="modal.email_opt">Correo (opcional)</label>
-          <input type="email" name="email" id="eu-email" class="input-lat" value="" placeholder="opcional@planta.pe">
+          <input type="email" name="email" id="eu-email" class="input-lat" value="" placeholder="opcional@planta.pe" data-i18n-placeholder="modal.ph_user_email">
         </div>
 
         <div class="perm-summary-bar">

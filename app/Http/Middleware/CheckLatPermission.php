@@ -21,7 +21,7 @@ class CheckLatPermission
         $user = $request->user();
 
         if (! $user || ! $user->activo) {
-            abort(403, 'Cuenta inactiva o no autenticada.');
+            abort(403, __('lat.account_inactive_or_unauthenticated'));
         }
 
         $requeridos = [];
@@ -35,7 +35,7 @@ class CheckLatPermission
         }
 
         if ($requeridos !== [] && ! $user->tieneAlgunPermiso($requeridos)) {
-            abort(403, 'No tienes permisos asignados para realizar esta acción o acceder a esta sección.');
+            abort(403, __('lat.permission_denied_action'));
         }
 
         return $next($request);

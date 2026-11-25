@@ -10,7 +10,7 @@
   ];
 @endphp
 
-<section id="sec-admin" class="tab-panel" aria-label="Administración de plantas y usuarios" hidden>
+<section id="sec-admin" class="tab-panel" aria-label="Administración de plantas y usuarios" data-i18n-aria="tab.admin" hidden>
   @if($usuario->tienePermiso('admin.plantas'))
     <div class="panel-card" style="margin-bottom: 1.5rem;">
       <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; margin-bottom: 1rem;">
@@ -21,7 +21,7 @@
         <button type="button" class="btn btn-ember" data-open-modal="modal-nueva-planta" data-i18n="m6.add_plant">+ Nueva planta</button>
       </div>
 
-      <div class="tabla-region" tabindex="0">
+      <div class="tabla-region" role="region" aria-label="Plantas lácteas" data-i18n-aria="m6.plants_title" tabindex="0">
         <table class="tabla-plana">
           <thead>
             <tr>
@@ -81,7 +81,7 @@
         <button type="button" class="btn btn-ocean" id="btn-abrir-nuevo-usuario" data-open-modal="modal-nuevo-usuario" data-i18n="m6.add_user">+ Crear usuario personalizado</button>
       </div>
 
-      <div class="tabla-region" tabindex="0">
+      <div class="tabla-region" role="region" aria-label="Usuarios del sistema" data-i18n-aria="m6.users_aria" tabindex="0">
         <table class="tabla-plana">
           <thead>
             <tr>
@@ -114,8 +114,8 @@
                 </td>
                 <td class="num-tabular">{{ $u->usuario }}</td>
                 <td>
-                  <span class="chip chip-celeste">{{ $u->etiquetaCargo() }}</span>
-                  <small style="margin-top: 4px;">{{ $u->etiquetaRango() }}</small>
+                  <span class="chip chip-celeste" data-i18n="m6.role_{{ $u->cargo }}">{{ $u->etiquetaCargo() }}</span>
+                  <small style="margin-top: 4px;" data-i18n="m6.rank_{{ $u->rango }}">{{ $u->etiquetaRango() }}</small>
                 </td>
                 <td>
                   <div class="user-perms-chips">

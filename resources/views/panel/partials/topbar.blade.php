@@ -1,6 +1,6 @@
 <header class="dash-topbar">
   <div class="dash-topbar-left">
-    <button type="button" class="dash-burger" id="btn-sidebar-open" aria-label="Abrir menú lateral" aria-controls="dash-sidebar" aria-expanded="false">
+    <button type="button" class="dash-burger" id="btn-sidebar-open" aria-label="Abrir menú lateral" data-i18n-aria="topbar.open_sidebar_aria" aria-controls="dash-sidebar" aria-expanded="false">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
     </button>
     <div class="dash-breadcrumb">
@@ -10,14 +10,14 @@
   </div>
 
   <div class="dash-topbar-right">
-    <div class="dash-topbar-lang" role="group" aria-label="Idioma de la plataforma">
+    <div class="dash-topbar-lang" role="group" aria-label="Idioma de la plataforma" data-i18n-aria="topbar.lang_aria">
       <button type="button" class="dash-lang-pill btn-lang-choice" data-lang="es" title="Español">ES</button>
       <button type="button" class="dash-lang-pill btn-lang-choice" data-lang="qu" title="Runasimi (Quechua)">QU</button>
       <button type="button" class="dash-lang-pill btn-lang-choice" data-lang="en" title="English">EN</button>
     </div>
 
     @if($usuario->puedeVerSeccion('dashboard'))
-      <nav class="dash-range-pills" id="dash-range-pills" aria-label="Filtro de período del dashboard">
+      <nav class="dash-range-pills" id="dash-range-pills" aria-label="Filtro de período del dashboard" data-i18n-aria="topbar.range_aria">
         @foreach(['hoy' => 'Hoy', '7d' => '7 días', 'quincena' => 'Quincena', 'mes' => 'Mes'] as $claveRango => $etqRango)
           <a href="{{ route('panel', ['rango' => $claveRango]) }}" class="dash-range-pill {{ $rango === $claveRango ? 'activo' : '' }}" data-i18n="dash.range_{{ $claveRango }}">
             {{ $etqRango }}

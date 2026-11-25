@@ -427,6 +427,7 @@ body.dash-body {
   flex-direction: column;
   justify-content: space-between;
   gap: 0.9rem;
+  min-width: 0;
 }
 
 .dash-kpi-top {
@@ -434,6 +435,10 @@ body.dash-body {
   align-items: flex-start;
   justify-content: space-between;
   gap: 0.75rem;
+}
+
+.dash-kpi-top > div {
+  min-width: 0;
 }
 
 .dash-kpi-label {
@@ -705,10 +710,14 @@ body.dash-body .subtabs-edit {
 
 .tina-finish-form {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
   align-items: flex-end;
   padding-top: 0.75rem;
   border-top: 1px solid var(--color-hairline);
+}
+.tina-finish-form > div {
+  min-width: 140px;
 }
 
 .stats-quality-box {
@@ -919,6 +928,11 @@ body.dash-body .subtabs-edit {
   .dash-range-pill {
     font-size: 0.74rem;
     padding-inline: 0.25rem;
+  }
+
+  .dash-kpi-value {
+    white-space: normal;
+    overflow-wrap: anywhere;
   }
 
   .dash-topbar .btn {

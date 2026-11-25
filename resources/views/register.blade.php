@@ -1,6 +1,7 @@
 @extends('layouts.app')
 
 @section('titulo', 'LAT · Registro de Planta y Usuario')
+@section('title_i18n', 'title.register')
 
 @section('contenido')
   <section class="login-wrap lienzo-acuarela" aria-labelledby="titulo-registro">
@@ -22,11 +23,11 @@
           <div class="grid-form-2">
             <div class="form-grupo">
               <label for="reg-usuario" class="form-label" data-i18n="register.username">Usuario de acceso</label>
-              <input type="text" id="reg-usuario" name="usuario" class="input-lat" value="{{ old('usuario') }}" required placeholder="rosaura.anta">
+              <input type="text" id="reg-usuario" name="usuario" class="input-lat" value="{{ old('usuario') }}" required placeholder="rosaura.anta" data-i18n-placeholder="register.ph_user">
             </div>
             <div class="form-grupo">
               <label for="reg-email" class="form-label" data-i18n="register.email">Correo electrónico (opcional)</label>
-              <input type="email" id="reg-email" name="email" class="input-lat" value="{{ old('email') }}" placeholder="contacto@planta.pe">
+              <input type="email" id="reg-email" name="email" class="input-lat" value="{{ old('email') }}" placeholder="contacto@planta.pe" data-i18n-placeholder="register.ph_email">
             </div>
           </div>
 

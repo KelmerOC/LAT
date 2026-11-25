@@ -1,9 +1,9 @@
-<section id="sec-calidad" class="tab-panel" aria-label="Control de calidad sanitaria" hidden>
+<section id="sec-calidad" class="tab-panel" aria-label="Control de calidad sanitaria" data-i18n-aria="calidad.section_aria" hidden>
   <div class="panel-card">
     <h2 data-i18n="m2.title">Control sanitario en recepción (prueba de alcohol a 74°)</h2>
     <p><strong data-i18n="m2.sub_lead">Principio de cero desperdicio:</strong> <span data-i18n="m2.sub_body">la leche con acidez no se desecha ni se multa al productor. Se clasifica de inmediato y se deriva a quesillos frescos de 4 días.</span></p>
 
-    <div class="tabla-region" role="region" aria-label="Clasificación sanitaria de las entregas de hoy" tabindex="0">
+    <div class="tabla-region" role="region" aria-label="Clasificación sanitaria de las entregas de hoy" data-i18n-aria="calidad.queue_aria" tabindex="0">
       <table class="tabla-plana">
         <thead>
           <tr>
@@ -45,10 +45,10 @@
                       data-confirm-kind="calidad"
                       data-nombre="{{ $acopio->proveedor->nombre }}"
                       data-litros="{{ number_format($acopio->litros, 1) }}"
-                      data-nuevo-estado="Aprobada (Tina principal)">
+                      data-estado-key="buena">
                       @csrf
                       <input type="hidden" name="calidad" value="buena">
-                      <button type="submit" class="btn btn-verde btn-compacto" aria-label="Aprobar leche de {{ $acopio->proveedor->nombre }}">
+                      <button type="submit" class="btn btn-verde btn-compacto" aria-label="Aprobar leche de {{ $acopio->proveedor->nombre }}" data-i18n-aria="calidad.approve_aria">
                         {!! $icoOk !!} <span data-i18n="m2.approve">Aprobar</span>
                       </button>
                     </form>
@@ -57,10 +57,10 @@
                       data-confirm-kind="calidad"
                       data-nombre="{{ $acopio->proveedor->nombre }}"
                       data-litros="{{ number_format($acopio->litros, 1) }}"
-                      data-nuevo-estado="Ácida (Desviar a quesillo 4 días)">
+                      data-estado-key="acida">
                       @csrf
                       <input type="hidden" name="calidad" value="acida">
-                      <button type="submit" class="btn btn-ember btn-compacto" aria-label="Desviar a quesillo la leche de {{ $acopio->proveedor->nombre }}">
+                      <button type="submit" class="btn btn-ember btn-compacto" aria-label="Desviar a quesillo la leche de {{ $acopio->proveedor->nombre }}" data-i18n-aria="calidad.divert_aria">
                         {!! $icoAlerta !!} <span data-i18n="m2.divert">Desviar a quesillo</span>
                       </button>
                     </form>

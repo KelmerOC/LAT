@@ -23,19 +23,19 @@ class ExcelExportService
     ): string {
         $sheets = [
             [
-                'name' => 'Liquidacion Quincenal',
+                'name' => $this->sanitizeSheetName(__('lat.excel_sheet_settlement')),
                 'xml' => $this->buildLiquidacionSheet($planta, $desde, $hasta, $liquidaciones),
             ],
             [
-                'name' => 'Detalle Acopios',
+                'name' => $this->sanitizeSheetName(__('lat.excel_sheet_intake')),
                 'xml' => $this->buildAcopiosSheet($planta, $desde, $hasta, $acopios),
             ],
             [
-                'name' => 'Movimientos y Ventas',
+                'name' => $this->sanitizeSheetName(__('lat.excel_sheet_movements')),
                 'xml' => $this->buildMovimientosSheet($planta, $desde, $hasta, $movimientos),
             ],
             [
-                'name' => 'Comparativa Plantas',
+                'name' => $this->sanitizeSheetName(__('lat.excel_sheet_plants')),
                 'xml' => $this->buildPlantasSheet($desde, $hasta, $rankingPlantas),
             ],
         ];
@@ -59,23 +59,28 @@ class ExcelExportService
     {
         $rows = [];
         $rows[] = $this->rowXml(1, [
-            $this->cellText('A1', 'REPORTE DE LIQUIDACIÓN QUINCENAL · '.$planta->nombre, 1),
+            $this->cellText('A1', __('lat.excel_s1_title', ['plant' => $planta->nombre]), 1),
         ], 26);
         $rows[] = $this->rowXml(2, [
-            $this->cellText('A2', "Ubicación: {$planta->ubicacion} | Período: {$desde} al {$hasta} | Comisión LAT: S/ 0.00 | Generado: ".Carbon::now()->format('d/m/Y H:i'), 2),
+            $this->cellText('A2', __('lat.excel_s1_subtitle', [
+                'location' => $planta->ubicacion,
+                'from' => $desde,
+                'to' => $hasta,
+                'date' => Carbon::now()->format('d/m/Y H:i'),
+            ]), 2),
         ], 18);
         $rows[] = $this->rowXml(3, [], 8);
 
         $headers = [
-            'Código',
-            'Ganadero / Productor',
-            'Sector / Comunidad',
-            'Litros Entregados',
-            'Precio / Litro (S/)',
-            'Monto Bruto (S/)',
-            'Adelantos Descontados (S/)',
-            'Comisión LAT (S/)',
-            'Neto a Pagar (S/)',
+            __('lat.excel_col_code'),
+            __('lat.excel_col_producer'),
+            __('lat.excel_col_sector'),
+            __('lat.excel_col_liters_delivered'),
+            __('lat.excel_col_price_liter'),
+            __('lat.excel_col_gross_amount'),
+            __('lat.excel_col_advances_deducted'),
+            __('lat.excel_col_lat_commission'),
+            __('lat.excel_col_net_payable'),
         ];
         $rows[] = $this->headerRowXml(4, $headers);
 
@@ -112,12 +117,12 @@ class ExcelExportService
 
         $lastDataRow = $r - 1;
         if ($lastDataRow < 5) {
-            $rows[] = $this->rowXml($r, [$this->cellText("A{$r}", 'Sin registros en este período.', 4)], 20);
+            $rows[] = $this->rowXml($r, [$this->cellText("A{$r}", __('lat.excel_s1_empty'), 4)], 20);
             $autoFilterRef = null;
         } else {
             $rows[] = $this->rowXml($r, [
-                $this->cellText("A{$r}", 'TOTALES', 10),
-                $this->cellText("B{$r}", ($lastDataRow - 4).' productores', 10),
+                $this->cellText("A{$r}", __('lat.excel_totals'), 10),
+                $this->cellText("B{$r}", __('lat.excel_producers_count', ['count' => $lastDataRow - 4]), 10),
                 $this->cellText("C{$r}", '', 10),
                 $this->cellFormula("D{$r}", "SUM(D5:D{$lastDataRow})", $sumLitros, 12),
                 $this->cellText("E{$r}", '-', 10),
@@ -135,12 +140,20 @@ class ExcelExportService
     private function buildAcopiosSheet(Planta $planta, string $desde, string $hasta, Collection $acopios): string
     {
         $rows = [];
-        $rows[] = $this->rowXml(1, [$this->cellText('A1', 'DETALLE DE ACOPIOS DIARIOS · '.$planta->nombre, 1)], 26);
-        $rows[] = $this->rowXml(2, [$this->cellText('A2', "Período: {$desde} al {$hasta} | Registros de campo (Voz y Manual) y Triage 74°", 2)], 18);
+        $rows[] = $this->rowXml(1, [$this->cellText('A1', __('lat.excel_s2_title', ['plant' => $planta->nombre]), 1)], 26);
+        $rows[] = $this->rowXml(2, [$this->cellText('A2', __('lat.excel_s2_subtitle', ['from' => $desde, 'to' => $hasta]), 2)], 18);
         $rows[] = $this->rowXml(3, [], 8);
 
         $rows[] = $this->headerRowXml(4, [
-            'Fecha', 'Hora', 'Código', 'Productor', 'Sector', 'Litros (L)', 'Método', 'Calidad Sanitaria', 'Destino Operativo',
+            __('lat.excel_col_date'),
+            __('lat.excel_col_time'),
+            __('lat.excel_col_code'),
+            __('lat.excel_col_producer_short'),
+            __('lat.excel_col_sector_short'),
+            __('lat.excel_col_liters_unit'),
+            __('lat.excel_col_method'),
+            __('lat.excel_col_sanitary_quality'),
+            __('lat.excel_col_operational_dest'),
         ]);
 
         $r = 5;
@@ -152,24 +165,24 @@ class ExcelExportService
 
             $sumLitros += (float) $acopio->litros;
             $calidadTxt = match ($acopio->calidad) {
-                'buena' => 'Aprobada (Óptima)',
-                'acida' => 'Con acidez (74°)',
-                default => 'Pendiente',
+                'buena' => __('lat.excel_quality_good'),
+                'acida' => __('lat.excel_quality_acid'),
+                default => __('lat.excel_quality_pending'),
             };
             $destinoTxt = match ($acopio->calidad) {
-                'acida' => 'Quesillo fresco (4 días)',
-                'pendiente' => 'Pendiente de prueba',
-                default => 'Tina principal (Queso/Yogur)',
+                'acida' => __('lat.excel_dest_acid'),
+                'pendiente' => __('lat.excel_dest_pending'),
+                default => __('lat.excel_dest_good'),
             };
 
             $rows[] = $this->rowXml($r, [
                 $this->cellText("A{$r}", $acopio->fecha?->format('d/m/Y') ?? (string) $acopio->fecha, $sTxt),
                 $this->cellText("B{$r}", substr((string) $acopio->hora, 0, 5), $sTxt),
                 $this->cellText("C{$r}", (string) ($acopio->proveedor?->codigo ?? '-'), $sTxt),
-                $this->cellText("D{$r}", (string) ($acopio->proveedor?->nombre ?? 'Productor'), $sTxt),
+                $this->cellText("D{$r}", (string) ($acopio->proveedor?->nombre ?? __('lat.producer_default')), $sTxt),
                 $this->cellText("E{$r}", (string) ($acopio->proveedor?->sector ?? '-'), $sTxt),
                 $this->cellNum("F{$r}", (float) $acopio->litros, $sNum),
-                $this->cellText("G{$r}", $acopio->metodo === 'voz' ? 'Dictado por voz' : 'Manual / Táctil', $sTxt),
+                $this->cellText("G{$r}", $acopio->metodo === 'voz' ? __('lat.excel_method_voice') : __('lat.excel_method_manual'), $sTxt),
                 $this->cellText("H{$r}", $calidadTxt, $sTxt),
                 $this->cellText("I{$r}", $destinoTxt, $sTxt),
             ], 20);
@@ -178,14 +191,14 @@ class ExcelExportService
 
         $lastDataRow = $r - 1;
         if ($lastDataRow < 5) {
-            $rows[] = $this->rowXml($r, [$this->cellText("A{$r}", 'Sin acopios en este período.', 4)], 20);
+            $rows[] = $this->rowXml($r, [$this->cellText("A{$r}", __('lat.excel_s2_empty'), 4)], 20);
             $autoFilterRef = null;
         } else {
             $rows[] = $this->rowXml($r, [
-                $this->cellText("A{$r}", 'TOTAL LITROS', 10),
+                $this->cellText("A{$r}", __('lat.excel_total_liters'), 10),
                 $this->cellText("B{$r}", '', 10),
                 $this->cellText("C{$r}", '', 10),
-                $this->cellText("D{$r}", ($lastDataRow - 4).' entregas', 10),
+                $this->cellText("D{$r}", __('lat.excel_deliveries_count', ['count' => $lastDataRow - 4]), 10),
                 $this->cellText("E{$r}", '', 10),
                 $this->cellFormula("F{$r}", "SUM(F5:F{$lastDataRow})", $sumLitros, 12),
                 $this->cellText("G{$r}", '', 10),
@@ -201,12 +214,17 @@ class ExcelExportService
     private function buildMovimientosSheet(Planta $planta, string $desde, string $hasta, Collection $movimientos): string
     {
         $rows = [];
-        $rows[] = $this->rowXml(1, [$this->cellText('A1', 'MOVIMIENTOS FINANCIEROS, ADELANTOS Y VENTAS · '.$planta->nombre, 1)], 26);
-        $rows[] = $this->rowXml(2, [$this->cellText('A2', "Período: {$desde} al {$hasta} | Ley N.° 29733: Ayuda del día sin DNI", 2)], 18);
+        $rows[] = $this->rowXml(1, [$this->cellText('A1', __('lat.excel_s3_title', ['plant' => $planta->nombre]), 1)], 26);
+        $rows[] = $this->rowXml(2, [$this->cellText('A2', __('lat.excel_s3_subtitle', ['from' => $desde, 'to' => $hasta]), 2)], 18);
         $rows[] = $this->rowXml(3, [], 8);
 
         $rows[] = $this->headerRowXml(4, [
-            'Fecha', 'Tipo de Movimiento', 'Productor / Referencia', 'Concepto / Descripción', 'Unidades / Moldes', 'Monto (S/)',
+            __('lat.excel_col_date'),
+            __('lat.excel_col_movement_type'),
+            __('lat.excel_col_producer_ref'),
+            __('lat.excel_col_concept'),
+            __('lat.excel_col_units_molds'),
+            __('lat.excel_col_amount'),
         ]);
 
         $r = 5;
@@ -216,12 +234,12 @@ class ExcelExportService
         $sumUnidadesEgresos = 0;
 
         $tipoLabels = [
-            'adelanto_efectivo' => 'Adelanto en efectivo',
-            'adelanto_queso' => 'Adelanto en queso',
-            'ayuda_del_dia' => 'Ayuda del día (sin DNI)',
-            'gasto_operativo' => 'Gasto operativo',
-            'venta_producto' => 'Venta de producto lácteo',
-            'quincena' => 'Liquidación quincenal',
+            'adelanto_efectivo' => __('lat.mov_adelanto_efectivo'),
+            'adelanto_queso' => __('lat.mov_adelanto_queso'),
+            'ayuda_del_dia' => __('lat.mov_ayuda_del_dia'),
+            'gasto_operativo' => __('lat.mov_gasto_operativo'),
+            'venta_producto' => __('lat.mov_venta_producto'),
+            'quincena' => __('lat.mov_quincena'),
         ];
 
         foreach ($movimientos as $idx => $mov) {
@@ -244,7 +262,7 @@ class ExcelExportService
             $rows[] = $this->rowXml($r, [
                 $this->cellText("A{$r}", $mov->fecha?->format('d/m/Y') ?? (string) $mov->fecha, $sTxt),
                 $this->cellText("B{$r}", $tipoLabels[$mov->tipo] ?? $mov->tipo, $sTxt),
-                $this->cellText("C{$r}", (string) ($mov->proveedor?->nombre ?? 'Planta / Faena externa'), $sTxt),
+                $this->cellText("C{$r}", (string) ($mov->proveedor?->nombre ?? __('lat.excel_external_labor')), $sTxt),
                 $this->cellText("D{$r}", (string) $mov->concepto, $sTxt),
                 $this->cellNum("E{$r}", $unidades, $sInt),
                 $this->cellNum("F{$r}", $monto, $sCur),
@@ -254,34 +272,35 @@ class ExcelExportService
 
         $lastDataRow = $r - 1;
         if ($lastDataRow < 5) {
-            $rows[] = $this->rowXml($r, [$this->cellText("A{$r}", 'Sin movimientos en este período.', 4)], 20);
+            $rows[] = $this->rowXml($r, [$this->cellText("A{$r}", __('lat.excel_s3_empty'), 4)], 20);
             $autoFilterRef = null;
         } else {
+            $ventaFormula = str_replace('"', '""', $tipoLabels['venta_producto']);
             $filaIngresos = $r;
             $filaEgresos = $r + 1;
             $filaNeto = $r + 2;
 
             $rows[] = $this->rowXml($filaIngresos, [
-                $this->cellText("A{$filaIngresos}", 'TOTAL INGRESOS', 10),
-                $this->cellText("B{$filaIngresos}", 'Ventas de producto', 10),
+                $this->cellText("A{$filaIngresos}", __('lat.excel_total_income'), 10),
+                $this->cellText("B{$filaIngresos}", __('lat.excel_income_desc'), 10),
                 $this->cellText("C{$filaIngresos}", '', 10),
-                $this->cellText("D{$filaIngresos}", ($lastDataRow - 4).' movimientos totales', 10),
-                $this->cellFormula("E{$filaIngresos}", "SUMIF(B5:B{$lastDataRow},\"Venta de producto lácteo\",E5:E{$lastDataRow})", $sumUnidadesIngresos, 12),
-                $this->cellFormula("F{$filaIngresos}", "SUMIF(B5:B{$lastDataRow},\"Venta de producto lácteo\",F5:F{$lastDataRow})", round($sumIngresos, 2), 11),
+                $this->cellText("D{$filaIngresos}", __('lat.excel_movements_count', ['count' => $lastDataRow - 4]), 10),
+                $this->cellFormula("E{$filaIngresos}", "SUMIF(B5:B{$lastDataRow},\"{$ventaFormula}\",E5:E{$lastDataRow})", $sumUnidadesIngresos, 12),
+                $this->cellFormula("F{$filaIngresos}", "SUMIF(B5:B{$lastDataRow},\"{$ventaFormula}\",F5:F{$lastDataRow})", round($sumIngresos, 2), 11),
             ], 22);
 
             $rows[] = $this->rowXml($filaEgresos, [
-                $this->cellText("A{$filaEgresos}", 'TOTAL EGRESOS', 10),
-                $this->cellText("B{$filaEgresos}", 'Gastos, ayudas y adelantos', 10),
+                $this->cellText("A{$filaEgresos}", __('lat.excel_total_expenses'), 10),
+                $this->cellText("B{$filaEgresos}", __('lat.excel_expenses_desc'), 10),
                 $this->cellText("C{$filaEgresos}", '', 10),
                 $this->cellText("D{$filaEgresos}", '', 10),
-                $this->cellFormula("E{$filaEgresos}", "SUMIF(B5:B{$lastDataRow},\"<>Venta de producto lácteo\",E5:E{$lastDataRow})", $sumUnidadesEgresos, 12),
-                $this->cellFormula("F{$filaEgresos}", "SUMIF(B5:B{$lastDataRow},\"<>Venta de producto lácteo\",F5:F{$lastDataRow})", round($sumEgresos, 2), 11),
+                $this->cellFormula("E{$filaEgresos}", "SUMIF(B5:B{$lastDataRow},\"<>{$ventaFormula}\",E5:E{$lastDataRow})", $sumUnidadesEgresos, 12),
+                $this->cellFormula("F{$filaEgresos}", "SUMIF(B5:B{$lastDataRow},\"<>{$ventaFormula}\",F5:F{$lastDataRow})", round($sumEgresos, 2), 11),
             ], 22);
 
             $rows[] = $this->rowXml($filaNeto, [
-                $this->cellText("A{$filaNeto}", 'BALANCE NETO', 10),
-                $this->cellText("B{$filaNeto}", 'Ingresos menos egresos', 10),
+                $this->cellText("A{$filaNeto}", __('lat.excel_net_balance'), 10),
+                $this->cellText("B{$filaNeto}", __('lat.excel_net_balance_desc'), 10),
                 $this->cellText("C{$filaNeto}", '', 10),
                 $this->cellText("D{$filaNeto}", '', 10),
                 $this->cellText("E{$filaNeto}", '-', 10),
@@ -297,12 +316,20 @@ class ExcelExportService
     private function buildPlantasSheet(string $desde, string $hasta, Collection $rankingPlantas): string
     {
         $rows = [];
-        $rows[] = $this->rowXml(1, [$this->cellText('A1', 'ESTADÍSTICAS COMPARATIVAS DE PLANTAS (¿QUIÉN VENDE MÁS?)', 1)], 26);
-        $rows[] = $this->rowXml(2, [$this->cellText('A2', "Período evaluado: {$desde} al {$hasta} | Ranking ordenado por ventas totales", 2)], 18);
+        $rows[] = $this->rowXml(1, [$this->cellText('A1', __('lat.excel_s4_title'), 1)], 26);
+        $rows[] = $this->rowXml(2, [$this->cellText('A2', __('lat.excel_s4_subtitle', ['from' => $desde, 'to' => $hasta]), 2)], 18);
         $rows[] = $this->rowXml(3, [], 8);
 
         $rows[] = $this->headerRowXml(4, [
-            'Puesto', 'Código', 'Planta Láctea', 'Ubicación', 'Ventas Totales (S/)', 'Participación (%)', 'Unidades Vendidas', 'Litros Acopiados', 'Moldes Producidos',
+            __('lat.excel_col_rank'),
+            __('lat.excel_col_code'),
+            __('lat.excel_col_dairy_plant'),
+            __('lat.excel_col_location'),
+            __('lat.excel_col_total_sales'),
+            __('lat.excel_col_share_pct'),
+            __('lat.excel_col_units_sold'),
+            __('lat.excel_col_liters_collected'),
+            __('lat.excel_col_molds_produced'),
         ]);
 
         $r = 5;
@@ -337,12 +364,12 @@ class ExcelExportService
 
         $lastDataRow = $r - 1;
         if ($lastDataRow < 5) {
-            $rows[] = $this->rowXml($r, [$this->cellText("A{$r}", 'Sin plantas registradas en este período.', 4)], 20);
+            $rows[] = $this->rowXml($r, [$this->cellText("A{$r}", __('lat.excel_s4_empty'), 4)], 20);
             $autoFilterRef = null;
         } else {
-            $etiquetaTotal = $rankingPlantas->count() === 1 ? 'TOTAL PLANTA' : 'TOTAL RED DE PLANTAS';
+            $etiquetaTotal = $rankingPlantas->count() === 1 ? __('lat.excel_total_plant') : __('lat.excel_total_network');
             $rows[] = $this->rowXml($r, [
-                $this->cellText("A{$r}", 'RED', 10),
+                $this->cellText("A{$r}", __('lat.excel_network_badge'), 10),
                 $this->cellText("B{$r}", '', 10),
                 $this->cellText("C{$r}", $etiquetaTotal, 10),
                 $this->cellText("D{$r}", '', 10),
@@ -356,6 +383,13 @@ class ExcelExportService
         }
 
         return $this->wrapWorksheet($rows, [10, 12, 30, 24, 20, 16, 18, 18, 18], 4, $autoFilterRef);
+    }
+
+    private function sanitizeSheetName(string $name): string
+    {
+        $clean = str_replace([':', '\\', '/', '?', '*', '[', ']'], '', $name);
+
+        return mb_substr(trim($clean), 0, 31);
     }
 
     /**
@@ -577,7 +611,7 @@ class ExcelExportService
             $crc = crc32($content) & 0xFFFFFFFF;
             $compressed = gzdeflate($content, 6);
             if ($compressed === false) {
-                throw new RuntimeException("No se pudo comprimir la entrada '{$name}' del archivo XLSX.");
+                throw new RuntimeException(__('lat.excel_zip_error', ['name' => $name]));
             }
             $compLen = strlen($compressed);
 

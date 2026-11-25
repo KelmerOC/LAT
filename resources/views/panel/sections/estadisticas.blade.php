@@ -1,4 +1,4 @@
-<section id="sec-estadisticas" class="tab-panel" aria-label="Estadísticas comparativas y ranking" hidden>
+<section id="sec-estadisticas" class="tab-panel" aria-label="Estadísticas comparativas y ranking" data-i18n-aria="m5.section_aria" hidden>
   @php
     $lider = $estadisticas['planta_lider'];
     $maxVentas = max(1, (float) ($estadisticas['ranking_plantas']->max('ventas_monto') ?? 1));
@@ -13,7 +13,7 @@
         <div class="dash-kpi-top">
           <div>
             <span class="dash-kpi-label" data-i18n="m5.top_plant">Planta que vende más</span>
-            <strong class="dash-kpi-value" style="font-size: 1.2rem;">{{ $lider?->nombre ?? 'Sin ventas' }}</strong>
+            <strong class="dash-kpi-value" style="font-size: 1.2rem;">@if($lider){{ $lider->nombre }}@else<span data-i18n="panel.no_sales">Sin ventas</span>@endif</strong>
           </div>
           <div class="dash-kpi-icon is-ocean" aria-hidden="true">{!! $icoStats !!}</div>
         </div>
@@ -65,7 +65,7 @@
     <div class="panel-grid-eq" style="margin-bottom: 1.5rem; align-items: start;">
       <div>
         <h3 data-i18n="m5.who_sells_most">Ranking de plantas: ¿Quién vende más?</h3>
-        <div class="stats-ranking-list">
+        <div class="stats-ranking-list" role="region" aria-label="Ranking de plantas" data-i18n-aria="m5.rank_aria">
           @foreach($estadisticas['ranking_plantas'] as $idx => $rp)
             @php $barPct = $maxVentas > 0 ? min(100, round(($rp->ventas_monto / $maxVentas) * 100, 1)) : 0; @endphp
             <div class="stats-bar-row {{ $idx === 0 ? 'is-leader' : '' }}">
@@ -79,7 +79,7 @@
                 </div>
                 <div class="num-tabular" style="font-size: 0.92rem;">
                   <strong>S/ {{ number_format($rp->ventas_monto, 2) }}</strong>
-                  <small style="color: var(--color-graphite);">({{ $rp->participacion_pct }}% · {{ $rp->ventas_unidades }} und · {{ number_format($rp->litros_acopiados, 1) }} L)</small>
+                  <small style="color: var(--color-graphite);">({{ $rp->participacion_pct }}% · {{ $rp->ventas_unidades }} <span data-i18n="panel.unit_und">und</span> · {{ number_format($rp->litros_acopiados, 1) }} L)</small>
                 </div>
               </div>
               <div class="stats-bar-track" role="img" aria-label="{{ $rp->nombre }}: S/ {{ number_format($rp->ventas_monto, 2) }}">
@@ -98,7 +98,7 @@
           </div>
         </div>
         <div class="dash-chart-box" style="height: 230px;">
-          <canvas id="chart-estadisticas-calidad" aria-label="Gráfica de distribución sanitaria"></canvas>
+          <canvas id="chart-estadisticas-calidad" aria-label="Gráfica de distribución sanitaria" data-i18n-aria="dash.c4_title"></canvas>
         </div>
       </div>
     </div>

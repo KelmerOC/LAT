@@ -20,7 +20,7 @@ class AdminController extends Controller
     {
         $user = $request->user();
         if (! $user || ! $user->tienePermiso($permiso)) {
-            abort(403, 'No tienes permisos para realizar esta acción administrativa.');
+            abort(403, __('lat.admin_forbidden'));
         }
 
         return $user;
@@ -36,7 +36,7 @@ class AdminController extends Controller
     {
         if ($cargo === 'administracion') {
             if (! $actor->esAdmin()) {
-                abort(403, 'Solo un administrador general puede otorgar el rol de administración.');
+                abort(403, __('lat.admin_only_grant_admin'));
             }
 
             return User::todasLasClavesPermisos();
@@ -59,7 +59,7 @@ class AdminController extends Controller
         $permitidosParaActor = array_values(array_unique(array_merge($asignables, $fueraDeAlcanceActuales)));
 
         if (array_diff($limpios, $permitidosParaActor) !== []) {
-            abort(403, 'No puedes asignar permisos que superan tu propio rango de acceso.');
+            abort(403, __('lat.admin_permissions_exceed_rank'));
         }
 
         $combinados = array_values(array_unique(array_merge($limpios, $fueraDeAlcanceActuales)));
@@ -123,16 +123,16 @@ class AdminController extends Controller
             'permisos' => ['nullable', 'array'],
             'permisos.*' => ['string'],
         ], [
-            'usuario.unique' => 'Ese identificador de usuario ya existe.',
+            'usuario.unique' => __('lat.admin_usuario_unique'),
         ]);
 
         if (! $actor->esAdmin() && (int) $datos['planta_id'] !== (int) $actor->planta_id) {
-            abort(403, 'Solo puedes crear usuarios para tu propia planta asignada.');
+            abort(403, __('lat.admin_only_own_plant_create'));
         }
 
         $permisosInput = $request->boolean('permisos_present') ? ($datos['permisos'] ?? []) : null;
         if ($datos['cargo'] === 'personalizado' && empty($permisosInput)) {
-            return back()->withErrors(['permisos' => 'Selecciona al menos una sección o control para el usuario personalizado.']);
+            return back()->withErrors(['permisos' => __('lat.admin_custom_needs_permission')]);
         }
 
         $permisosFinales = $this->resolverPermisosPermitidos($actor, $datos['cargo'], $permisosInput);
@@ -151,7 +151,7 @@ class AdminController extends Controller
             'creado_por' => $actor->id,
         ]);
 
-        return back()->with('exito', 'Credenciales y permisos del usuario creados correctamente.');
+        return back()->with('exito', __('lat.admin_user_created'));
     }
 
     public function actualizarUsuario(Request $request, int $id): RedirectResponse
@@ -160,7 +160,7 @@ class AdminController extends Controller
         $target = User::findOrFail($id);
 
         if (! $actor->puedeGestionarUsuario($target)) {
-            abort(403, 'Tu rango no permite modificar esta cuenta.');
+            abort(403, __('lat.admin_rank_cannot_edit_user'));
         }
 
         $this->normalizarUsuarioInput($request);
@@ -179,12 +179,12 @@ class AdminController extends Controller
         ]);
 
         if (! $actor->esAdmin() && (int) $datos['planta_id'] !== (int) $actor->planta_id) {
-            abort(403, 'No puedes trasladar usuarios a otra planta.');
+            abort(403, __('lat.admin_cannot_transfer_plant'));
         }
 
         $activo = $request->has('activo') ? $request->boolean('activo') : $target->activo;
         if ($target->id === $actor->id && ! $activo) {
-            return back()->withErrors(['usuario' => 'No puedes desactivar tu propia cuenta mientras estás en sesión.']);
+            return back()->withErrors(['usuario' => __('lat.admin_cannot_deactivate_self')]);
         }
 
         if ($request->boolean('permisos_present') || $request->has('permisos')) {
@@ -196,7 +196,7 @@ class AdminController extends Controller
         $permisosFinales = $this->resolverPermisosPermitidos($actor, $datos['cargo'], $permisosInput, $target);
 
         if ($datos['cargo'] === 'personalizado' && $permisosFinales === []) {
-            return back()->withErrors(['permisos' => 'Un usuario personalizado debe conservar al menos un permiso habilitado.']);
+            return back()->withErrors(['permisos' => __('lat.admin_custom_keep_permission')]);
         }
 
         $rangoFinal = $this->resolverRango($datos['cargo'], $datos['rango'] ?? null, $permisosFinales);
@@ -218,7 +218,7 @@ class AdminController extends Controller
 
         $target->update($payload);
 
-        return back()->with('exito', 'Usuario y permisos actualizados correctamente.');
+        return back()->with('exito', __('lat.admin_user_updated'));
     }
 
     public function crearPlanta(Request $request): RedirectResponse
@@ -245,7 +245,7 @@ class AdminController extends Controller
             Tina::create([
                 'planta_id' => $p->id,
                 'codigo' => 'TINA-01',
-                'nombre' => 'Tina Principal',
+                'nombre' => __('lat.default_main_vat'),
                 'capacidad_litros' => 500,
                 'tipo' => 'principal_queso',
                 'activa' => true,
@@ -256,7 +256,7 @@ class AdminController extends Controller
 
         $request->session()->put('planta_activa_id', $planta->id);
 
-        return back()->with('exito', 'Planta "'.$planta->nombre.'" agregada y activada correctamente.');
+        return back()->with('exito', __('lat.admin_plant_created', ['name' => $planta->nombre]));
     }
 
     public function actualizarPlanta(Request $request, int $id): RedirectResponse
@@ -281,6 +281,6 @@ class AdminController extends Controller
             'activa' => $request->has('activa') ? $request->boolean('activa') : $planta->activa,
         ]);
 
-        return back()->with('exito', 'Datos de la planta actualizados correctamente.');
+        return back()->with('exito', __('lat.admin_plant_updated'));
     }
 }

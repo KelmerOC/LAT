@@ -8,7 +8,7 @@
   ];
 @endphp
 
-<section id="sec-tina" class="tab-panel" aria-label="Control de múltiples tinas y receta" hidden>
+<section id="sec-tina" class="tab-panel" aria-label="Control de múltiples tinas y receta" data-i18n-aria="tina.section_aria" hidden>
   <div class="panel-card" style="margin-bottom: 1.5rem;">
     <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem;">
       <div>
@@ -34,7 +34,7 @@
       <article class="tina-card">
         <div class="tina-card-header">
           <div>
-            <span class="chip chip-celeste">{{ $tina->codigo }} · {{ $tiposTinaLabels[$tina->tipo] ?? $tina->tipo }}</span>
+            <span class="chip chip-celeste">{{ $tina->codigo }} · <span data-i18n="tina.type_{{ $tina->tipo }}">{{ $tiposTinaLabels[$tina->tipo] ?? $tina->tipo }}</span></span>
             <h3 style="margin-top: 0.45rem; font-size: 1.15rem;">{{ $tina->nombre }}</h3>
             <p style="font-size: 0.85rem; color: var(--color-graphite); margin: 0;">
               <span data-i18n="m3.capacity">Capacidad:</span> <strong>{{ number_format($tina->capacidad_litros, 0) }} L</strong> ·
@@ -75,7 +75,7 @@
             <div><span data-i18n="m3.rennet">Cuajo líquido</span><strong>{{ $tRec['cuajo_ml'] }} ml</strong></div>
             <div><span data-i18n="m3.salt">Sal común</span><strong>{{ $tRec['sal_kg'] }} kg</strong></div>
             <div><span data-i18n="m3.culture">Cultivo</span><strong>{{ $tRec['cultivo_g'] }} g</strong></div>
-            <div><span data-i18n="m3.molds_est">Moldes est.</span><strong>{{ $tRec['moldes_estimados'] }} und</strong></div>
+            <div><span data-i18n="m3.molds_est">Moldes est.</span><strong>{{ $tRec['moldes_estimados'] }} <span data-i18n="panel.unit_und">und</span></strong></div>
           </div>
 
           @if($usuario->tienePermiso('tinas.operar'))
@@ -112,7 +112,7 @@
             <form method="POST" action="{{ route('panel.tinas.lote', $tina->id) }}" class="grid-form-2" style="align-items: end;">
               @csrf
               <div>
-                <label class="form-label" style="font-size: 0.78rem;" for="start-lit-{{ $tina->id }}"><span data-i18n="m3.lbl_liters_load">Litros a cargar</span> (máx {{ (int) $tina->capacidad_litros }})</label>
+                <label class="form-label" style="font-size: 0.78rem;" for="start-lit-{{ $tina->id }}"><span data-i18n="m3.lbl_liters_load">Litros a cargar</span> (<span data-i18n="panel.max_abbr">máx</span> {{ (int) $tina->capacidad_litros }})</label>
                 <input type="number" step="0.5" min="5" max="{{ $tina->capacidad_litros }}" id="start-lit-{{ $tina->id }}" name="litros" class="input-lat" value="{{ min($tina->capacidad_litros, max(50, $litrosHoy ?: 100)) }}" required style="min-height: 42px;">
               </div>
               <div>

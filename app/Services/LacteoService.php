@@ -226,14 +226,14 @@ class LacteoService
     ): array {
         $hoy = Carbon::today();
         [$inicio, $fin, $etiquetaRango] = match ($rango) {
-            'hoy' => [$hoy->copy(), $hoy->copy(), 'Hoy'],
+            'hoy' => [$hoy->copy(), $hoy->copy(), __('lat.range_today')],
             'quincena' => [
                 $hoy->day <= 15 ? $hoy->copy()->startOfMonth() : $hoy->copy()->startOfMonth()->addDays(15),
                 $hoy->day <= 15 ? $hoy->copy()->startOfMonth()->addDays(14) : $hoy->copy()->endOfMonth(),
-                'Quincena actual',
+                __('lat.range_fortnight'),
             ],
-            'mes' => [$hoy->copy()->startOfMonth(), $hoy->copy()->endOfMonth(), 'Este mes'],
-            default => [$hoy->copy()->subDays(6), $hoy->copy(), 'Últimos 7 días'],
+            'mes' => [$hoy->copy()->startOfMonth(), $hoy->copy()->endOfMonth(), __('lat.range_month')],
+            default => [$hoy->copy()->subDays(6), $hoy->copy(), __('lat.range_7d')],
         };
 
         $dias = max(1, (int) $inicio->diffInDays($fin) + 1);
@@ -343,10 +343,14 @@ class LacteoService
 
         $eventos = collect();
         foreach (Acopio::with('proveedor:id,nombre')->where('planta_id', $plantaId)->latest('id')->limit(4)->get() as $ac) {
+            $metodoClave = 'lat.method_'.$ac->metodo;
+            $metodoTrad = __($metodoClave);
+            $metodoLabel = $metodoTrad !== $metodoClave ? $metodoTrad : $ac->metodo;
+
             $eventos->push((object) [
                 'tipo' => $ac->calidad === 'acida' ? 'alerta' : 'acopio',
-                'titulo' => ($ac->proveedor?->nombre ?? 'Productor').' · '.number_format($ac->litros, 1).' L',
-                'detalle' => $ac->calidad === 'acida' ? 'Derivada a quesillo 4 días' : 'Aprobada en recepción ('.$ac->metodo.')',
+                'titulo' => ($ac->proveedor?->nombre ?? __('lat.producer_default')).' · '.number_format($ac->litros, 1).' L',
+                'detalle' => $ac->calidad === 'acida' ? __('lat.quality_diverted') : __('lat.quality_approved', ['method' => $metodoLabel]),
                 'timestamp' => $ac->created_at ?? Carbon::parse($ac->fecha),
                 'fecha_txt' => ($ac->fecha?->format('d/m') ?? '').' '.substr((string) $ac->hora, 0, 5),
             ]);
@@ -494,8 +498,8 @@ class LacteoService
             $litros = round((float) $grupo->sum('litros'), 1);
 
             return (object) [
-                'codigo' => $prov?->codigo ?? 'S/C',
-                'nombre' => $prov?->nombre ?? 'Productor',
+                'codigo' => $prov?->codigo ?? __('lat.no_code'),
+                'nombre' => $prov?->nombre ?? __('lat.producer_default'),
                 'sector' => $prov?->sector ?? '',
                 'litros' => $litros,
                 'entregas' => $grupo->count(),

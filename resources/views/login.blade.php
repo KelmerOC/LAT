@@ -1,6 +1,7 @@
 @extends('layouts.app')
 
 @section('titulo', 'LAT · Acceso a Mi Panel')
+@section('title_i18n', 'title.login')
 
 @section('contenido')
   <section class="login-wrap lienzo-acuarela" aria-labelledby="titulo-login">
@@ -35,8 +36,8 @@
         <div class="perfiles">
           <h3 data-i18n="login.profiles_title">Accesos rápidos por cargo</h3>
           <p class="ayuda" data-i18n="login.profiles_help">Seleccione un perfil para ingresar al panel.</p>
-          <div class="perfiles-grid" role="group" aria-label="Accesos rápidos por cargo">
-            <button type="button" class="perfil-btn" data-usuario="donjusto@sanborreal.pe" aria-pressed="true"><strong>Don Justo</strong><span data-i18n="login.role_admin">Administración total</span></button>
+          <div class="perfiles-grid" role="group" aria-label="Accesos rápidos por cargo" data-i18n-aria="login.profiles_aria">
+            <button type="button" class="perfil-btn" data-usuario="donjusto@sanborreal.pe" aria-pressed="true"><strong data-i18n="login.profile_justo">Don Justo</strong><span data-i18n="login.role_admin">Administración total</span></button>
             <button type="button" class="perfil-btn" data-usuario="carlos.anta" aria-pressed="false"><strong>Carlos</strong><span data-i18n="login.role_manager">Encargado de planta</span></button>
             <button type="button" class="perfil-btn" data-usuario="sabina.tina" aria-pressed="false"><strong>Sabina</strong><span data-i18n="login.role_vat">Tina / Calidad</span></button>
             <button type="button" class="perfil-btn" data-usuario="contador.marco" aria-pressed="false"><strong>Marco</strong><span data-i18n="login.role_accountant">Contador externo</span></button>

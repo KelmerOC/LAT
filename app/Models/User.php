@@ -355,25 +355,22 @@ class User extends Authenticatable
 
     public function etiquetaCargo(): string
     {
-        return match ($this->cargo) {
-            'administracion' => 'Administración',
-            'encargado_planta' => 'Encargado de planta',
-            'recolector_ruta' => 'Recolector en ruta',
-            'control_tina' => 'Control de tina / calidad',
-            'contador_externo' => 'Contador externo',
-            'personalizado' => 'Personalizado',
-            default => ucfirst(str_replace('_', ' ', (string) $this->cargo)),
-        };
+        $clave = 'lat.cargo_'.$this->cargo;
+        $trad = __($clave);
+
+        return $trad !== $clave
+            ? $trad
+            : ucfirst(str_replace('_', ' ', (string) $this->cargo));
     }
 
     public function etiquetaRango(): string
     {
-        return match ($this->rango) {
-            'administrador' => 'Administrador Total',
-            'supervisor' => 'Supervisor con Rango',
-            'personalizado' => 'Acceso Personalizado',
-            default => 'Operador',
-        };
+        $clave = 'lat.rango_'.$this->rango;
+        $trad = __($clave);
+
+        return $trad !== $clave
+            ? $trad
+            : __('lat.rango_operador');
     }
 
     public function esAdmin(): bool

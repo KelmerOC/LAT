@@ -1,8 +1,8 @@
-<section id="sec-quincena" class="tab-panel" aria-label="Liquidación quincenal y ventas" hidden>
+<section id="sec-quincena" class="tab-panel" aria-label="Liquidación quincenal y ventas" data-i18n-aria="m4.section_aria" hidden>
   <div class="panel-card" style="margin-bottom: 1.5rem;">
     <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.25rem;">
       <div>
-        <h2><span data-i18n="m4.title">Liquidación quincenal de proveedores</span> ({{ $desde }} al {{ $hasta }})</h2>
+        <h2><span data-i18n="m4.title">Liquidación quincenal de proveedores</span> ({{ $desde }} <span data-i18n="panel.connector_to">al</span> {{ $hasta }})</h2>
         <p style="margin: 0;"><span data-i18n="m4.sub">Cálculo neto transparente: bruto menos adelantos en efectivo o queso.</span> <strong data-i18n="m4.sub_comm">Comisión: S/ 0.00.</strong></p>
       </div>
       <div style="display: flex; flex-wrap: wrap; gap: 0.65rem;">
@@ -19,7 +19,7 @@
       </div>
     </div>
 
-    <div class="tabla-region" role="region" aria-label="Liquidación quincenal de proveedores" tabindex="0" style="margin-bottom: 1.5rem;">
+    <div class="tabla-region" role="region" aria-label="Liquidación quincenal de proveedores" data-i18n-aria="m4.title" tabindex="0" style="margin-bottom: 1.5rem;">
       <table class="tabla-plana" style="min-width: 720px;">
         <thead>
           <tr>
@@ -62,17 +62,17 @@
           <div class="form-grupo">
             <label for="mov-tipo" class="form-label" data-i18n="m4.lbl_type">Tipo</label>
             <select name="tipo" id="mov-tipo" class="select-lat">
-              <option value="venta_producto">Venta de producto lácteo (queso / yogur)</option>
-              <option value="adelanto_efectivo">Adelanto en efectivo</option>
-              <option value="adelanto_queso">Adelanto en moldes de queso</option>
-              <option value="ayuda_del_dia">Pago de ayuda del día (sin DNI)</option>
-              <option value="gasto_operativo">Gasto operativo / insumos</option>
+              <option value="venta_producto" data-i18n="m4.mov_type_venta_producto">Venta de producto lácteo (queso / yogur)</option>
+              <option value="adelanto_efectivo" data-i18n="m4.mov_type_adelanto_efectivo">Adelanto en efectivo</option>
+              <option value="adelanto_queso" data-i18n="m4.mov_type_adelanto_queso">Adelanto en moldes de queso</option>
+              <option value="ayuda_del_dia" data-i18n="m4.mov_type_ayuda_del_dia">Pago de ayuda del día (sin DNI)</option>
+              <option value="gasto_operativo" data-i18n="m4.mov_type_gasto_operativo">Gasto operativo / insumos</option>
             </select>
           </div>
           <div class="form-grupo">
             <label for="mov-proveedor" class="form-label" data-i18n="m4.lbl_prov">Productor (si aplica)</label>
             <select name="proveedor_id" id="mov-proveedor" class="select-lat">
-              <option value="">Ninguno / venta o faena externa</option>
+              <option value="" data-i18n="m4.opt_none_plant">Ninguno / venta o faena externa</option>
               @foreach($proveedores as $prov)
                 <option value="{{ $prov->id }}">{{ $prov->nombre }}</option>
               @endforeach
@@ -80,7 +80,7 @@
           </div>
           <div class="form-grupo">
             <label for="mov-concepto" class="form-label" data-i18n="m4.lbl_concept">Concepto</label>
-            <input type="text" name="concepto" id="mov-concepto" class="input-lat" required maxlength="160" placeholder="Ej: Venta 25 moldes feria Cusco">
+            <input type="text" name="concepto" id="mov-concepto" class="input-lat" required maxlength="160" placeholder="Ej: Venta 25 moldes feria Cusco" data-i18n-placeholder="m4.ph_concept">
           </div>
           <div class="form-grupo">
             <label for="mov-unidades" class="form-label" data-i18n="m4.lbl_units">Moldes / Und.</label>
@@ -100,7 +100,7 @@
     <div class="panel-tabla-cab">
       <h3 data-i18n="m4.recent_title">Movimientos y ventas recientes</h3>
     </div>
-    <div class="tabla-region" tabindex="0">
+    <div class="tabla-region" role="region" aria-label="Movimientos y ventas recientes" data-i18n-aria="m4.mov_section_aria" tabindex="0">
       <table class="tabla-plana">
         <thead>
           <tr>
@@ -119,8 +119,8 @@
           @forelse($movimientos as $mov)
             <tr>
               <td class="num-tabular">{{ $mov->fecha?->format('d/m/Y') }}</td>
-              <td><span class="chip {{ $mov->tipo === 'venta_producto' ? 'chip-verde' : 'chip-fog' }}">{{ $tiposMovLabels[$mov->tipo] ?? $mov->tipo }}</span></td>
-              <td>{{ $mov->proveedor?->nombre ?? 'Planta / externo' }}</td>
+              <td><span class="chip {{ $mov->tipo === 'venta_producto' ? 'chip-verde' : 'chip-fog' }}" data-i18n="m4.mov_type_{{ $mov->tipo }}">{{ $tiposMovLabels[$mov->tipo] ?? $mov->tipo }}</span></td>
+              <td>@if($mov->proveedor){{ $mov->proveedor->nombre }}@else<span data-i18n="panel.plant_external">Planta / externo</span>@endif</td>
               <td>{{ $mov->concepto }}</td>
               <td class="num">{{ $mov->cantidad_unidades ?? 0 }}</td>
               <td class="num"><strong>S/ {{ number_format($mov->monto, 2) }}</strong></td>
@@ -139,6 +139,8 @@
                     <form method="POST" action="{{ route('panel.movimiento.delete', $mov->id) }}"
                       class="js-confirm-form"
                       data-confirm-kind="delete"
+                      data-detalle-tipo="movimiento"
+                      data-detalle-nombre="{{ $mov->concepto }}"
                       data-detalle="{{ $mov->concepto }}">
                       @csrf @method('DELETE')
                       <button type="submit" class="btn-micro btn-micro-danger" data-i18n="common.delete">Eliminar</button>

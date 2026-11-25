@@ -271,6 +271,144 @@ async function checkVisibleFormLabels(page) {
       check(`${nombre} /panel ${sec} campos visibles con label`, sinLabelSec.length === 0, sinLabelSec.join(', '));
     }
 
+    // 6. Verificaciones completas en Quechua Cusqueño (qu): persistencia, título, 7 secciones, modal, calidad y voz
+    const navToPanelSection = async (sec) => {
+      if (nombre !== 'desktop') {
+        await page.click('#btn-sidebar-open');
+        await page.waitForTimeout(120);
+      }
+      await page.click(`#dash-nav-list .dash-nav-btn[data-section="${sec}"]`);
+      await page.waitForTimeout(150);
+    };
+
+    // 6a. Persistencia en / tras seleccionar qu y recargar
+    await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+    await Promise.all([
+      page.waitForResponse(r => r.url().includes('/idioma/qu') && r.ok()),
+      switchHomeLang('qu'),
+    ]);
+    await page.reload({ waitUntil: 'networkidle' });
+    const homeQuReload = await page.evaluate(() => ({
+      lang: document.documentElement.lang,
+      title: document.title,
+    }));
+    check(`${nombre} / persistencia qu tras reload (html[lang] === 'qu')`, homeQuReload.lang === 'qu', homeQuReload.lang);
+    check(`${nombre} / title en qu actualizado`, homeQuReload.title.includes('Chakra Lichi'), homeQuReload.title);
+
+    // 6b. Cambio dinámico es -> qu y persistencia en /panel tras recargar
+    await page.goto(BASE + '/panel', { waitUntil: 'networkidle' });
+    await Promise.all([
+      page.waitForResponse(r => r.url().includes('/idioma/es') && r.ok()),
+      switchPanelLang('es'),
+    ]);
+    const panelEsTitle = await page.title();
+    await Promise.all([
+      page.waitForResponse(r => r.url().includes('/idioma/qu') && r.ok()),
+      switchPanelLang('qu'),
+    ]);
+    const panelQuImmediateTitle = await page.title();
+    check(`${nombre} /panel document.title cambia de es a qu`,
+      panelEsTitle.includes('Mi Panel') && !panelQuImmediateTitle.includes('Mi Panel') && panelQuImmediateTitle.includes("Llank'ana Panelniy"),
+      `es="${panelEsTitle}" qu="${panelQuImmediateTitle}"`);
+    await page.reload({ waitUntil: 'networkidle' });
+    const panelQuReload = await page.evaluate(() => ({
+      lang: document.documentElement.lang,
+      title: document.title,
+    }));
+    check(`${nombre} /panel persistencia qu tras reload (html[lang] === 'qu')`, panelQuReload.lang === 'qu', panelQuReload.lang);
+    check(`${nombre} /panel document.title en qu tras reload`,
+      !panelQuReload.title.includes('Mi Panel') && panelQuReload.title.includes("Llank'ana Panelniy"),
+      panelQuReload.title);
+
+    // 6c. Recorrer las 7 secciones en qu verificando 0 desborde horizontal
+    const allSections = [
+      'sec-dashboard',
+      'sec-acopio',
+      'sec-calidad',
+      'sec-tina',
+      'sec-quincena',
+      'sec-estadisticas',
+      'sec-admin',
+    ];
+    for (const sec of allSections) {
+      await navToPanelSection(sec);
+      const secOverflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
+      check(`${nombre} /panel [qu] ${sec} sin desborde horizontal`, !secOverflow);
+    }
+
+    // 6d. Verificar parser de voz en Quechua ("kimsa chunka pichqayuq litru" -> 35) en sec-acopio
+    await navToPanelSection('sec-acopio');
+    const vozQuResult = await page.evaluate(() => {
+      class MockSpeechRecognition {
+        start() {
+          if (typeof this.onresult === 'function') {
+            this.onresult({ results: [[{ transcript: 'kimsa chunka pichqayuq litru' }]] });
+          }
+        }
+      }
+      window.SpeechRecognition = MockSpeechRecognition;
+      window.webkitSpeechRecognition = MockSpeechRecognition;
+      const btn = document.getElementById('btn-voz');
+      if (btn) btn.click();
+      return {
+        litros: document.getElementById('input-litros')?.value || '',
+        metodo: document.getElementById('input-metodo')?.value || '',
+        transcripcion: document.getElementById('transcripcion-voz')?.textContent?.trim() || '',
+      };
+    });
+    check(`${nombre} /panel [qu] dictado "kimsa chunka pichqayuq litru" -> 35 L`,
+      vozQuResult.litros === '35' && vozQuResult.metodo === 'voz' && vozQuResult.transcripcion.includes('Uyarisqa'),
+      JSON.stringify(vozQuResult));
+
+    // 6e. Verificar modal de confirmación de Calidad en sec-calidad sin mezcla en español
+    await navToPanelSection('sec-calidad');
+    const calidadButtons = await page.$$('#sec-calidad .js-confirm-form[data-confirm-kind="calidad"] button[type="submit"]');
+    check(`${nombre} /panel [qu] sec-calidad tiene botones de evaluación`, calidadButtons.length >= 2, `count=${calidadButtons.length}`);
+    if (calidadButtons.length >= 2) {
+      await calidadButtons[0].click();
+      await page.waitForTimeout(100);
+      const msgApprove = await page.$eval('#confirm-modal-message', el => el.textContent.trim());
+      check(`${nombre} /panel [qu] modal calidad (aprobar) sin español`,
+        msgApprove.includes('Allin chaskisqa (Hatun tina)') && !msgApprove.includes('Aprobada (Tina principal)') && !msgApprove.includes('¿Está seguro'),
+        msgApprove);
+      await page.click('#modal-confirmacion-lat [data-close-modal="modal-confirmacion-lat"]');
+      await page.waitForTimeout(100);
+
+      await calidadButtons[1].click();
+      await page.waitForTimeout(100);
+      const msgDivert = await page.$eval('#confirm-modal-message', el => el.textContent.trim());
+      check(`${nombre} /panel [qu] modal calidad (desviar) sin español`,
+        msgDivert.includes("P'usqu (4 p'unchaw kisillu)") && !msgDivert.includes('Ácida (Desviar') && !msgDivert.includes('¿Está seguro'),
+        msgDivert);
+      await page.click('#modal-confirmacion-lat [data-close-modal="modal-confirmacion-lat"]');
+      await page.waitForTimeout(100);
+    }
+
+    // 6f. Abrir modal en qu (#modal-nueva-tina desde sec-tina) y verificar traducción y 0 desborde
+    await navToPanelSection('sec-tina');
+    const btnOpenTinaModal = await page.$('[data-open-modal="modal-nueva-tina"]');
+    check(`${nombre} /panel [qu] botón abrir #modal-nueva-tina presente`, !!btnOpenTinaModal);
+    if (btnOpenTinaModal) {
+      await btnOpenTinaModal.click();
+      await page.waitForTimeout(150);
+      const modalQuState = await page.evaluate(() => {
+        const modal = document.getElementById('modal-nueva-tina');
+        const title = document.getElementById('title-nueva-tina')?.textContent?.trim() || '';
+        const btn = modal?.querySelector('button[type="submit"]')?.textContent?.trim() || '';
+        return {
+          open: !!modal && !modal.hidden,
+          title,
+          btn,
+          overflow: document.documentElement.scrollWidth > window.innerWidth + 1,
+        };
+      });
+      check(`${nombre} /panel [qu] modal #modal-nueva-tina traducido y sin desborde`,
+        modalQuState.open && modalQuState.title === 'Musuq tinata yapay' && modalQuState.btn === 'Tinata kamariy' && !modalQuState.overflow,
+        JSON.stringify(modalQuState));
+      await page.click('#modal-nueva-tina [data-close-modal="modal-nueva-tina"]');
+      await page.waitForTimeout(100);
+    }
+
     check(`${nombre} sin errores JS ni de consola`, errores.length === 0, errores.join(' | '));
     await ctx.close();
   }

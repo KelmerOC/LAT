@@ -1,4 +1,4 @@
-<section id="sec-acopio" class="tab-panel" aria-label="Acopio por voz y tacto" hidden>
+<section id="sec-acopio" class="tab-panel" aria-label="Acopio por voz y tacto" data-i18n-aria="acopio.section_aria" hidden>
   <div class="{{ $usuario->tienePermiso('acopio.crear') ? 'panel-grid-2' : '' }}">
     @if($usuario->tienePermiso('acopio.crear'))
       <div class="panel-card on-fog">
@@ -33,9 +33,9 @@
 
           <div class="form-grupo" role="group" aria-labelledby="botonera-etq">
             <span class="botonera-etq" id="botonera-etq" data-i18n="m1.touch_pad">Botonera táctil rápida (suma litros)</span>
-            <div class="botonera">
+            <div class="botonera" role="group" aria-label="Botonera táctil rápida" data-i18n-aria="acopio.keypad_aria">
               @foreach([10, 15, 20, 25, 30, 35, 40, 50] as $lit)
-                <button type="button" data-litros="{{ $lit }}" aria-label="Sumar {{ $lit }} litros">+{{ $lit }}</button>
+                <button type="button" data-litros="{{ $lit }}" aria-label="Sumar {{ $lit }} litros" data-i18n-aria="panel.sum_liters_aria">+{{ $lit }}</button>
               @endforeach
             </div>
           </div>
@@ -54,7 +54,7 @@
         @endif
         <span class="chip chip-celeste num-tabular"><span data-i18n="m1.total">Total:</span> {{ number_format($litrosHoy, 1) }} L</span>
       </div>
-      <div class="tabla-region" role="region" aria-label="Entregas de leche de hoy" tabindex="0">
+      <div class="tabla-region" role="region" aria-label="Entregas de leche de hoy" data-i18n-aria="acopio.table_aria" tabindex="0">
         <table class="tabla-plana">
           <thead>
             <tr>

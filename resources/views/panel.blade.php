@@ -1,6 +1,7 @@
 @extends('layouts.app')
 
 @section('titulo', 'LAT · Mi Panel Operativo')
+@section('title_i18n', 'title.panel')
 @section('sin_chrome_publico', '1')
 @section('body_class', 'dash-body')
 
@@ -74,7 +75,7 @@
             <div class="alerta alerta-roja" role="alert">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 2 20h20L12 3Z"/><path d="M12 10v4M12 17h.01"/></svg>
               <div>
-                <strong>Revise los siguientes campos:</strong>
+                <strong data-i18n="common.review_errors">Revise los siguientes campos:</strong>
                 <ul>
                   @foreach($errors->all() as $err)
                     <li>{{ $err }}</li>
@@ -116,8 +117,8 @@
 
       @if(empty($seccionesPermitidas))
         <section id="sec-sin-permisos" class="dash-card" style="max-width: 560px; margin: 2rem auto; text-align: center; padding: 2.5rem;">
-          <h2>Sin secciones asignadas</h2>
-          <p style="margin-top: 0.75rem;">Tu cuenta (<strong>{{ $usuario->usuario }}</strong>) está activa pero aún no tiene secciones ni controles habilitados. Solicita al administrador de tu planta que asigne tus permisos.</p>
+          <h2 data-i18n="panel.no_sections_title">Sin secciones asignadas</h2>
+          <p style="margin-top: 0.75rem;"><span data-i18n="panel.no_sections_desc">Tu cuenta está activa pero aún no tiene secciones ni controles habilitados. Solicita al administrador de tu planta que asigne tus permisos.</span> (<strong>{{ $usuario->usuario }}</strong>)</p>
         </section>
       @endif
     </div>
@@ -475,22 +476,27 @@
       pendingForm = form;
 
       const kind = form.dataset.confirmKind;
-      let msg = '¿Está seguro de que desea aplicar este cambio?';
+      let msg = window.LAT_I18N ? window.LAT_I18N.t('confirm.default_msg') : '¿Está seguro de que desea aplicar este cambio?';
       if (window.LAT_I18N) {
         if (kind === 'calidad') {
+          const estadoKey = form.dataset.estadoKey || (e.submitter && e.submitter.dataset.estadoKey) || 'buena';
+          const estadoLabel = window.LAT_I18N.t(estadoKey === 'acida' ? 'calidad.state_acida' : 'calidad.state_buena');
           msg = window.LAT_I18N.t('confirm.quality_msg', {
             nombre: form.dataset.nombre || '',
             litros: form.dataset.litros || '0',
-            estado: form.dataset.nuevoEstado || ''
+            estado: estadoLabel
           });
         } else if (kind === 'finish_batch') {
           msg = window.LAT_I18N.t('confirm.finish_batch_msg', {
             codigo: form.dataset.codigo || ''
           });
         } else if (kind === 'delete') {
-          msg = window.LAT_I18N.t('confirm.delete_msg', {
-            detalle: form.dataset.detalle || ''
-          });
+          const detalleTipo = form.dataset.detalleTipo || (e.submitter && e.submitter.dataset.detalleTipo) || '';
+          const detalleNombre = form.dataset.detalleNombre || (e.submitter && e.submitter.dataset.detalleNombre) || '';
+          const detalle = detalleTipo
+            ? window.LAT_I18N.t(detalleTipo === 'acopio' ? 'confirm.detail_acopio' : 'confirm.detail_mov', { nombre: detalleNombre })
+            : (form.dataset.detalle || detalleNombre);
+          msg = window.LAT_I18N.t('confirm.delete_msg', { detalle });
         }
       }
 
@@ -742,9 +748,135 @@
         .normalize('NFD')
         .replace(/[\u0300-\u036f]/g, '')
         .toLowerCase()
+        .replace(/['’ʻʼ`´]/g, '')
         .replace(/[^a-z0-9\s]/g, ' ')
         .replace(/\s+/g, ' ')
         .trim();
+    }
+
+    function extraerLitrosDeTexto(frase) {
+      const m = (frase || '').match(/(\d+(?:[\.,]\d+)?)/);
+      if (m) {
+        return parseFloat(m[1].replace(',', '.'));
+      }
+
+      const tokens = normalizarTexto(frase).split(' ').filter(Boolean);
+      if (!tokens.length) return null;
+
+      // Numerales Quechua Cusqueño (1..9, chunka=10, pachak=100, con sufijos -yuq/-niyuq)
+      const quUnits = {
+        huk: 1, uk: 1, uj: 1,
+        iskay: 2,
+        kimsa: 3, kinsa: 3,
+        tawa: 4,
+        pichqa: 5, pisqa: 5, pishqa: 5,
+        suqta: 6, soqta: 6,
+        qanchis: 7, qanchish: 7,
+        pusaq: 8,
+        isqun: 9, esqon: 9
+      };
+
+      let quTotal = 0;
+      let quCurr = 0;
+      let quFound = false;
+      for (const rawTok of tokens) {
+        const tok = rawTok.replace(/(ni)?y[ou]q$/, '');
+        if (quUnits[tok] !== undefined) {
+          quCurr += quUnits[tok];
+          quFound = true;
+        } else if (tok === 'chunka') {
+          quCurr = (quCurr > 0 ? quCurr : 1) * 10;
+          quTotal += quCurr;
+          quCurr = 0;
+          quFound = true;
+        } else if (tok === 'pachak') {
+          quCurr = (quCurr > 0 ? quCurr : 1) * 100;
+          quTotal += quCurr;
+          quCurr = 0;
+          quFound = true;
+        } else if (quFound) {
+          break;
+        }
+      }
+      if (quFound && (quTotal + quCurr) > 0) {
+        return quTotal + quCurr;
+      }
+
+      // Numerales en español (uno..cien y compuestos)
+      const esNums = {
+        un: 1, uno: 1, una: 1, dos: 2, tres: 3, cuatro: 4, cinco: 5,
+        seis: 6, siete: 7, ocho: 8, nueve: 9, diez: 10,
+        once: 11, doce: 12, trece: 13, catorce: 14, quince: 15,
+        dieciseis: 16, diecisiete: 17, dieciocho: 18, diecinueve: 19,
+        veinte: 20, veintiun: 21, veintiuno: 21, veintiuna: 21,
+        veintidos: 22, veintitres: 23, veinticuatro: 24, veinticinco: 25,
+        veintiseis: 26, veintisiete: 27, veintiocho: 28, veintinueve: 29,
+        treinta: 30, cuarenta: 40, cincuenta: 50, sesenta: 60,
+        setenta: 70, ochenta: 80, noventa: 90, cien: 100, ciento: 100
+      };
+
+      let esTotal = 0;
+      let esFound = false;
+      for (const tok of tokens) {
+        if (esNums[tok] !== undefined) {
+          esTotal += esNums[tok];
+          esFound = true;
+        } else if (tok === 'y' && esFound) {
+          continue;
+        } else if (esFound) {
+          break;
+        }
+      }
+      if (esFound && esTotal > 0) {
+        return esTotal;
+      }
+
+      return null;
+    }
+
+    function reproducirTonoConfirmacion() {
+      try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        const ctx = new AudioCtx();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(660, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.12);
+        gain.gain.setValueAtTime(0.08, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.18);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.18);
+        osc.onended = () => { try { ctx.close(); } catch (_) {} };
+      } catch (_) {}
+    }
+
+    function hablarConfirmacion(langActual, speechLang, texto) {
+      if (langActual === 'qu') {
+        const voices = ('speechSynthesis' in window && typeof window.speechSynthesis.getVoices === 'function')
+          ? window.speechSynthesis.getVoices()
+          : [];
+        const vozQuechua = voices.find(v => /^(qu|quz)\b/i.test(v.lang || ''));
+        if (vozQuechua && 'speechSynthesis' in window) {
+          const u = new SpeechSynthesisUtterance(texto);
+          u.voice = vozQuechua;
+          u.lang = vozQuechua.lang;
+          window.speechSynthesis.speak(u);
+          return true;
+        }
+        reproducirTonoConfirmacion();
+        return false;
+      }
+      if ('speechSynthesis' in window) {
+        const u = new SpeechSynthesisUtterance(texto);
+        u.lang = speechLang;
+        window.speechSynthesis.speak(u);
+        return true;
+      }
+      return false;
     }
 
     function emparejarProveedor(frase) {
@@ -804,18 +936,19 @@
 
       rec.onresult = e => {
         const frase = e.results[0][0].transcript;
-        transcripcion.removeAttribute('data-i18n');
-        transcripcion.textContent = tr('m1.voice_heard', 'Escuchado: “{frase}”', { frase });
         document.getElementById('input-frase').value = frase;
         document.getElementById('input-metodo').value = 'voz';
-        const m = frase.match(/(\d+([\.,]\d+)?)/);
-        if (m) document.getElementById('input-litros').value = parseFloat(m[1].replace(',', '.'));
-        emparejarProveedor(frase);
-        if ('speechSynthesis' in window) {
-          const u = new SpeechSynthesisUtterance(tr('m1.voice_spoken_ok', 'Acopio capturado correctamente'));
-          u.lang = speechLang;
-          window.speechSynthesis.speak(u);
+        const litros = extraerLitrosDeTexto(frase);
+        if (litros !== null && !Number.isNaN(litros)) {
+          document.getElementById('input-litros').value = litros;
         }
+        emparejarProveedor(frase);
+        const textoConfirmacion = tr('m1.voice_spoken_ok', 'Acopio capturado correctamente');
+        const hablo = hablarConfirmacion(langActual, speechLang, textoConfirmacion);
+        transcripcion.removeAttribute('data-i18n');
+        transcripcion.textContent = hablo
+          ? tr('m1.voice_heard', 'Escuchado: “{frase}”', { frase })
+          : tr('m1.voice_heard', 'Escuchado: “{frase}”', { frase }) + ' · ' + textoConfirmacion;
         reposo();
       };
       rec.onerror = () => {

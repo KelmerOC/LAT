@@ -35,7 +35,7 @@ class PanelController extends Controller
         $usuario = $request->user();
 
         if (! $usuario || ! $usuario->activo) {
-            abort(403, 'Cuenta inactiva o no autenticada.');
+            abort(403, __('lat.account_inactive_or_unauthenticated'));
         }
 
         if ($usuario->tienePermiso('admin.plantas')) {
@@ -59,16 +59,16 @@ class PanelController extends Controller
                 return $primera;
             }
 
-            abort(403, 'No existe ninguna planta registrada.');
+            abort(403, __('lat.plant_none_registered'));
         }
 
         if (! $usuario->planta_id) {
-            abort(403, 'No tienes una planta asignada.');
+            abort(403, __('lat.plant_not_assigned'));
         }
 
         $planta = Planta::find($usuario->planta_id);
         if (! $planta) {
-            abort(403, 'La planta asignada no existe.');
+            abort(403, __('lat.plant_assigned_missing'));
         }
 
         return $planta;
@@ -108,12 +108,18 @@ class PanelController extends Controller
         $usuario = $request->user();
 
         if (! $usuario || ! $usuario->activo) {
+            $localeActual = $request->session()->get('locale', $request->cookie('lat_locale', config('app.locale', 'es')));
+            if (! is_string($localeActual) || ! in_array($localeActual, ['es', 'qu', 'en'], true)) {
+                $localeActual = 'es';
+            }
+
             Auth::logout();
             $request->session()->invalidate();
             $request->session()->regenerateToken();
+            $request->session()->put('locale', $localeActual);
 
             return redirect()->route('login')->withErrors([
-                'login' => 'Tu cuenta ha sido desactivada. Contacta al administrador.',
+                'login' => __('lat.account_deactivated'),
             ]);
         }
 
@@ -269,7 +275,7 @@ class PanelController extends Controller
     public function cambiarPlanta(Request $request): RedirectResponse
     {
         if (! $request->user()->tienePermiso('admin.plantas')) {
-            abort(403);
+            abort(403, __('lat.forbidden'));
         }
 
         $datos = $request->validate([
@@ -278,7 +284,7 @@ class PanelController extends Controller
 
         $request->session()->put('planta_activa_id', (int) $datos['planta_id']);
 
-        return back()->with('exito', 'Planta activa cambiada correctamente.');
+        return back()->with('exito', __('lat.plant_switched'));
     }
 
     public function guardarAcopio(Request $request): RedirectResponse
@@ -307,7 +313,7 @@ class PanelController extends Controller
             'destino' => 'queso_yogur',
         ]);
 
-        return back()->with('exito', 'Acopio registrado con éxito.');
+        return back()->with('exito', __('lat.intake_created'));
     }
 
     public function actualizarAcopio(Request $request, int $id): RedirectResponse
@@ -338,7 +344,7 @@ class PanelController extends Controller
                 : $acopio->hora,
         ]);
 
-        return back()->with('exito', 'Registro de acopio actualizado correctamente.');
+        return back()->with('exito', __('lat.intake_updated'));
     }
 
     public function eliminarAcopio(Request $request, int $id): RedirectResponse
@@ -347,7 +353,7 @@ class PanelController extends Controller
         $acopio = Acopio::dePlanta($planta->id)->findOrFail($id);
         $acopio->delete();
 
-        return back()->with('exito', 'Registro de acopio eliminado.');
+        return back()->with('exito', __('lat.intake_deleted'));
     }
 
     public function evaluarCalidad(Request $request, int $id): RedirectResponse
@@ -364,13 +370,13 @@ class PanelController extends Controller
                 'calidad' => 'acida',
                 'destino' => 'quesillo_4_dias',
             ]);
-            $mensaje = 'Leche ácida clasificada y derivada a quesillos frescos de 4 días.';
+            $mensaje = __('lat.quality_classified_acid');
         } else {
             $acopio->update([
                 'calidad' => 'buena',
                 'destino' => 'queso_yogur',
             ]);
-            $mensaje = 'Leche aprobada para pasteurización en tina principal.';
+            $mensaje = __('lat.quality_classified_good');
         }
 
         return back()->with('exito', $mensaje);
@@ -397,7 +403,7 @@ class PanelController extends Controller
             'activa' => true,
         ]);
 
-        return back()->with('exito', 'Nueva tina agregada a la planta.');
+        return back()->with('exito', __('lat.vat_created'));
     }
 
     public function editarTina(Request $request, int $id): RedirectResponse
@@ -422,7 +428,7 @@ class PanelController extends Controller
             'activa' => $request->has('activa') ? $request->boolean('activa') : $tina->activa,
         ]);
 
-        return back()->with('exito', 'Tina actualizada correctamente.');
+        return back()->with('exito', __('lat.vat_updated'));
     }
 
     public function iniciarLoteEnTina(Request $request, int $tinaId): RedirectResponse
@@ -431,7 +437,7 @@ class PanelController extends Controller
         $tina = Tina::dePlanta($planta->id)->findOrFail($tinaId);
 
         if (! $tina->activa) {
-            return back()->withErrors(['tina' => 'No se puede iniciar un lote en una tina inactiva.']);
+            return back()->withErrors(['tina' => __('lat.vat_inactive_error')]);
         }
 
         $datos = $request->validate([
@@ -440,7 +446,7 @@ class PanelController extends Controller
         ]);
 
         if ($tina->loteActivo()->exists()) {
-            return back()->withErrors(['tina' => 'Esta tina ya tiene un lote en proceso. Finalízalo antes de iniciar otro.']);
+            return back()->withErrors(['tina' => __('lat.vat_already_active_error')]);
         }
 
         $temp = (float) ($datos['temperatura_actual'] ?? 72.0);
@@ -468,7 +474,7 @@ class PanelController extends Controller
             'estado' => $evaluacion['estado'] === 'muy_fria' ? 'enfriando' : $evaluacion['estado'],
         ]);
 
-        return back()->with('exito', 'Lote iniciado en '.$tina->nombre.' con dosificación calculada.');
+        return back()->with('exito', __('lat.batch_started', ['vat' => $tina->nombre]));
     }
 
     public function actualizarTina(Request $request, int $id): RedirectResponse
@@ -477,7 +483,7 @@ class PanelController extends Controller
         $lote = Lote::with('tina')->dePlanta($planta->id)->findOrFail($id);
 
         if ($lote->estado === 'terminado') {
-            return back()->withErrors(['tina' => 'Este lote ya se encuentra finalizado y no puede modificarse.']);
+            return back()->withErrors(['tina' => __('lat.batch_finished_error')]);
         }
 
         $maxLitros = $lote->tina ? (float) $lote->tina->capacidad_litros : 10000.0;
@@ -511,14 +517,14 @@ class PanelController extends Controller
             $cambios['estado'] = 'terminado';
             $lote->update($cambios);
 
-            return back()->with('exito', 'Lote finalizado y moldes registrados en la tina.');
+            return back()->with('exito', __('lat.batch_finished'));
         }
 
         if ($cambios !== []) {
             $lote->update($cambios);
         }
 
-        return back()->with('exito', 'Tina actualizada correctamente.');
+        return back()->with('exito', __('lat.vat_updated'));
     }
 
     public function registrarMovimiento(Request $request): RedirectResponse
@@ -546,7 +552,7 @@ class PanelController extends Controller
             'descontado' => ! in_array($datos['tipo'], ['adelanto_efectivo', 'adelanto_queso'], true),
         ]);
 
-        return back()->with('exito', 'Movimiento registrado correctamente.');
+        return back()->with('exito', __('lat.movement_created'));
     }
 
     public function actualizarMovimiento(Request $request, int $id): RedirectResponse
@@ -571,7 +577,7 @@ class PanelController extends Controller
             'descontado' => ! in_array($datos['tipo'], ['adelanto_efectivo', 'adelanto_queso'], true),
         ]);
 
-        return back()->with('exito', 'Movimiento actualizado correctamente.');
+        return back()->with('exito', __('lat.movement_updated'));
     }
 
     public function eliminarMovimiento(Request $request, int $id): RedirectResponse
@@ -580,7 +586,7 @@ class PanelController extends Controller
         $mov = Liquidacion::dePlanta($planta->id)->findOrFail($id);
         $mov->delete();
 
-        return back()->with('exito', 'Movimiento eliminado.');
+        return back()->with('exito', __('lat.movement_deleted'));
     }
 
     public function guardarProveedor(Request $request): RedirectResponse
@@ -602,7 +608,7 @@ class PanelController extends Controller
             'activo' => true,
         ]);
 
-        return back()->with('exito', 'Ganadero registrado en la planta.');
+        return back()->with('exito', __('lat.producer_created'));
     }
 
     public function actualizarProveedor(Request $request, int $id): RedirectResponse
@@ -623,7 +629,7 @@ class PanelController extends Controller
             'sector' => array_key_exists('sector', $datos) ? $datos['sector'] : $prov->sector,
         ]);
 
-        return back()->with('exito', 'Datos del ganadero actualizados.');
+        return back()->with('exito', __('lat.producer_updated'));
     }
 
     public function exportarExcel(Request $request): Response

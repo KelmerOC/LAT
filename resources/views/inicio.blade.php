@@ -1,6 +1,7 @@
 @extends('layouts.app')
 
 @section('titulo', 'LAT · Gestión Láctea Rural · Cusco Provincia')
+@section('title_i18n', 'title.home')
 
 @section('contenido')
   <section class="hero-farm-wrap hero-acuarela lienzo-acuarela" aria-labelledby="hero-titular">
@@ -25,7 +26,7 @@
           </a>
         </div>
 
-        <ul class="hero-sellos" aria-label="Características principales">
+        <ul class="hero-sellos" aria-label="Características principales" data-i18n-aria="hero.seals_aria">
           <li class="sello"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg><span data-i18n="hero.seal_1">S/ 0.00 comisión</span></li>
           <li class="sello"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg><span data-i18n="hero.seal_2">Dictado por voz y modo una mano</span></li>
           <li class="sello"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg><span data-i18n="hero.seal_3">Prueba de alcohol 74°</span></li>
@@ -34,30 +35,30 @@
       </div>
 
       <div>
-        <div class="hero-banner-frame" id="hero-carousel" role="group" aria-roledescription="carrusel" aria-label="Galería fotográfica de actividades lácteas">
+        <div class="hero-banner-frame" id="hero-carousel" role="group" aria-roledescription="carrusel" aria-label="Galería fotográfica de actividades lácteas" data-i18n-aria="hero.carousel_aria">
           <div class="hero-gradiente-mask"></div>
 
           <img src="https://images.unsplash.com/photo-1500595046743-cd271d694d30?auto=format&fit=crop&w=1200&q=80"
-               alt="Ganado lechero en pasturas andinas" class="crossfade-img activa"
+               alt="Ganado lechero en pasturas andinas" data-i18n-alt="hero.alt_1" class="crossfade-img activa"
                data-caption="Ganado lechero en pasturas andinas" data-caption-key="hero.cap_1" loading="eager">
           <img src="https://images.unsplash.com/photo-1596733430284-f7437764b1a9?auto=format&fit=crop&w=1200&q=80"
-               alt="Establo lechero familiar" class="crossfade-img"
+               alt="Establo lechero familiar" data-i18n-alt="hero.alt_2" class="crossfade-img"
                data-caption="Establo lechero familiar" data-caption-key="hero.cap_2" loading="lazy">
           <img src="https://images.unsplash.com/photo-1486297678162-eb2a19b0a32d?auto=format&fit=crop&w=1200&q=80"
-               alt="Bodega de maduración de quesos artesanales" class="crossfade-img"
+               alt="Bodega de maduración de quesos artesanales" data-i18n-alt="hero.alt_3" class="crossfade-img"
                data-caption="Maduración de quesos artesanales" data-caption-key="hero.cap_3" loading="lazy">
           <img src="https://images.unsplash.com/photo-1589923188900-85dae523342b?auto=format&fit=crop&w=1200&q=80"
-               alt="Tina de cuajado en una quesería" class="crossfade-img"
+               alt="Tina de cuajado en una quesería" data-i18n-alt="hero.alt_4" class="crossfade-img"
                data-caption="Cuajado en tina" data-caption-key="hero.cap_4" loading="lazy">
 
           <div class="hero-banner-pie">
             <span id="banner-caption" aria-live="off" data-i18n="hero.cap_1">Ganado lechero en pasturas andinas</span>
             <div style="display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0;">
               <div class="banner-dots" id="banner-dots">
-                <button type="button" class="banner-dot activo" onclick="irASlide(0)" aria-label="Ver foto 1 de 4"></button>
-                <button type="button" class="banner-dot" onclick="irASlide(1)" aria-label="Ver foto 2 de 4"></button>
-                <button type="button" class="banner-dot" onclick="irASlide(2)" aria-label="Ver foto 3 de 4"></button>
-                <button type="button" class="banner-dot" onclick="irASlide(3)" aria-label="Ver foto 4 de 4"></button>
+                <button type="button" class="banner-dot activo" onclick="irASlide(0)" aria-label="Ver foto 1 de 4" data-i18n-aria="hero.dot_1"></button>
+                <button type="button" class="banner-dot" onclick="irASlide(1)" aria-label="Ver foto 2 de 4" data-i18n-aria="hero.dot_2"></button>
+                <button type="button" class="banner-dot" onclick="irASlide(2)" aria-label="Ver foto 3 de 4" data-i18n-aria="hero.dot_3"></button>
+                <button type="button" class="banner-dot" onclick="irASlide(3)" aria-label="Ver foto 4 de 4" data-i18n-aria="hero.dot_4"></button>
               </div>
               <button type="button" id="btn-pausa-banner" class="btn-banner-control" onclick="togglePausaBanner()" aria-pressed="false">
                 <svg id="icono-pausa" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
@@ -66,13 +67,13 @@
             </div>
           </div>
 
-          <button type="button" class="btn-plus-corner" id="btn-next-slide" aria-label="Siguiente fotografía" title="Siguiente fotografía">+</button>
+          <button type="button" class="btn-plus-corner" id="btn-next-slide" aria-label="Siguiente fotografía" title="Siguiente fotografía" data-i18n-aria="hero.next_slide_aria" data-i18n-title="hero.next_slide_aria">+</button>
         </div>
       </div>
     </div>
   </section>
 
-  <section class="franja stats-strip-wrap" aria-label="Indicadores operativos">
+  <section class="franja stats-strip-wrap" aria-label="Indicadores operativos" data-i18n-aria="hero.strip_aria">
     <div class="contenedor">
       <ul class="franja-grid">
         <li class="franja-item"><strong data-i18n="strip.s1_val">S/ 0.00</strong><span data-i18n="strip.s1_lbl">Comisión por uso</span></li>
@@ -103,7 +104,7 @@
               <div class="demo-card">
                 <p class="demo-etq" data-i18n="steps.p1_card_lbl">Frase dictada</p>
                 <div class="waveform-anim" aria-hidden="true"><span class="waveform-bar"></span><span class="waveform-bar"></span><span class="waveform-bar"></span><span class="waveform-bar"></span><span class="waveform-bar"></span></div>
-                <p class="demo-valor" style="font-size: 1.25rem; font-weight: 600;">“Don Eloy Condori, 35 litros”</p>
+                <p class="demo-valor" style="font-size: 1.25rem; font-weight: 600;" data-i18n="steps.p1_sample">“Don Eloy Condori, 35 litros”</p>
               </div>
             </div>
           </li>

@@ -5,7 +5,7 @@
   $deltaMoldes = $k['produccion']['delta_pct'];
 @endphp
 
-<section id="sec-dashboard" class="tab-panel" aria-label="Dashboard general y gráficas">
+<section id="sec-dashboard" class="tab-panel" aria-label="Dashboard general y gráficas" data-i18n-aria="dash.charts_aria">
   <!-- Fila 1: 4 Tarjetas KPI con variación vs período anterior -->
   <div class="dash-kpi-grid">
     <article class="dash-kpi-card">
@@ -40,7 +40,7 @@
           <span class="dash-delta {{ $deltaVentas >= 0 ? 'up' : 'down' }}">{{ $deltaVentas >= 0 ? '+' : '' }}{{ $deltaVentas }}%</span>
           <span>{{ $k['ventas']['unidades'] }} <span data-i18n="dash.kpi_units_sold">unidades vendidas</span></span>
         @else
-          <span class="dash-delta neutral">{{ $k['ventas']['unidades'] }} und.</span>
+          <span class="dash-delta neutral">{{ $k['ventas']['unidades'] }} <span data-i18n="panel.unit_und">und.</span></span>
           <span><span data-i18n="dash.kpi_expenses">Gastos:</span> S/ {{ number_format($k['ventas']['gastos'], 2) }}</span>
         @endif
       </div>
@@ -50,7 +50,7 @@
       <div class="dash-kpi-top">
         <div>
           <span class="dash-kpi-label" data-i18n="dash.kpi_molds">Moldes producidos</span>
-          <strong class="dash-kpi-value">{{ number_format($k['produccion']['moldes']) }}<small>und</small></strong>
+          <strong class="dash-kpi-value">{{ number_format($k['produccion']['moldes']) }}<small data-i18n="panel.unit_und">und</small></strong>
         </div>
         <div class="dash-kpi-icon is-celeste" aria-hidden="true">{!! $icoTina !!}</div>
       </div>
@@ -88,7 +88,7 @@
         <span class="chip chip-celeste" data-i18n="dash.range_{{ $rango }}">{{ $dashboardData['etiqueta_rango'] }}</span>
       </div>
       <div class="dash-chart-box">
-        <canvas id="chart-acopio-diario" aria-label="Gráfica de barras de acopio diario"></canvas>
+        <canvas id="chart-acopio-diario" aria-label="Gráfica de barras de acopio diario" data-i18n-aria="dash.chart_acopio_aria"></canvas>
       </div>
       <div class="dash-chart-foot">
         <span><span data-i18n="dash.c1_good">Óptima:</span> <strong>{{ number_format($k['calidad']['buena_litros'], 1) }} L</strong></span>
@@ -105,7 +105,7 @@
         <span class="chip chip-verde">S/ {{ number_format($k['ventas']['valor'], 0) }}</span>
       </div>
       <div class="dash-chart-box">
-        <canvas id="chart-ventas-gastos" aria-label="Gráfica de líneas de ventas y gastos"></canvas>
+        <canvas id="chart-ventas-gastos" aria-label="Gráfica de líneas de ventas y gastos" data-i18n-aria="dash.chart_ventas_aria"></canvas>
       </div>
       <div class="dash-chart-foot">
         <span data-i18n="dash.c2_comm">Comisión LAT: S/ 0.00</span>
@@ -119,10 +119,10 @@
           <h2 data-i18n="dash.c3_title">Producción de moldes</h2>
           <p class="dash-card-sub" data-i18n="dash.c3_sub">Unidades cerradas en tina por día</p>
         </div>
-        <span class="chip chip-fog">{{ $k['produccion']['moldes'] }} und</span>
+        <span class="chip chip-fog">{{ $k['produccion']['moldes'] }} <span data-i18n="panel.unit_und">und</span></span>
       </div>
       <div class="dash-chart-box">
-        <canvas id="chart-moldes-diarios" aria-label="Gráfica de producción diaria de moldes"></canvas>
+        <canvas id="chart-moldes-diarios" aria-label="Gráfica de producción diaria de moldes" data-i18n-aria="dash.chart_moldes_aria"></canvas>
       </div>
       <div class="dash-chart-foot">
         <span data-i18n="dash.c3_yield">Rendimiento: ~11 moldes / 100 L</span>
