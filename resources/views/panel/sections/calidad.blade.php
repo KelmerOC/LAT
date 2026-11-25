@@ -3,76 +3,82 @@
     <h2 data-i18n="m2.title">Control sanitario en recepción (prueba de alcohol a 74°)</h2>
     <p><strong data-i18n="m2.sub_lead">Principio de cero desperdicio:</strong> <span data-i18n="m2.sub_body">la leche con acidez no se desecha ni se multa al productor. Se clasifica de inmediato y se deriva a quesillos frescos de 4 días.</span></p>
 
-    <div class="tabla-region" role="region" aria-label="Clasificación sanitaria de las entregas de hoy" data-i18n-aria="calidad.queue_aria" tabindex="0">
-      <table class="tabla-plana">
-        <thead>
-          <tr>
-            <th scope="col" data-i18n="m1.col_producer">Productor</th>
-            <th scope="col" class="num" data-i18n="m1.col_liters">Litros</th>
-            <th scope="col" data-i18n="m2.col_status">Estado actual</th>
-            <th scope="col" data-i18n="m2.col_dest">Destino operativo</th>
-            @if($usuario->tienePermiso('calidad.evaluar'))
-              <th scope="col" data-i18n="m2.col_triage">Triage inmediato</th>
-            @endif
-          </tr>
-        </thead>
-        <tbody>
-          @forelse($acopiosHoy as $acopio)
+    @if($usuario->tienePermiso('calidad.ver'))
+      <div class="tabla-region" role="region" aria-label="Clasificación sanitaria de las entregas" data-i18n-aria="calidad.queue_aria" tabindex="0">
+        <table class="tabla-plana">
+          <thead>
             <tr>
-              <td><strong>{{ $acopio->proveedor->nombre }}</strong><small>{{ $acopio->proveedor->codigo }}</small></td>
-              <td class="num" style="font-size: 1.1rem;">{{ number_format($acopio->litros, 1) }} L</td>
-              <td>
-                @if($acopio->calidad === 'buena')
-                  <span class="chip chip-verde">{!! $icoOk !!} <span data-i18n="m2.status_good">Óptima</span></span>
-                @elseif($acopio->calidad === 'acida')
-                  <span class="chip chip-amarillo">{!! $icoAlerta !!} <span data-i18n="m2.status_acid">Con acidez</span></span>
-                @else
-                  <span class="chip chip-amarillo" data-i18n="m2.status_pending">Sin probar</span>
-                @endif
-              </td>
-              <td>
-                @if($acopio->destino === 'quesillo_4_dias')
-                  <span data-i18n="m2.dest_quesillo">Tina quesillo 4 días</span>
-                @else
-                  <span data-i18n="m2.dest_main">Tina principal (queso / yogur)</span>
-                @endif
-              </td>
+              <th scope="col">Fecha / Hora</th>
+              <th scope="col" data-i18n="m1.col_producer">Productor</th>
+              <th scope="col" class="num" data-i18n="m1.col_liters">Litros</th>
+              <th scope="col" data-i18n="m2.col_status">Estado actual</th>
+              <th scope="col" data-i18n="m2.col_dest">Destino operativo</th>
               @if($usuario->tienePermiso('calidad.evaluar'))
-                <td>
-                  <div class="acciones-celda">
-                    <form method="POST" action="{{ route('panel.calidad', $acopio->id) }}"
-                      class="js-confirm-form"
-                      data-confirm-kind="calidad"
-                      data-nombre="{{ $acopio->proveedor->nombre }}"
-                      data-litros="{{ number_format($acopio->litros, 1) }}"
-                      data-estado-key="buena">
-                      @csrf
-                      <input type="hidden" name="calidad" value="buena">
-                      <button type="submit" class="btn btn-verde btn-compacto" aria-label="Aprobar leche de {{ $acopio->proveedor->nombre }}" data-i18n-aria="calidad.approve_aria">
-                        {!! $icoOk !!} <span data-i18n="m2.approve">Aprobar</span>
-                      </button>
-                    </form>
-                    <form method="POST" action="{{ route('panel.calidad', $acopio->id) }}"
-                      class="js-confirm-form"
-                      data-confirm-kind="calidad"
-                      data-nombre="{{ $acopio->proveedor->nombre }}"
-                      data-litros="{{ number_format($acopio->litros, 1) }}"
-                      data-estado-key="acida">
-                      @csrf
-                      <input type="hidden" name="calidad" value="acida">
-                      <button type="submit" class="btn btn-ember btn-compacto" aria-label="Desviar a quesillo la leche de {{ $acopio->proveedor->nombre }}" data-i18n-aria="calidad.divert_aria">
-                        {!! $icoAlerta !!} <span data-i18n="m2.divert">Desviar a quesillo</span>
-                      </button>
-                    </form>
-                  </div>
-                </td>
+                <th scope="col" data-i18n="m2.col_triage">Triage inmediato</th>
               @endif
             </tr>
-          @empty
-            <tr><td colspan="{{ $usuario->tienePermiso('calidad.evaluar') ? 5 : 4 }}" style="text-align: center; padding: 2rem; color: var(--color-graphite);" data-i18n="m2.empty">No hay entregas para clasificar hoy.</td></tr>
-          @endforelse
-        </tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody>
+            @forelse($acopiosHoy as $acopio)
+              <tr>
+                <td class="num-tabular">{{ $acopio->fecha?->format('d/m/Y') }}<small>{{ substr($acopio->hora, 0, 5) }}</small></td>
+                <td><strong>{{ $acopio->proveedor->nombre }}</strong><small>{{ $acopio->proveedor->codigo }}</small></td>
+                <td class="num" style="font-size: 1.1rem;">{{ number_format($acopio->litros, 1) }} L</td>
+                <td>
+                  @if($acopio->calidad === 'buena')
+                    <span class="chip chip-verde">{!! $icoOk !!} <span data-i18n="m2.status_good">Óptima</span></span>
+                  @elseif($acopio->calidad === 'acida')
+                    <span class="chip chip-amarillo">{!! $icoAlerta !!} <span data-i18n="m2.status_acid">Con acidez</span></span>
+                  @else
+                    <span class="chip chip-amarillo" data-i18n="m2.status_pending">Sin probar</span>
+                  @endif
+                </td>
+                <td>
+                  @if($acopio->destino === 'quesillo_4_dias')
+                    <span data-i18n="m2.dest_quesillo">Tina quesillo 4 días</span>
+                  @else
+                    <span data-i18n="m2.dest_main">Tina principal (queso / yogur)</span>
+                  @endif
+                </td>
+                @if($usuario->tienePermiso('calidad.evaluar'))
+                  <td>
+                    <div class="acciones-celda">
+                      <form method="POST" action="{{ route('panel.calidad', $acopio->id) }}"
+                        class="js-confirm-form"
+                        data-confirm-kind="calidad"
+                        data-nombre="{{ $acopio->proveedor->nombre }}"
+                        data-litros="{{ number_format($acopio->litros, 1) }}"
+                        data-estado-key="buena">
+                        @csrf
+                        <input type="hidden" name="calidad" value="buena">
+                        <button type="submit" class="btn btn-verde btn-compacto" aria-label="Aprobar leche de {{ $acopio->proveedor->nombre }}" data-i18n-aria="calidad.approve_aria">
+                          {!! $icoOk !!} <span data-i18n="m2.approve">Aprobar</span>
+                        </button>
+                      </form>
+                      <form method="POST" action="{{ route('panel.calidad', $acopio->id) }}"
+                        class="js-confirm-form"
+                        data-confirm-kind="calidad"
+                        data-nombre="{{ $acopio->proveedor->nombre }}"
+                        data-litros="{{ number_format($acopio->litros, 1) }}"
+                        data-estado-key="acida">
+                        @csrf
+                        <input type="hidden" name="calidad" value="acida">
+                        <button type="submit" class="btn btn-ember btn-compacto" aria-label="Desviar a quesillo la leche de {{ $acopio->proveedor->nombre }}" data-i18n-aria="calidad.divert_aria">
+                          {!! $icoAlerta !!} <span data-i18n="m2.divert">Desviar a quesillo</span>
+                        </button>
+                      </form>
+                    </div>
+                  </td>
+                @endif
+              </tr>
+            @empty
+              <tr><td colspan="{{ $usuario->tienePermiso('calidad.evaluar') ? 6 : 5 }}" style="text-align: center; padding: 2rem; color: var(--color-graphite);" data-i18n="m2.empty">No hay entregas para clasificar.</td></tr>
+            @endforelse
+          </tbody>
+        </table>
+      </div>
+    @else
+      <p class="legal">Tu cuenta tiene permisos operativos sin acceso de lectura a la lista sanitaria.</p>
+    @endif
   </div>
 </section>

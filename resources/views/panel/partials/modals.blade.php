@@ -62,6 +62,7 @@
                       data-litros="{{ $a->litros }}"
                       data-calidad="{{ $a->calidad }}"
                       data-metodo="{{ $a->metodo }}"
+                      data-fecha="{{ $a->fecha?->format('Y-m-d') }}"
                       data-hora="{{ substr($a->hora, 0, 5) }}" data-i18n="common.edit">Editar</button>
                     <form method="POST" action="{{ route('panel.acopio.delete', $a->id) }}" class="js-confirm-form" data-confirm-kind="delete" data-detalle-tipo="acopio" data-detalle-nombre="{{ $a->proveedor->nombre ?? '' }}" data-detalle="acopio de {{ $a->proveedor->nombre }}">
                       @csrf @method('DELETE')
@@ -136,11 +137,20 @@
                   <td><strong>{{ $pr->nombre }}</strong></td>
                   <td>{{ $pr->sector }}</td>
                   <td>
-                    <button type="button" class="btn-micro js-edit-proveedor"
-                      data-id="{{ $pr->id }}"
-                      data-codigo="{{ $pr->codigo }}"
-                      data-nombre="{{ $pr->nombre }}"
-                      data-sector="{{ $pr->sector }}" data-i18n="common.edit">Editar</button>
+                    <div style="display: flex; gap: 0.35rem; flex-wrap: wrap;">
+                      <button type="button" class="btn-micro js-edit-proveedor"
+                        data-id="{{ $pr->id }}"
+                        data-codigo="{{ $pr->codigo }}"
+                        data-nombre="{{ $pr->nombre }}"
+                        data-sector="{{ $pr->sector }}" data-i18n="common.edit">Editar</button>
+                      <form method="POST" action="{{ route('panel.proveedor.delete', $pr->id) }}"
+                        class="js-confirm-form"
+                        data-confirm-kind="delete"
+                        data-detalle="ganadero {{ $pr->nombre }}">
+                        @csrf @method('DELETE')
+                        <button type="submit" class="btn-micro btn-micro-danger" data-i18n="common.delete">Eliminar</button>
+                      </form>
+                    </div>
                   </td>
                 </tr>
               @endforeach
@@ -208,10 +218,14 @@
             @endforeach
           </select>
         </div>
-        <div class="grid-form-2">
+        <div class="grid-form-3">
           <div class="form-grupo">
             <label class="form-label" for="edit-ac-litros" data-i18n="m3.lbl_liters">Litros (L)</label>
-            <input type="number" step="0.1" min="0.5" max="5000" name="litros" id="edit-ac-litros" class="input-lat" required>
+            <input type="number" step="0.1" min="1" max="5000" name="litros" id="edit-ac-litros" class="input-lat" required>
+          </div>
+          <div class="form-grupo">
+            <label class="form-label" for="edit-ac-fecha">Fecha</label>
+            <input type="date" name="fecha" id="edit-ac-fecha" class="input-lat" max="{{ Carbon\Carbon::today()->toDateString() }}">
           </div>
           <div class="form-grupo">
             <label class="form-label" for="edit-ac-hora" data-i18n="m1.col_time">Hora</label>
@@ -504,7 +518,7 @@
           </div>
           <div class="form-grupo">
             <label class="form-label" for="nu-pass" data-i18n="modal.user_pass_init">Contraseña inicial</label>
-            <input type="password" name="password" id="nu-pass" class="input-lat" required minlength="6" placeholder="Mín. 6 caracteres" data-i18n-placeholder="modal.ph_user_pass_init">
+            <input type="password" name="password" id="nu-pass" class="input-lat" required minlength="8" placeholder="Mín. 8 caracteres" data-i18n-placeholder="modal.ph_user_pass_init">
           </div>
         </div>
 
@@ -619,7 +633,7 @@
           </div>
           <div class="form-grupo">
             <label class="form-label" for="eu-pass" data-i18n="modal.user_pass_new">Nueva contraseña (opcional)</label>
-            <input type="password" name="password" id="eu-pass" class="input-lat" minlength="6" placeholder="Mantener actual" data-i18n-placeholder="modal.ph_user_pass_keep">
+            <input type="password" name="password" id="eu-pass" class="input-lat" minlength="8" placeholder="Mantener actual" data-i18n-placeholder="modal.ph_user_pass_keep">
           </div>
         </div>
 

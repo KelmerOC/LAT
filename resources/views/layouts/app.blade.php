@@ -8,9 +8,11 @@
   <title>@yield('titulo', 'LAT · Plataforma Láctea Comunitaria')</title>
 
   <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
+  <link rel="manifest" href="{{ asset('manifest.json') }}">
   <link rel="preload" href="{{ asset('fonts/inter-var-latin.woff2') }}" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="{{ asset('css/lat-design-system.css') }}">
   <script src="{{ asset('js/lat-i18n.js') }}"></script>
+  <script src="{{ asset('js/lat-offline.js') }}" defer></script>
   @stack('styles')
 </head>
 <body class="@yield('body_class')" data-title-i18n="@yield('title_i18n', 'title.home')">

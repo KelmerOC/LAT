@@ -9,18 +9,20 @@
     <p style="margin-bottom: 1.25rem;" data-i18n="m5.sub">Comparativa de desempeño: qué planta vende más, producción de moldes y ranking de proveedores.</p>
 
     <div class="dash-kpi-grid" style="margin-bottom: 1.5rem;">
-      <article class="dash-kpi-card">
-        <div class="dash-kpi-top">
-          <div>
-            <span class="dash-kpi-label" data-i18n="m5.top_plant">Planta que vende más</span>
-            <strong class="dash-kpi-value" style="font-size: 1.2rem;">@if($lider){{ $lider->nombre }}@else<span data-i18n="panel.no_sales">Sin ventas</span>@endif</strong>
+      @if($usuario->tienePermiso('dashboard.ver_red'))
+        <article class="dash-kpi-card">
+          <div class="dash-kpi-top">
+            <div>
+              <span class="dash-kpi-label" data-i18n="m5.top_plant">Planta que vende más</span>
+              <strong class="dash-kpi-value" style="font-size: 1.2rem;">@if($lider){{ $lider->nombre }}@else<span data-i18n="panel.no_sales">Sin ventas</span>@endif</strong>
+            </div>
+            <div class="dash-kpi-icon is-ocean" aria-hidden="true">{!! $icoStats !!}</div>
           </div>
-          <div class="dash-kpi-icon is-ocean" aria-hidden="true">{!! $icoStats !!}</div>
-        </div>
-        <div class="dash-kpi-foot">
-          <span><span data-i18n="dash.col_sales">Ventas:</span> <strong>S/ {{ number_format($lider?->ventas_monto ?? 0, 2) }}</strong> ({{ $lider?->participacion_pct ?? 0 }}%)</span>
-        </div>
-      </article>
+          <div class="dash-kpi-foot">
+            <span><span data-i18n="dash.col_sales">Ventas:</span> <strong>S/ {{ number_format($lider?->ventas_monto ?? 0, 2) }}</strong> ({{ $lider?->participacion_pct ?? 0 }}%)</span>
+          </div>
+        </article>
+      @endif
 
       <article class="dash-kpi-card">
         <div class="dash-kpi-top">
@@ -63,32 +65,34 @@
     </div>
 
     <div class="panel-grid-eq" style="margin-bottom: 1.5rem; align-items: start;">
-      <div>
-        <h3 data-i18n="m5.who_sells_most">Ranking de plantas: ¿Quién vende más?</h3>
-        <div class="stats-ranking-list" role="region" aria-label="Ranking de plantas" data-i18n-aria="m5.rank_aria">
-          @foreach($estadisticas['ranking_plantas'] as $idx => $rp)
-            @php $barPct = $maxVentas > 0 ? min(100, round(($rp->ventas_monto / $maxVentas) * 100, 1)) : 0; @endphp
-            <div class="stats-bar-row {{ $idx === 0 ? 'is-leader' : '' }}">
-              <div class="stats-bar-meta">
-                <div>
-                  <strong>#{{ $idx + 1 }} · {{ $rp->nombre }}</strong>
-                  <span class="chip {{ $idx === 0 ? 'chip-verde' : 'chip-fog' }}">{{ $rp->ubicacion }}</span>
-                  @if($idx === 0)
-                    <span class="chip chip-amarillo" data-i18n="m5.top_seller">Mayor vendedor</span>
-                  @endif
+      @if($usuario->tienePermiso('dashboard.ver_red'))
+        <div>
+          <h3 data-i18n="m5.who_sells_most">Ranking de plantas: ¿Quién vende más?</h3>
+          <div class="stats-ranking-list" role="region" aria-label="Ranking de plantas" data-i18n-aria="m5.rank_aria">
+            @foreach($estadisticas['ranking_plantas'] as $idx => $rp)
+              @php $barPct = $maxVentas > 0 ? min(100, round(($rp->ventas_monto / $maxVentas) * 100, 1)) : 0; @endphp
+              <div class="stats-bar-row {{ $idx === 0 ? 'is-leader' : '' }}">
+                <div class="stats-bar-meta">
+                  <div>
+                    <strong>#{{ $idx + 1 }} · {{ $rp->nombre }}</strong>
+                    <span class="chip {{ $idx === 0 ? 'chip-verde' : 'chip-fog' }}">{{ $rp->ubicacion }}</span>
+                    @if($idx === 0)
+                      <span class="chip chip-amarillo" data-i18n="m5.top_seller">Mayor vendedor</span>
+                    @endif
+                  </div>
+                  <div class="num-tabular" style="font-size: 0.92rem;">
+                    <strong>S/ {{ number_format($rp->ventas_monto, 2) }}</strong>
+                    <small style="color: var(--color-graphite);">({{ $rp->participacion_pct }}% · {{ $rp->ventas_unidades }} <span data-i18n="panel.unit_und">und</span> · {{ number_format($rp->litros_acopiados, 1) }} L)</small>
+                  </div>
                 </div>
-                <div class="num-tabular" style="font-size: 0.92rem;">
-                  <strong>S/ {{ number_format($rp->ventas_monto, 2) }}</strong>
-                  <small style="color: var(--color-graphite);">({{ $rp->participacion_pct }}% · {{ $rp->ventas_unidades }} <span data-i18n="panel.unit_und">und</span> · {{ number_format($rp->litros_acopiados, 1) }} L)</small>
+                <div class="stats-bar-track" role="img" aria-label="{{ $rp->nombre }}: S/ {{ number_format($rp->ventas_monto, 2) }}">
+                  <div class="stats-bar-fill" style="width: {{ $barPct }}%;"></div>
                 </div>
               </div>
-              <div class="stats-bar-track" role="img" aria-label="{{ $rp->nombre }}: S/ {{ number_format($rp->ventas_monto, 2) }}">
-                <div class="stats-bar-fill" style="width: {{ $barPct }}%;"></div>
-              </div>
-            </div>
-          @endforeach
+            @endforeach
+          </div>
         </div>
-      </div>
+      @endif
 
       <div class="dash-card" style="background: #f8fbfe;">
         <div class="dash-card-head">

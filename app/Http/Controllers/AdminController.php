@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 
 /**
- * Gestión administrativa de plantas lácteas, usuarios y permisos granulares.
+ * Gestión administrativa de plantas lácteas (con papelera de 30 días), usuarios y permisos granulares.
  */
 class AdminController extends Controller
 {
@@ -39,7 +39,7 @@ class AdminController extends Controller
                 abort(403, __('lat.admin_only_grant_admin'));
             }
 
-            return User::todasLasClavesPermisos();
+            return User::PLANTILLAS_CARGO['administracion'];
         }
 
         $asignables = $actor->permisosAsignables();
@@ -68,7 +68,7 @@ class AdminController extends Controller
     }
 
     /**
-     * Resuelve la etiqueta de rango garantizando que supervisor exija admin.usuarios o administración.
+     * Resuelve la etiqueta de rango respetando la jerarquía del cargo y permisos.
      *
      * @param  list<string>  $permisos
      */
@@ -78,7 +78,7 @@ class AdminController extends Controller
             return 'administrador';
         }
 
-        if (in_array('admin.usuarios', $permisos, true)) {
+        if (in_array('admin.usuarios', $permisos, true) || ($cargo === 'encargado_planta' && $rangoInput === 'supervisor')) {
             return 'supervisor';
         }
 
@@ -116,10 +116,10 @@ class AdminController extends Controller
             'name' => ['required', 'string', 'max:120'],
             'usuario' => ['required', 'string', 'min:3', 'max:60', 'regex:/^[a-zA-Z0-9._-]+$/', 'unique:users,usuario'],
             'email' => ['nullable', 'email', 'max:255', 'unique:users,email'],
-            'password' => ['required', 'string', 'min:6'],
+            'password' => ['required', 'string', 'min:8'],
             'cargo' => ['required', Rule::in(User::CARGOS_VALIDOS)],
             'rango' => ['nullable', Rule::in(User::RANGOS_VALIDOS)],
-            'planta_id' => ['required', 'exists:plantas,id'],
+            'planta_id' => ['required', Rule::exists('plantas', 'id')->whereNull('deleted_at')],
             'permisos' => ['nullable', 'array'],
             'permisos.*' => ['string'],
         ], [
@@ -171,9 +171,9 @@ class AdminController extends Controller
             'email' => ['nullable', 'email', 'max:255', Rule::unique('users', 'email')->ignore($target->id)],
             'cargo' => ['required', Rule::in(User::CARGOS_VALIDOS)],
             'rango' => ['nullable', Rule::in(User::RANGOS_VALIDOS)],
-            'planta_id' => ['required', 'exists:plantas,id'],
+            'planta_id' => ['required', Rule::exists('plantas', 'id')->whereNull('deleted_at')],
             'activo' => ['nullable', 'boolean'],
-            'password' => ['nullable', 'string', 'min:6'],
+            'password' => ['nullable', 'string', 'min:8'],
             'permisos' => ['nullable', 'array'],
             'permisos.*' => ['string'],
         ]);
@@ -219,6 +219,24 @@ class AdminController extends Controller
         $target->update($payload);
 
         return back()->with('exito', __('lat.admin_user_updated'));
+    }
+
+    public function eliminarUsuario(Request $request, int $id): RedirectResponse
+    {
+        $actor = $this->asegurarPermiso($request, 'admin.usuarios');
+        $target = User::findOrFail($id);
+
+        if ($target->id === $actor->id) {
+            return back()->withErrors(['usuario' => 'No puedes eliminar tu propia cuenta mientras estás en sesión.']);
+        }
+
+        if (! $actor->puedeGestionarUsuario($target)) {
+            abort(403, __('lat.admin_rank_cannot_edit_user'));
+        }
+
+        $target->delete();
+
+        return back()->with('exito', 'Usuario eliminado del sistema correctamente.');
     }
 
     public function crearPlanta(Request $request): RedirectResponse
@@ -282,5 +300,83 @@ class AdminController extends Controller
         ]);
 
         return back()->with('exito', __('lat.admin_plant_updated'));
+    }
+
+    /**
+     * Envía una planta a la papelera (Tacho) con retención de 30 días antes del borrado definitivo.
+     */
+    public function eliminarPlanta(Request $request, int $id): RedirectResponse
+    {
+        $actor = $this->asegurarPermiso($request, 'admin.plantas');
+        if (! $actor->esAdmin()) {
+            abort(403, __('lat.admin_forbidden'));
+        }
+
+        if (Planta::count() <= 1) {
+            return back()->withErrors(['planta' => 'No puedes eliminar la última planta activa del sistema.']);
+        }
+
+        $planta = Planta::findOrFail($id);
+
+        DB::transaction(function () use ($planta, $actor): void {
+            $planta->update([
+                'activa' => false,
+                'eliminado_por' => $actor->id,
+            ]);
+            $planta->delete();
+        });
+
+        if ((int) $request->session()->get('planta_activa_id') === $planta->id) {
+            $siguiente = Planta::orderBy('id')->first();
+            if ($siguiente) {
+                $request->session()->put('planta_activa_id', $siguiente->id);
+            } else {
+                $request->session()->forget('planta_activa_id');
+            }
+        }
+
+        return back()->with('exito', "Planta \"{$planta->nombre}\" enviada al tacho. Podrás restaurarla durante ".Planta::DIAS_RETENCION_PAPELERA.' días.');
+    }
+
+    /**
+     * Restaura una planta desde la papelera (Tacho) manteniendo intactos sus datos y usuarios.
+     */
+    public function restaurarPlanta(Request $request, int $id): RedirectResponse
+    {
+        $actor = $this->asegurarPermiso($request, 'admin.plantas');
+        if (! $actor->esAdmin()) {
+            abort(403, __('lat.admin_forbidden'));
+        }
+
+        $planta = Planta::onlyTrashed()->findOrFail($id);
+
+        DB::transaction(function () use ($planta): void {
+            $planta->restore();
+            $planta->update([
+                'activa' => true,
+                'eliminado_por' => null,
+            ]);
+        });
+
+        $request->session()->put('planta_activa_id', $planta->id);
+
+        return back()->with('exito', "Planta \"{$planta->nombre}\" restaurada correctamente.");
+    }
+
+    /**
+     * Elimina de forma permanente e irreversible una planta que está en la papelera.
+     */
+    public function eliminarPlantaDefinitivo(Request $request, int $id): RedirectResponse
+    {
+        $actor = $this->asegurarPermiso($request, 'admin.plantas');
+        if (! $actor->esAdmin()) {
+            abort(403, __('lat.admin_forbidden'));
+        }
+
+        $planta = Planta::onlyTrashed()->findOrFail($id);
+        $nombre = $planta->nombre;
+        $planta->forceDelete();
+
+        return back()->with('exito', "Planta \"{$nombre}\" eliminada definitivamente del sistema.");
     }
 }

@@ -10,6 +10,14 @@
   </div>
 
   <div class="dash-topbar-right">
+    <div class="lat-net-status">
+      <span id="lat-net-badge" class="chip chip-verde is-online" role="status" aria-live="polite">
+        <span class="lat-net-dot" aria-hidden="true"></span>
+        <span id="lat-net-text">En línea</span>
+      </span>
+      <button type="button" id="btn-sync-offline" class="btn-micro" hidden>Sincronizar ahora</button>
+    </div>
+
     <div class="dash-topbar-lang" role="group" aria-label="Idioma de la plataforma" data-i18n-aria="topbar.lang_aria">
       <button type="button" class="dash-lang-pill btn-lang-choice" data-lang="es" title="Español">ES</button>
       <button type="button" class="dash-lang-pill btn-lang-choice" data-lang="qu" title="Runasimi (Quechua)">QU</button>

@@ -42,15 +42,26 @@
             </p>
           </div>
           @if($usuario->tienePermiso('tinas.gestionar'))
-            <button type="button" class="btn-micro js-edit-tina"
-              data-id="{{ $tina->id }}"
-              data-codigo="{{ $tina->codigo }}"
-              data-nombre="{{ $tina->nombre }}"
-              data-capacidad="{{ $tina->capacidad_litros }}"
-              data-tipo="{{ $tina->tipo }}"
-              data-activa="{{ $tina->activa ? '1' : '0' }}">
-              {!! $icoEditar !!} <span data-i18n="m3.edit_tina">Editar tina</span>
-            </button>
+            <div style="display: flex; gap: 0.35rem; flex-wrap: wrap;">
+              <button type="button" class="btn-micro js-edit-tina"
+                data-id="{{ $tina->id }}"
+                data-codigo="{{ $tina->codigo }}"
+                data-nombre="{{ $tina->nombre }}"
+                data-capacidad="{{ $tina->capacidad_litros }}"
+                data-tipo="{{ $tina->tipo }}"
+                data-activa="{{ $tina->activa ? '1' : '0' }}">
+                {!! $icoEditar !!} <span data-i18n="m3.edit_tina">Editar tina</span>
+              </button>
+              @if(! $lote)
+                <form method="POST" action="{{ route('panel.tinas.delete', $tina->id) }}"
+                  class="js-confirm-form"
+                  data-confirm-kind="delete"
+                  data-detalle="tina {{ $tina->nombre }}">
+                  @csrf @method('DELETE')
+                  <button type="submit" class="btn-micro btn-micro-danger" data-i18n="common.delete">Eliminar</button>
+                </form>
+              @endif
+            </div>
           @endif
         </div>
 

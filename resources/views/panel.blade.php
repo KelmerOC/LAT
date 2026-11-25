@@ -130,6 +130,7 @@
 
 @push('scripts')
 <script src="{{ asset('js/chart.umd.min.js') }}"></script>
+<script src="{{ asset('js/lat-qr.js') }}"></script>
 <script>
   // Registro compartido de gráficas Chart.js para redimensionar al cambiar de sección
   window.__latCharts = {
@@ -229,12 +230,22 @@
     });
 
     let inicial = defaultSection;
-    try {
-      const saved = sessionStorage.getItem(storageKey);
-      if (saved && document.getElementById(saved)) {
-        inicial = saved;
-      }
-    } catch (_) {}
+    const hashId = (window.location.hash || '').replace(/^#/, '');
+    const searchParams = new URLSearchParams(window.location.search);
+    const hasAcopioFilter = Array.from(searchParams.keys()).some(k => k.startsWith('acopio_'));
+
+    if (hashId && document.getElementById(hashId)) {
+      inicial = hashId;
+    } else if (hasAcopioFilter && document.getElementById('sec-acopio')) {
+      inicial = 'sec-acopio';
+    } else {
+      try {
+        const saved = sessionStorage.getItem(storageKey);
+        if (saved && document.getElementById(saved)) {
+          inicial = saved;
+        }
+      } catch (_) {}
+    }
     activarSeccion(inicial);
   })();
 
@@ -477,7 +488,15 @@
 
       const kind = form.dataset.confirmKind;
       let msg = window.LAT_I18N ? window.LAT_I18N.t('confirm.default_msg') : '¿Está seguro de que desea aplicar este cambio?';
-      if (window.LAT_I18N) {
+      if (kind === 'trash_plant') {
+        const nombrePl = form.dataset.nombre || '';
+        const impacto = form.dataset.impacto || '';
+        msg = `¿Enviar la planta "${nombrePl}" al tacho? (${impacto}). Podrás restaurarla durante 30 días antes de su eliminación definitiva.`;
+      } else if (kind === 'restore_plant') {
+        msg = `¿Restaurar la planta "${form.dataset.nombre || ''}" desde el tacho y reactivar todos sus registros?`;
+      } else if (kind === 'force_delete_plant') {
+        msg = `ATENCIÓN: ¿Eliminar DEFINITIVAMENTE la planta "${form.dataset.nombre || ''}" y todos sus registros históricos? Esta acción no se puede deshacer.`;
+      } else if (window.LAT_I18N) {
         if (kind === 'calidad') {
           const estadoKey = form.dataset.estadoKey || (e.submitter && e.submitter.dataset.estadoKey) || 'buena';
           const estadoLabel = window.LAT_I18N.t(estadoKey === 'acida' ? 'calidad.state_acida' : 'calidad.state_buena');
@@ -619,6 +638,8 @@
         document.getElementById('edit-ac-litros').value = btn.dataset.litros;
         document.getElementById('edit-ac-calidad').value = btn.dataset.calidad;
         document.getElementById('edit-ac-metodo').value = btn.dataset.metodo;
+        const fechaEl = document.getElementById('edit-ac-fecha');
+        if (fechaEl) fechaEl.value = btn.dataset.fecha || '';
         document.getElementById('edit-ac-hora').value = btn.dataset.hora;
         const fallbackTrigger = btn.closest('#modal-editar-datos') ? document.getElementById('btn-abrir-editar-datos') : btn;
         cerrarModal('modal-editar-datos');
@@ -940,7 +961,7 @@
         document.getElementById('input-metodo').value = 'voz';
         const litros = extraerLitrosDeTexto(frase);
         if (litros !== null && !Number.isNaN(litros)) {
-          document.getElementById('input-litros').value = litros;
+          document.getElementById('input-litros').value = Math.max(1, litros);
         }
         emparejarProveedor(frase);
         const textoConfirmacion = tr('m1.voice_spoken_ok', 'Acopio capturado correctamente');
@@ -966,6 +987,49 @@
         reposo();
       }
     });
+  })();
+
+  // 6. Generador vivo de Código QR para acceso móvil
+  (function () {
+    const preview = document.getElementById('qr-svg-preview');
+    const baseInput = document.getElementById('qr-base-url');
+    const linkText = document.getElementById('qr-full-link-text');
+    const testLink = document.getElementById('qr-test-link');
+    const btnDownload = document.getElementById('btn-download-qr-svg');
+    if (!preview || !window.LAT_QR) return;
+
+    function buildFullUrl() {
+      const base = (baseInput ? baseInput.value.trim() : window.location.origin).replace(/\/+$/, '') || window.location.origin;
+      const path = preview.dataset.qrPath || '/login';
+      return base + path;
+    }
+
+    function refreshQr() {
+      const fullUrl = buildFullUrl();
+      window.LAT_QR.renderTo(preview, fullUrl, 210);
+      if (linkText) linkText.textContent = fullUrl;
+      if (testLink) testLink.href = fullUrl;
+    }
+
+    refreshQr();
+    if (baseInput) {
+      baseInput.addEventListener('input', refreshQr);
+    }
+
+    if (btnDownload) {
+      btnDownload.addEventListener('click', () => {
+        const svg = window.LAT_QR.toSvgString(buildFullUrl(), 420);
+        const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'codigo_qr_lat.svg';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 500);
+      });
+    }
   })();
 </script>
 @endpush
