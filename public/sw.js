@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'lat-compacto-v1';
+const CACHE_VERSION = 'lat-compacto-v2';
 const STATIC_ASSETS = [
   '/css/lat-design-system.css',
   '/css/lat-dashboard.css',
@@ -10,10 +10,10 @@ const STATIC_ASSETS = [
   '/fonts/gloock-400-latin.woff2',
   '/brand/isotipo_queso_frasco.svg',
   '/brand/logo_lat_azul.svg',
-  '/brand/hero_pasturas.svg',
-  '/brand/hero_establo.svg',
-  '/brand/hero_quesos.svg',
-  '/brand/hero_tina.svg',
+  '/brand/hero_pasturas.jpg',
+  '/brand/hero_establo.jpg',
+  '/brand/hero_quesos.jpg',
+  '/brand/hero_tina.jpg',
   '/favicon.svg',
   '/manifest.json'
 ];

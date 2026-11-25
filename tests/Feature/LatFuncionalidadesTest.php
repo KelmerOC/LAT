@@ -1012,4 +1012,35 @@ class LatFuncionalidadesTest extends TestCase
             @unlink($tmp);
         }
     }
+
+    public function test_portada_usa_imagenes_reales_locales_y_login_muestra_accesos_rapidos_en_produccion(): void
+    {
+        $imagenes = [
+            'brand/hero_pasturas.jpg',
+            'brand/hero_establo.jpg',
+            'brand/hero_quesos.jpg',
+            'brand/hero_tina.jpg',
+        ];
+
+        $resHome = $this->get('/');
+        $resHome->assertStatus(200);
+        foreach ($imagenes as $ruta) {
+            $this->assertFileExists(public_path($ruta));
+            $resHome->assertSee($ruta, false);
+        }
+
+        // Incluso simulando APP_ENV=production (Render), los 6 perfiles rápidos deben mostrarse por defecto
+        config(['app.env' => 'production', 'lat.demo_logins' => true]);
+        $resLoginProd = $this->get('/login');
+        $resLoginProd->assertStatus(200);
+        foreach (['donjusto@sanborreal.pe', 'carlos.anta', 'sabina.tina', 'contador.marco', 'mateo.ruta', 'lucia.personal'] as $usuario) {
+            $resLoginProd->assertSee("data-usuario=\"{$usuario}\"", false);
+        }
+
+        // Si se desactiva explícitamente demo_logins, los accesos rápidos se ocultan
+        config(['lat.demo_logins' => false]);
+        $this->get('/login')
+            ->assertStatus(200)
+            ->assertDontSee('class="perfiles"', false);
+    }
 }

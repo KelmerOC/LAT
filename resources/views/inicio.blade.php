@@ -38,16 +38,16 @@
         <div class="hero-banner-frame" id="hero-carousel" role="group" aria-roledescription="carrusel" aria-label="Galería fotográfica de actividades lácteas" data-i18n-aria="hero.carousel_aria">
           <div class="hero-gradiente-mask"></div>
 
-          <img src="{{ asset('brand/hero_pasturas.svg') }}"
+          <img src="{{ asset('brand/hero_pasturas.jpg') }}"
                alt="Ganado lechero en pasturas andinas" data-i18n-alt="hero.alt_1" class="crossfade-img activa"
                data-caption="Ganado lechero en pasturas andinas" data-caption-key="hero.cap_1" loading="eager">
-          <img src="{{ asset('brand/hero_establo.svg') }}"
+          <img src="{{ asset('brand/hero_establo.jpg') }}"
                alt="Establo lechero familiar" data-i18n-alt="hero.alt_2" class="crossfade-img"
                data-caption="Establo lechero familiar" data-caption-key="hero.cap_2" loading="lazy">
-          <img src="{{ asset('brand/hero_quesos.svg') }}"
+          <img src="{{ asset('brand/hero_quesos.jpg') }}"
                alt="Bodega de maduración de quesos artesanales" data-i18n-alt="hero.alt_3" class="crossfade-img"
                data-caption="Maduración de quesos artesanales" data-caption-key="hero.cap_3" loading="lazy">
-          <img src="{{ asset('brand/hero_tina.svg') }}"
+          <img src="{{ asset('brand/hero_tina.jpg') }}"
                alt="Tina de cuajado en una quesería" data-i18n-alt="hero.alt_4" class="crossfade-img"
                data-caption="Cuajado en tina" data-caption-key="hero.cap_4" loading="lazy">
 

@@ -17,12 +17,12 @@
           @csrf
           <div class="form-grupo">
             <label for="login" class="form-label" data-i18n="login.user_label">Usuario o correo</label>
-            <input type="text" id="login" name="login" class="input-lat" value="{{ old('login', app()->isProduction() ? '' : 'donjusto@sanborreal.pe') }}" required autofocus autocomplete="username" @error('login') aria-invalid="true" @enderror>
+            <input type="text" id="login" name="login" class="input-lat" value="{{ old('login', config('lat.demo_logins', true) ? 'donjusto@sanborreal.pe' : '') }}" required autofocus autocomplete="username" @error('login') aria-invalid="true" @enderror>
           </div>
 
           <div class="form-grupo">
             <label for="password" class="form-label" data-i18n="login.pass_label">Contraseña</label>
-            <input type="password" id="password" name="password" class="input-lat" value="{{ app()->isProduction() ? '' : 'secreto123' }}" required autocomplete="current-password">
+            <input type="password" id="password" name="password" class="input-lat" value="{{ config('lat.demo_logins', true) ? 'secreto123' : '' }}" required autocomplete="current-password">
           </div>
 
           <button type="submit" class="btn btn-ember btn-bloque btn-grande" data-i18n="login.submit">Entrar a Mi Panel</button>
@@ -33,7 +33,7 @@
           <a href="{{ route('registro') }}" style="font-weight: 700; color: var(--color-celeste-action); text-decoration: underline;" data-i18n="login.go_register">Registrar nueva planta aquí</a>
         </p>
 
-        @if(! app()->isProduction())
+        @if(config('lat.demo_logins', true))
           <div class="perfiles">
             <h3 data-i18n="login.profiles_title">Accesos rápidos por cargo</h3>
             <p class="ayuda" data-i18n="login.profiles_help">Seleccione un perfil para ingresar al panel.</p>
@@ -51,7 +51,7 @@
     </div>
   </section>
 
-  @if(! app()->isProduction())
+  @if(config('lat.demo_logins', true))
     <script>
       document.querySelectorAll('.perfil-btn').forEach(btn => {
         btn.addEventListener('click', () => {

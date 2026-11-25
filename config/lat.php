@@ -26,4 +26,6 @@ return [
     'quesillo_dias' => (int) env('LAT_DIAS_QUESILLO', 4),
 
     'politica_privacidad_version' => '2026-10',
+
+    'demo_logins' => filter_var(env('LAT_DEMO_LOGINS', true), FILTER_VALIDATE_BOOLEAN),
 ];
