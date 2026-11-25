@@ -48,17 +48,28 @@ class Acopio extends Model
         return $this->belongsTo(User::class, 'registrado_por');
     }
 
-    /** Scope: Entregas correspondientes al día de hoy */
+    /** Scope: Entregas correspondientes a una fecha usando índice B-Tree */
     public function scopeDelDia(Builder $query, ?string $fecha = null): Builder
     {
-        return $query->whereDate('fecha', $fecha ?? Carbon::today()->toDateString());
+        $dia = $fecha ?? Carbon::today()->toDateString();
+
+        return $this->scopeDelPeriodo($query, $dia, $dia);
     }
 
-    /** Scope: Rango de fechas para cálculo quincenal */
+    /** Scope: Rango de fechas para cálculo quincenal sin invalidez de índices */
     public function scopeDelPeriodo(Builder $query, string $desde, string $hasta): Builder
     {
-        return $query->whereDate('fecha', '>=', $desde)
-            ->whereDate('fecha', '<=', $hasta);
+        $driver = $query->getConnection()->getDriverName();
+        if ($driver === 'sqlite') {
+            return $query->where('fecha', '>=', $desde)
+                ->where('fecha', '<=', $hasta.' 23:59:59');
+        }
+
+        if ($desde === $hasta) {
+            return $query->where('fecha', $desde);
+        }
+
+        return $query->whereBetween('fecha', [$desde, $hasta]);
     }
 
     /** Scope: Solo leche apta para pasteurización en tina */

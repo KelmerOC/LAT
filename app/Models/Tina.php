@@ -43,7 +43,7 @@ class Tina extends Model
     {
         return $this->hasOne(Lote::class)
             ->whereIn('estado', ['pasteurizando', 'enfriando', 'lista_para_cuajo'])
-            ->orderByDesc('id');
+            ->latestOfMany('id');
     }
 
     public function scopeActivas(Builder $query): Builder

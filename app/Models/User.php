@@ -84,6 +84,7 @@ class User extends Authenticatable
                 'finanzas.registrar' => ['label' => 'Registrar movimientos y ventas', 'desc' => 'Asentar ventas, adelantos, ayuda del día y gastos.'],
                 'finanzas.editar' => ['label' => 'Editar / eliminar movimientos', 'desc' => 'Corregir o borrar registros financieros.'],
                 'finanzas.exportar' => ['label' => 'Exportar balance Excel (.xlsx)', 'desc' => 'Descargar reportes financieros de la planta.'],
+                'finanzas.enviar_excel' => ['label' => 'Enviar reportes Excel al contador', 'desc' => 'Generar y remitir reportes Excel ordenados a la bandeja del contador.'],
             ],
         ],
         'estadisticas' => [
@@ -98,7 +99,8 @@ class User extends Authenticatable
             'descripcion' => 'Gestión de cuentas personalizadas y configuración de plantas.',
             'permisos' => [
                 'admin.usuarios' => ['label' => 'Gestionar usuarios (Rango)', 'desc' => 'Crear/editar usuarios con credenciales y permisos propios.'],
-                'admin.plantas' => ['label' => 'Gestionar y cambiar plantas', 'desc' => 'Crear/editar plantas lácteas y alternar planta activa.'],
+                'admin.plantas' => ['label' => 'Gestionar y cambiar plantas', 'desc' => 'Crear/editar/eliminar plantas lácteas y alternar planta activa.'],
+                'admin.qr' => ['label' => 'Generar códigos QR de acceso móvil', 'desc' => 'Crear enlaces y códigos QR para registro y acceso desde celular.'],
             ],
         ],
     ];
@@ -111,19 +113,19 @@ class User extends Authenticatable
     public const PLANTILLAS_CARGO = [
         'administracion' => [
             'dashboard.ver', 'dashboard.ver_red',
-            'acopio.ver', 'acopio.crear', 'acopio.editar', 'acopio.proveedores',
+            'acopio.ver', 'acopio.editar', 'acopio.proveedores',
             'calidad.ver', 'calidad.evaluar',
-            'tinas.ver', 'tinas.operar', 'tinas.gestionar',
-            'finanzas.ver', 'finanzas.registrar', 'finanzas.editar', 'finanzas.exportar',
+            'tinas.ver', 'tinas.gestionar',
+            'finanzas.ver', 'finanzas.registrar', 'finanzas.editar', 'finanzas.exportar', 'finanzas.enviar_excel',
             'estadisticas.ver',
-            'admin.usuarios', 'admin.plantas',
+            'admin.usuarios', 'admin.plantas', 'admin.qr',
         ],
         'encargado_planta' => [
             'dashboard.ver',
             'acopio.ver', 'acopio.crear', 'acopio.editar', 'acopio.proveedores',
             'calidad.ver', 'calidad.evaluar',
             'tinas.ver', 'tinas.operar', 'tinas.gestionar',
-            'finanzas.ver', 'finanzas.registrar',
+            'finanzas.ver', 'finanzas.registrar', 'finanzas.enviar_excel',
             'estadisticas.ver',
         ],
         'recolector_ruta' => [
@@ -213,7 +215,7 @@ class User extends Authenticatable
         }
 
         if ($this->cargo === 'administracion') {
-            return self::todasLasClavesPermisos();
+            return self::PLANTILLAS_CARGO['administracion'];
         }
 
         $validos = self::todasLasClavesPermisos();
@@ -263,9 +265,9 @@ class User extends Authenticatable
             'acopio' => ['acopio.ver', 'acopio.crear', 'acopio.editar', 'acopio.proveedores'],
             'calidad' => ['calidad.ver', 'calidad.evaluar'],
             'tinas' => ['tinas.ver', 'tinas.operar', 'tinas.gestionar'],
-            'finanzas' => ['finanzas.ver', 'finanzas.registrar', 'finanzas.editar', 'finanzas.exportar'],
+            'finanzas' => ['finanzas.ver', 'finanzas.registrar', 'finanzas.editar', 'finanzas.exportar', 'finanzas.enviar_excel'],
             'estadisticas' => ['estadisticas.ver'],
-            'admin' => ['admin.usuarios', 'admin.plantas'],
+            'admin' => ['admin.usuarios', 'admin.plantas', 'admin.qr'],
         ];
 
         if (! isset($mapaSeccion[$seccion])) {
