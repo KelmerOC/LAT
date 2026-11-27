@@ -33,10 +33,15 @@ return [
     'intake_voice_auto_created' => 'Voice intake saved automatically: :producer (:liters L).',
     'intake_updated' => 'Intake record updated successfully.',
     'intake_deleted' => 'Intake record deleted.',
+    'intake_locked_in_batch' => 'This delivery is already part of a vat batch and cannot be modified.',
+    'intake_locked_in_batch_delete' => 'This delivery is already part of a vat batch and cannot be deleted.',
+    'intake_quality_permission_denied' => 'You do not have permission to change the sanitary quality of a delivery.',
     'quality_classified_acid' => 'Acid milk classified and diverted to 4-day fresh quesillo.',
     'quality_classified_good' => 'Milk approved for pasteurization in the main vat.',
     'quality_pending' => 'Milk marked as pending sanitary test.',
-    'quality_classified_discarded' => 'Milk discarded by sanitary control. It will not enter any vat.',
+    'quality_classified_discarded' => 'Milk discarded by sanitary control. Preserved in history and excluded from vats and settlement.',
+    'quality_discard_default_reason' => 'Rejected at 74° alcohol sanitary test',
+    'quality_discarded_event' => 'Discarded at intake (excluded from vat & payment)',
     'quality_locked_in_batch' => 'This delivery is already assigned to a vat batch and its classification is locked.',
 
     // Vats & batches
@@ -69,6 +74,8 @@ return [
     'movement_created' => 'Movement recorded successfully.',
     'movement_updated' => 'Movement updated successfully.',
     'movement_deleted' => 'Movement deleted.',
+    'movement_quincena_locked' => 'Biweekly settlement records can only be managed from the settlement grid.',
+    'movement_advance_applied_locked' => 'This advance has already been applied to a paid settlement and cannot be deleted or reduced below the applied amount.',
     'producer_created' => 'Producer registered in the plant.',
     'producer_updated' => 'Producer details updated.',
 
@@ -182,8 +189,10 @@ return [
 
     'excel_quality_good' => 'Approved (Optimal)',
     'excel_quality_acid' => 'Acidic (74°)',
+    'excel_quality_discarded' => 'Discarded',
     'excel_quality_pending' => 'Pending',
     'excel_dest_acid' => 'Fresh quesillo (4 days)',
+    'excel_dest_discarded' => 'Discarded (excluded from vat & payment)',
     'excel_dest_pending' => 'Pending test',
     'excel_dest_good' => 'Main vat (Cheese/Yogurt)',
     'excel_method_voice' => 'Voice dictation',

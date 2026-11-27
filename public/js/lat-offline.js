@@ -1,11 +1,22 @@
 (function () {
   const QUEUE_KEY = 'lat_offline_acopios_v1';
+  const CHUNK_SIZE = 50;
   let syncing = false;
 
   if ('serviceWorker' in navigator && (window.isSecureContext || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('/sw.js').catch(() => {});
     });
+  }
+
+  function obtenerContextoPlanta() {
+    const form = document.getElementById('form-acopio');
+    const plantaId = form?.dataset.plantaId ? parseInt(form.dataset.plantaId, 10) : null;
+    const userId = form?.dataset.userId ? parseInt(form.dataset.userId, 10) : null;
+    return {
+      plantaId: Number.isFinite(plantaId) ? plantaId : null,
+      userId: Number.isFinite(userId) ? userId : null,
+    };
   }
 
   function leerCola() {
@@ -16,6 +27,13 @@
     } catch (_) {
       return [];
     }
+  }
+
+  function leerColaPlantaActual() {
+    const { plantaId } = obtenerContextoPlanta();
+    const cola = leerCola();
+    if (plantaId === null) return cola;
+    return cola.filter((item) => item && (item.planta_id === undefined || item.planta_id === null || Number(item.planta_id) === plantaId));
   }
 
   function guardarCola(items) {
@@ -35,13 +53,13 @@
     });
   }
 
-  function actualizarBadge() {
+  function actualizarBadge(mensajeError = '') {
     const badge = document.getElementById('lat-net-badge');
     const txt = document.getElementById('lat-net-text');
     const btnSync = document.getElementById('btn-sync-offline');
     if (!badge || !txt) return;
 
-    const cola = leerCola();
+    const cola = leerColaPlantaActual();
     const online = navigator.onLine;
 
     badge.classList.remove('is-online', 'is-offline', 'is-pending');
@@ -50,6 +68,9 @@
       txt.textContent = cola.length > 0
         ? `Sin conexión · ${cola.length} pendiente(s)`
         : 'Sin conexión (Modo local)';
+    } else if (mensajeError) {
+      badge.classList.add('is-pending');
+      txt.textContent = mensajeError;
     } else if (cola.length > 0) {
       badge.classList.add('is-pending');
       txt.textContent = `En línea · ${cola.length} por sincronizar`;
@@ -68,10 +89,16 @@
     if (!tbody) return;
 
     tbody.querySelectorAll('tr.is-offline-row').forEach((tr) => tr.remove());
-    const cola = leerCola();
-    if (!cola.length) return;
-
+    const cola = leerColaPlantaActual();
     const emptyRow = tbody.querySelector('tr.is-empty-acopios');
+    if (!cola.length) {
+      if (emptyRow) {
+        const hayOtrasFilas = tbody.querySelectorAll('tr:not(.is-empty-acopios)').length > 0;
+        emptyRow.hidden = hayOtrasFilas;
+      }
+      return;
+    }
+
     if (emptyRow) emptyRow.hidden = true;
 
     cola.slice().reverse().forEach((item) => {
@@ -90,7 +117,7 @@
       const strong = document.createElement('strong');
       strong.textContent = item.proveedor_nombre || 'Productor';
       const small = document.createElement('small');
-      small.textContent = 'Guardado localmente (Offline)';
+      small.textContent = item.error_sync ? `Error sync: ${item.error_sync}` : 'Guardado localmente (Offline)';
       tdProv.appendChild(strong);
       tdProv.appendChild(small);
 
@@ -107,8 +134,8 @@
 
       const tdEstado = document.createElement('td');
       const spanEst = document.createElement('span');
-      spanEst.className = 'chip chip-amarillo';
-      spanEst.textContent = 'Pendiente sync';
+      spanEst.className = item.error_sync ? 'chip chip-rojo' : 'chip chip-amarillo';
+      spanEst.textContent = item.error_sync ? 'Revisar' : 'Pendiente sync';
       tdEstado.appendChild(spanEst);
 
       tr.append(tdFecha, tdHora, tdProv, tdLitros, tdMetodo, tdEstado);
@@ -137,6 +164,7 @@
       return false;
     }
 
+    const { plantaId, userId } = obtenerContextoPlanta();
     const ahora = new Date();
     const hora = `${String(ahora.getHours()).padStart(2, '0')}:${String(ahora.getMinutes()).padStart(2, '0')}:00`;
     const fechaDefault = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, '0')}-${String(ahora.getDate()).padStart(2, '0')}`;
@@ -147,6 +175,8 @@
     const cola = leerCola();
     cola.push({
       uuid_offline: generarUuid(),
+      planta_id: plantaId,
+      user_id: userId,
       proveedor_id: provId,
       proveedor_nombre: provLabel,
       litros: Number(litros.toFixed(2)),
@@ -189,38 +219,68 @@
   }
 
   async function sincronizarCola(recarregarSiExito = true) {
-    const cola = leerCola();
-    if (!cola.length || !navigator.onLine || syncing) return;
+    const colaPlanta = leerColaPlantaActual();
+    if (!colaPlanta.length || !navigator.onLine || syncing) return;
 
     const form = document.getElementById('form-acopio');
     const syncUrl = form?.dataset.syncUrl || '/panel/acopio/sync';
     const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
     syncing = true;
-    try {
-      const res = await fetch(syncUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'X-CSRF-TOKEN': csrf
-        },
-        credentials: 'same-origin',
-        body: JSON.stringify({ acopios: cola })
-      });
+    let totalSincronizados = 0;
+    let avisoError = '';
 
-      if (!res.ok) {
-        return;
+    try {
+      for (let i = 0; i < colaPlanta.length; i += CHUNK_SIZE) {
+        const lote = colaPlanta.slice(i, i + CHUNK_SIZE);
+        const res = await fetch(syncUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': csrf
+          },
+          credentials: 'same-origin',
+          body: JSON.stringify({ acopios: lote })
+        });
+
+        if (!res.ok) {
+          avisoError = res.status === 419
+            ? 'Sesión expirada · Recargue para sincronizar'
+            : `Error al sincronizar (${res.status})`;
+          break;
+        }
+
+        const data = await res.json();
+        const procesados = new Set([...(data.sincronizados || []), ...(data.duplicados || [])]);
+        totalSincronizados += (data.sincronizados || []).length;
+
+        const erroresMap = new Map();
+        if (Array.isArray(data.errores)) {
+          data.errores.forEach((err) => {
+            if (err && err.uuid_offline) {
+              erroresMap.set(err.uuid_offline, err.error || 'Registro inválido');
+            }
+          });
+        }
+
+        const colaCompleta = leerCola();
+        const actualizados = colaCompleta
+          .filter((item) => !procesados.has(item.uuid_offline))
+          .map((item) => (erroresMap.has(item.uuid_offline)
+            ? Object.assign({}, item, { error_sync: erroresMap.get(item.uuid_offline) })
+            : item));
+        guardarCola(actualizados);
+
+        if (erroresMap.size > 0) {
+          avisoError = `${erroresMap.size} pendiente(s) con error de validación`;
+        }
       }
 
-      const data = await res.json();
-      const procesados = new Set([...(data.sincronizados || []), ...(data.duplicados || [])]);
-      const restantes = cola.filter((item) => !procesados.has(item.uuid_offline));
-      guardarCola(restantes);
-      actualizarBadge();
+      actualizarBadge(avisoError);
       renderPendientesEnTabla();
 
-      if (recarregarSiExito && procesados.size > 0 && restantes.length === 0) {
+      if (totalSincronizados > 0 && (recarregarSiExito || leerColaPlantaActual().length === 0)) {
         window.location.hash = '#sec-acopio';
         window.location.reload();
       }
@@ -228,6 +288,15 @@
       // Sigue sin conectividad real; se reintentará al recuperar red
     } finally {
       syncing = false;
+    }
+  }
+
+  function limpiarCacheAutenticado() {
+    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.controller.postMessage({ type: 'LAT_CLEAR_AUTH_CACHE' });
+    }
+    if ('caches' in window) {
+      caches.keys().then((keys) => Promise.all(keys.map((k) => caches.open(k).then((c) => c.delete('/panel'))))).catch(() => {});
     }
   }
 
@@ -245,12 +314,16 @@
       });
     }
 
+    document.querySelectorAll('.js-logout-form').forEach((logoutForm) => {
+      logoutForm.addEventListener('submit', limpiarCacheAutenticado);
+    });
+
     const btnSync = document.getElementById('btn-sync-offline');
     if (btnSync) {
       btnSync.addEventListener('click', () => sincronizarCola(true));
     }
 
-    if (navigator.onLine && leerCola().length > 0) {
+    if (navigator.onLine && leerColaPlantaActual().length > 0) {
       sincronizarCola(false);
     }
   });

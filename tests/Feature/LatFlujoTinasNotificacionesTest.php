@@ -204,13 +204,22 @@ class LatFlujoTinasNotificacionesTest extends TestCase
             ->firstOrFail();
         $this->assertSame('tinas', $notifAcida->modulo_destino);
 
-        // 3. Descartar (descartada -> elimina completamente el acopio y notifica)
+        // 3. Descartar (descartada -> conserva ficha con motivo/responsable y notifica)
         $this->actingAs($evaluador)
-            ->post("/panel/calidad/{$acDescartada->id}", ['calidad' => 'descartada'])
+            ->post("/panel/calidad/{$acDescartada->id}", [
+                'calidad' => 'descartada',
+                'motivo_descarte' => 'Acidez alta y grumos',
+            ])
             ->assertRedirect()
             ->assertSessionHas('exito', __('lat.quality_classified_discarded'));
 
-        $this->assertDatabaseMissing('acopios', ['id' => $acDescartada->id]);
+        $acDescartadaFresh = $acDescartada->fresh();
+        $this->assertNotNull($acDescartadaFresh);
+        $this->assertSame('descartada', $acDescartadaFresh->calidad);
+        $this->assertSame('descartada', $acDescartadaFresh->destino);
+        $this->assertSame('Acidez alta y grumos', $acDescartadaFresh->motivo_descarte);
+        $this->assertSame($evaluador->id, $acDescartadaFresh->evaluado_por);
+        $this->assertNotNull($acDescartadaFresh->evaluado_en);
 
         $notifDesc = NotificacionPanel::where('planta_id', $evaluador->planta_id)
             ->where('tipo', 'calidad_descartada')
@@ -218,6 +227,7 @@ class LatFlujoTinasNotificacionesTest extends TestCase
             ->firstOrFail();
         $this->assertSame('tinas', $notifDesc->modulo_destino);
         $this->assertSame(14.5, (float) ($notifDesc->datos['litros'] ?? 0));
+        $this->assertSame($acDescartada->id, $notifDesc->datos['acopio_id'] ?? null);
     }
 
     #[TestWith(['buena'])]

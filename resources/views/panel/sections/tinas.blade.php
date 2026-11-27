@@ -158,39 +158,42 @@
           </div>
 
           @if($usuario->tienePermiso('tinas.operar'))
-            <form method="POST" action="{{ route('panel.tina', $lote->id) }}" class="grid-form-tina-sensor">
+            <form method="POST" action="{{ route('panel.tina', $lote->id) }}" class="grid-form-tina-temp">
               @csrf
               <div>
                 <label class="form-label" style="font-size: 0.78rem;" for="temp-{{ $lote->id }}" data-i18n="m3.lbl_sensor">Sensor (°C)</label>
-                <input type="number" step="0.5" id="temp-{{ $lote->id }}" name="temperatura" class="input-lat" value="{{ $lote->temperatura_actual }}" style="min-height: 42px; padding: 0.45rem 0.65rem;">
+                <input type="number" step="0.1" min="0" max="100" id="temp-{{ $lote->id }}" name="temperatura" class="input-lat" value="{{ number_format((float) $lote->temperatura_actual, 1, '.', '') }}" required style="min-height: 42px; padding: 0.45rem 0.65rem;">
               </div>
-              <div>
-                <label class="form-label" style="font-size: 0.78rem;" for="lit-{{ $lote->id }}" data-i18n="m3.lbl_liters">Litros (L)</label>
-                <input type="number" step="0.5" min="5" id="lit-{{ $lote->id }}" name="litros" class="input-lat" value="{{ $lote->litros }}" style="min-height: 42px; padding: 0.45rem 0.65rem;">
-              </div>
-              <div>
-                <label class="form-label" style="font-size: 0.78rem;" for="dur-{{ $lote->id }}" data-i18n="m3.lbl_timer_min">Tiempo (min)</label>
-                <input type="number" step="1" min="1" max="1440" id="dur-{{ $lote->id }}" name="duracion_minutos" class="input-lat" value="{{ (int) ($lote->duracion_minutos ?? 45) }}" style="min-height: 42px; padding: 0.45rem 0.65rem;">
-              </div>
-              <button type="submit" class="btn btn-ocean btn-compacto" data-i18n="m3.update_sensor">Actualizar</button>
-              <details class="tina-receta-edit-details">
-                <summary data-i18n="m3.edit_recipe_toggle">Ajustar proporciones de receta</summary>
-                <div class="grid-form-3" style="margin-top: 0.65rem;">
-                  <div>
-                    <label class="form-label" style="font-size: 0.78rem;" for="cuajo-{{ $lote->id }}" data-i18n="m3.rennet_ml">Cuajo (ml)</label>
-                    <input type="number" step="0.01" min="0" max="10000" id="cuajo-{{ $lote->id }}" name="cuajo_ml" class="input-lat" value="{{ number_format((float) $lote->cuajo_ml, 2, '.', '') }}" style="min-height: 40px; padding: 0.4rem 0.6rem;">
-                  </div>
-                  <div>
-                    <label class="form-label" style="font-size: 0.78rem;" for="sal-{{ $lote->id }}" data-i18n="m3.salt_kg">Sal (kg)</label>
-                    <input type="number" step="0.01" min="0" max="10000" id="sal-{{ $lote->id }}" name="sal_kg" class="input-lat" value="{{ number_format((float) $lote->sal_kg, 2, '.', '') }}" style="min-height: 40px; padding: 0.4rem 0.6rem;">
-                  </div>
-                  <div>
-                    <label class="form-label" style="font-size: 0.78rem;" for="cult-{{ $lote->id }}" data-i18n="m3.culture_g">Cultivo (g)</label>
-                    <input type="number" step="0.01" min="0" max="10000" id="cult-{{ $lote->id }}" name="cultivo_g" class="input-lat" value="{{ number_format((float) $lote->cultivo_g, 2, '.', '') }}" style="min-height: 40px; padding: 0.4rem 0.6rem;">
-                  </div>
-                </div>
-              </details>
+              <button type="submit" class="btn btn-ocean btn-compacto" data-i18n="m3.save_temp">Guardar °C</button>
             </form>
+
+            <details class="tina-receta-edit-details" style="margin-bottom: 0.65rem;">
+              <summary data-i18n="m3.edit_recipe_toggle">Ajustar litros, tiempo y receta</summary>
+              <form method="POST" action="{{ route('panel.tina', $lote->id) }}" class="grid-form-tina-sensor" style="margin-top: 0.65rem;">
+                @csrf
+                <div>
+                  <label class="form-label" style="font-size: 0.78rem;" for="lit-{{ $lote->id }}" data-i18n="m3.lbl_liters">Litros (L)</label>
+                  <input type="number" step="0.1" min="0.1" max="{{ $tina->capacidad_litros }}" id="lit-{{ $lote->id }}" name="litros" class="input-lat" value="{{ number_format((float) $lote->litros, 1, '.', '') }}" style="min-height: 40px; padding: 0.4rem 0.6rem;">
+                </div>
+                <div>
+                  <label class="form-label" style="font-size: 0.78rem;" for="dur-{{ $lote->id }}" data-i18n="m3.lbl_timer_min">Tiempo (min)</label>
+                  <input type="number" step="1" min="1" max="1440" id="dur-{{ $lote->id }}" name="duracion_minutos" class="input-lat" value="{{ (int) ($lote->duracion_minutos ?? 45) }}" style="min-height: 40px; padding: 0.4rem 0.6rem;">
+                </div>
+                <div>
+                  <label class="form-label" style="font-size: 0.78rem;" for="cuajo-{{ $lote->id }}" data-i18n="m3.rennet_ml">Cuajo (ml)</label>
+                  <input type="number" step="0.01" min="0" max="10000" id="cuajo-{{ $lote->id }}" name="cuajo_ml" class="input-lat" value="{{ number_format((float) $lote->cuajo_ml, 2, '.', '') }}" style="min-height: 40px; padding: 0.4rem 0.6rem;">
+                </div>
+                <div>
+                  <label class="form-label" style="font-size: 0.78rem;" for="sal-{{ $lote->id }}" data-i18n="m3.salt_kg">Sal (kg)</label>
+                  <input type="number" step="0.01" min="0" max="10000" id="sal-{{ $lote->id }}" name="sal_kg" class="input-lat" value="{{ number_format((float) $lote->sal_kg, 2, '.', '') }}" style="min-height: 40px; padding: 0.4rem 0.6rem;">
+                </div>
+                <div>
+                  <label class="form-label" style="font-size: 0.78rem;" for="cult-{{ $lote->id }}" data-i18n="m3.culture_g">Cultivo (g)</label>
+                  <input type="number" step="0.01" min="0" max="10000" id="cult-{{ $lote->id }}" name="cultivo_g" class="input-lat" value="{{ number_format((float) $lote->cultivo_g, 2, '.', '') }}" style="min-height: 40px; padding: 0.4rem 0.6rem;">
+                </div>
+                <button type="submit" class="btn btn-outline btn-compacto" data-i18n="m3.update_batch_params">Actualizar lote</button>
+              </form>
+            </details>
 
             <form method="POST" action="{{ route('panel.tina', $lote->id) }}"
               class="js-confirm-form tina-finish-form"

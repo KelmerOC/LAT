@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'lat-compacto-v6';
+const CACHE_VERSION = 'lat-compacto-v8';
 const STATIC_ASSETS = [
   '/css/lat-design-system.css',
   '/css/lat-dashboard.css',
@@ -36,6 +36,22 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'LAT_CLEAR_AUTH_CACHE') {
+    event.waitUntil(
+      caches.open(CACHE_VERSION).then((cache) =>
+        cache.keys().then((requests) =>
+          Promise.all(
+            requests
+              .filter((r) => new URL(r.url).pathname.startsWith('/panel'))
+              .map((r) => cache.delete(r))
+          )
+        )
+      ).catch(() => {})
+    );
+  }
+});
+
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET') return;
@@ -59,7 +75,10 @@ self.addEventListener('fetch', (event) => {
           }
           return res;
         })
-        .catch(() => caches.match(req).then((cached) => cached || caches.match('/panel')))
+        .catch(() => caches.match(req).then((cached) => {
+          if (cached) return cached;
+          return url.pathname.startsWith('/panel') ? caches.match('/panel') : undefined;
+        }))
     );
     return;
   }

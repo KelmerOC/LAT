@@ -221,7 +221,8 @@ class ExcelExportService
                 'concepto' => (string) $venta->concepto,
                 'cantidad' => $cantidad,
                 'tarifa' => $pUnit,
-                'total' => round($cantidad * $pUnit, 2),
+                'total' => $monto,
+                'usar_formula' => $cantidad > 0 && $pUnit > 0.0 && abs(round($cantidad * $pUnit, 2) - $monto) < 0.01,
             ];
         })->all();
 
@@ -267,7 +268,8 @@ class ExcelExportService
                 'concepto' => (string) $mov->concepto,
                 'cantidad' => $cantidad,
                 'tarifa' => $tarifa,
-                'total' => round($cantidad * $tarifa, 2),
+                'total' => $monto,
+                'usar_formula' => $cantidad > 0 && $tarifa > 0.0 && abs(round($cantidad * $tarifa, 2) - $monto) < 0.01,
             ];
         })->all();
 
@@ -282,10 +284,10 @@ class ExcelExportService
     }
 
     /**
-     * Construye una hoja tabular de 7 columnas (A..G) con fórmula Total = E*F y fila SUM.
+     * Construye una hoja tabular de 7 columnas (A..G) con fórmula Total = E*F cuando coincide o valor exacto, y fila SUM.
      *
      * @param  list<string>  $headers
-     * @param  array<int, array{fecha: string, col2: string, col3: string, concepto: string, cantidad: int, tarifa: float, total: float}>  $filas
+     * @param  array<int, array{fecha: string, col2: string, col3: string, concepto: string, cantidad: int, tarifa: float, total: float, usar_formula?: bool}>  $filas
      * @param  list<int>  $widths
      */
     private function buildTablaConceptoTarifaSheet(
@@ -315,6 +317,10 @@ class ExcelExportService
             $sumCant += $fila['cantidad'];
             $sumTotal += $fila['total'];
 
+            $totalCell = ! empty($fila['usar_formula'])
+                ? $this->cellFormula("G{$r}", "E{$r}*F{$r}", $fila['total'], $sCur)
+                : $this->cellNum("G{$r}", $fila['total'], $sCur);
+
             $rows[] = $this->rowXml($r, [
                 $this->cellText("A{$r}", $fila['fecha'], $sTxt),
                 $this->cellText("B{$r}", $fila['col2'], $sTxt),
@@ -322,7 +328,7 @@ class ExcelExportService
                 $this->cellText("D{$r}", $fila['concepto'], $sTxt),
                 $this->cellNum("E{$r}", $fila['cantidad'], $sInt),
                 $this->cellNum("F{$r}", $fila['tarifa'], $sCur),
-                $this->cellFormula("G{$r}", "E{$r}*F{$r}", $fila['total'], $sCur),
+                $totalCell,
             ], 20);
             $r++;
         }
@@ -377,10 +383,12 @@ class ExcelExportService
             $calidadTxt = match ($acopio->calidad) {
                 'buena' => __('lat.excel_quality_good'),
                 'acida' => __('lat.excel_quality_acid'),
+                'descartada' => __('lat.excel_quality_discarded'),
                 default => __('lat.excel_quality_pending'),
             };
             $destinoTxt = match ($acopio->calidad) {
                 'acida' => __('lat.excel_dest_acid'),
+                'descartada' => __('lat.excel_dest_discarded').(! empty($acopio->motivo_descarte) ? ' · '.$acopio->motivo_descarte : ''),
                 'pendiente' => __('lat.excel_dest_pending'),
                 default => __('lat.excel_dest_good'),
             };
@@ -447,6 +455,7 @@ class ExcelExportService
             'adelanto_efectivo' => __('lat.mov_adelanto_efectivo'),
             'adelanto_queso' => __('lat.mov_adelanto_queso'),
             'ayuda_del_dia' => __('lat.mov_ayuda_del_dia'),
+            'sueldo_personal' => __('lat.mov_sueldo_personal'),
             'gasto_operativo' => __('lat.mov_gasto_operativo'),
             'venta_producto' => __('lat.mov_venta_producto'),
             'quincena' => __('lat.mov_quincena'),

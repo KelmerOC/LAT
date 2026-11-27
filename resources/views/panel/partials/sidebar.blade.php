@@ -88,7 +88,7 @@
       <button type="button" class="dash-lang-pill btn-lang-choice" data-lang="en">EN</button>
     </div>
 
-    <form method="POST" action="{{ route('logout') }}" style="width: 100%;">
+    <form method="POST" action="{{ route('logout') }}" class="js-logout-form" style="width: 100%;">
       @csrf
       <button type="submit" class="btn btn-outline btn-bloque" style="min-height: 40px; font-size: 0.84rem;">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>

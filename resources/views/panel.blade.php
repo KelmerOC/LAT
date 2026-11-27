@@ -247,6 +247,7 @@
     const searchParams = new URLSearchParams(window.location.search);
     const paramKeys = Array.from(searchParams.keys());
     const hasAcopioFilter = paramKeys.some(k => k.startsWith('acopio_'));
+    const hasCalidadFilter = paramKeys.some(k => k.startsWith('cal_'));
     const hasFinanzasFilter = paramKeys.some(k => k.startsWith('liq_') || k.startsWith('v_') || k.startsWith('s_'));
     const hasInformesFilter = paramKeys.some(k => k.startsWith('inf_'));
 
@@ -254,6 +255,8 @@
       inicial = hashId;
     } else if (hasAcopioFilter && document.getElementById('sec-acopio')) {
       inicial = 'sec-acopio';
+    } else if (hasCalidadFilter && document.getElementById('sec-calidad')) {
+      inicial = 'sec-calidad';
     } else if (hasFinanzasFilter && document.getElementById('sec-quincena')) {
       inicial = 'sec-quincena';
     } else if (hasInformesFilter && document.getElementById('sec-estadisticas')) {
@@ -459,6 +462,8 @@
     const modalConfirm = document.getElementById('modal-confirmacion-lat');
     const confirmBadgeEl = document.getElementById('confirm-modal-badge');
     const confirmMsgEl = document.getElementById('confirm-modal-message');
+    const confirmReasonWrapEl = document.getElementById('confirm-modal-reason-wrap');
+    const confirmReasonInputEl = document.getElementById('confirm-modal-reason');
     const btnConfirmar = document.getElementById('btn-confirmar-accion-js');
 
     const tr = (key, fallback, vars) => {
@@ -477,6 +482,12 @@
         confirmBadgeEl.hidden = true;
         confirmBadgeEl.className = 'confirm-status-notice';
         confirmBadgeEl.textContent = '';
+      }
+      if (confirmReasonWrapEl) {
+        confirmReasonWrapEl.hidden = true;
+      }
+      if (confirmReasonInputEl) {
+        confirmReasonInputEl.value = '';
       }
       if (btnConfirmar) {
         btnConfirmar.className = 'btn btn-ember';
@@ -709,6 +720,14 @@
             duracion
           });
         }
+        const hiddenChecked = cbs.filter(cb => cb.checked && cb.closest('.it-acopio-item')?.hidden);
+        if (hiddenChecked.length > 0) {
+          const hiddenLiters = hiddenChecked.reduce((acc, cb) => acc + (parseFloat(cb.dataset.litros || cb.closest('.it-acopio-item')?.dataset.litros || '0') || 0), 0);
+          msg += ' ' + tr('m3.hidden_selection_notice', 'Incluye {count} entrega(s) ({litros} L) marcadas fuera del filtro actual que siguen sumando al lote.', {
+            count: hiddenChecked.length,
+            litros: hiddenLiters.toFixed(1)
+          });
+        }
       } else if (kind === 'calidad') {
         const estadoKey = (e.submitter && e.submitter.dataset.estadoKey) || form.dataset.estadoKey || 'buena';
         const nombre = form.dataset.nombre || '';
@@ -720,10 +739,13 @@
             confirmBadgeEl.textContent = tr('confirm.quality_warn_descartada', 'ATENCIÓN: DESCARTAR LECHE (NO INGRESA A PRODUCCIÓN)');
             confirmBadgeEl.hidden = false;
           }
+          if (confirmReasonWrapEl) {
+            confirmReasonWrapEl.hidden = false;
+          }
           if (btnConfirmar) btnConfirmar.className = 'btn btn-rojo';
           msg = tr(
             'confirm.quality_discard_msg',
-            '¿Está seguro de que quieres descartar la entrega de {nombre} ({litros} L)? Esta leche no podrá usarse en ninguna tina.',
+            '¿Está seguro de que quieres descartar la entrega de {nombre} ({litros} L)? Se conservará en el historial como Descartada y no entrará a tina ni a liquidación.',
             { nombre, litros }
           );
         } else {
@@ -789,6 +811,16 @@
       btnConfirmar.addEventListener('click', function () {
         if (!pendingForm) return;
         const target = pendingForm;
+        if (confirmReasonWrapEl && !confirmReasonWrapEl.hidden && confirmReasonInputEl) {
+          let hiddenReason = target.querySelector('input[name="motivo_descarte"]');
+          if (!hiddenReason) {
+            hiddenReason = document.createElement('input');
+            hiddenReason.type = 'hidden';
+            hiddenReason.name = 'motivo_descarte';
+            target.appendChild(hiddenReason);
+          }
+          hiddenReason.value = confirmReasonInputEl.value.trim();
+        }
         pendingForm = null;
         cerrarModal('modal-confirmacion-lat');
         target.dataset.confirmed = 'true';
@@ -1000,6 +1032,8 @@
         document.getElementById('edit-ac-prov').value = btn.dataset.proveedor;
         document.getElementById('edit-ac-litros').value = btn.dataset.litros;
         document.getElementById('edit-ac-calidad').value = btn.dataset.calidad;
+        const calHiddenEl = document.getElementById('edit-ac-calidad-hidden');
+        if (calHiddenEl) calHiddenEl.value = btn.dataset.calidad || '';
         document.getElementById('edit-ac-metodo').value = btn.dataset.metodo;
         const fechaEl = document.getElementById('edit-ac-fecha');
         if (fechaEl) fechaEl.value = btn.dataset.fecha || '';
@@ -1112,6 +1146,9 @@
       const filtroFecha = document.getElementById('it-filtro-fecha');
       const filtroOrden = document.getElementById('it-filtro-orden') || document.getElementById('it-orden');
       const emptyEl = document.getElementById('it-acopios-empty');
+      const hiddenNoticeEl = document.getElementById('it-hidden-selection-notice');
+      const hiddenNoticeTextEl = document.getElementById('it-hidden-selection-text');
+      const btnDesmarcarOcultas = document.getElementById('it-btn-desmarcar-ocultas');
       const btnSelVisibles = document.getElementById('it-btn-sel-visibles');
       const btnLimpiar = document.getElementById('it-btn-limpiar');
       const btnRecalcular = document.getElementById('it-btn-recalcular');
@@ -1242,19 +1279,27 @@
         if (emptyEl) {
           emptyEl.hidden = visibles > 0;
         }
+        recalcularLoteDesdeSeleccion(false);
       }
 
       function recalcularLoteDesdeSeleccion(forzar) {
         const cbs = Array.from(formIniciar.querySelectorAll('.js-it-acopio-cb'));
         let totalLitros = 0;
         let count = 0;
+        let ocultasCount = 0;
+        let ocultasLitros = 0;
 
         if (cbs.length > 0) {
           cbs.forEach(cb => {
             if (cb.checked) {
-              const l = parseFloat(cb.dataset.litros || cb.closest('.it-acopio-item')?.dataset.litros || '0') || 0;
+              const row = cb.closest('.it-acopio-item');
+              const l = parseFloat(cb.dataset.litros || row?.dataset.litros || '0') || 0;
               totalLitros += l;
               count++;
+              if (row && row.hidden) {
+                ocultasCount++;
+                ocultasLitros += l;
+              }
             }
           });
           if (litrosTotalInput) {
@@ -1262,6 +1307,20 @@
           }
         } else if (litrosTotalInput) {
           totalLitros = parseFloat(litrosTotalInput.value || '0') || 0;
+        }
+
+        if (hiddenNoticeEl && hiddenNoticeTextEl) {
+          if (ocultasCount > 0) {
+            hiddenNoticeTextEl.textContent = tr(
+              'm3.hidden_selection_notice',
+              'Incluye {count} entrega(s) ({litros} L) marcadas fuera del filtro actual que siguen sumando al lote.',
+              { count: ocultasCount, litros: ocultasLitros.toFixed(1) }
+            );
+            hiddenNoticeEl.hidden = false;
+          } else {
+            hiddenNoticeEl.hidden = true;
+            hiddenNoticeTextEl.textContent = '';
+          }
         }
 
         const capacidad = parseFloat(capInput?.value || formIniciar.dataset.tinaCapacidad || '0') || 0;
@@ -1371,6 +1430,15 @@
       if (btnLimpiar) {
         btnLimpiar.addEventListener('click', () => {
           formIniciar.querySelectorAll('.js-it-acopio-cb').forEach(cb => { cb.checked = false; });
+          recalcularLoteDesdeSeleccion(false);
+        });
+      }
+
+      if (btnDesmarcarOcultas) {
+        btnDesmarcarOcultas.addEventListener('click', () => {
+          formIniciar.querySelectorAll('.it-acopio-item[hidden] .js-it-acopio-cb').forEach(cb => {
+            cb.checked = false;
+          });
           recalcularLoteDesdeSeleccion(false);
         });
       }

@@ -1065,6 +1065,10 @@ body.dash-body .subtabs-edit {
   flex-wrap: wrap;
 }
 
+.acopio-voz-aviso-actions[hidden] {
+  display: none;
+}
+
 .acopio-frase-mini {
   font-style: italic;
   color: var(--color-graphite);
@@ -1416,6 +1420,18 @@ body.dash-body .grid-form-tina-sensor {
   align-items: end;
 }
 
+.grid-form-tina-temp {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.65rem;
+  margin-bottom: 0.65rem;
+}
+
+.grid-form-tina-temp > div {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
 .tina-receta-edit-details {
   grid-column: 1 / -1;
   border: 1px solid var(--color-hairline);
@@ -1496,6 +1512,34 @@ body.dash-body .grid-form-tina-sensor {
   border-bottom: 1px solid var(--color-hairline);
   cursor: pointer;
   font-size: 0.86rem;
+}
+
+.it-acopio-item[hidden] {
+  display: none;
+}
+
+.it-acopio-fechas {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.1rem;
+  font-size: 0.76rem;
+  color: var(--color-graphite);
+}
+
+.it-hidden-selection-notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.55rem;
+  padding: 0.55rem 0.75rem;
+  font-size: 0.84rem;
+}
+
+.it-hidden-selection-notice[hidden] {
+  display: none;
 }
 
 .it-acopio-item:last-child {

@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * Movimiento financiero o liquidación quincenal asociado a una planta.
@@ -13,6 +14,9 @@ class Liquidacion extends Model
 {
     /** @var list<string> */
     public const TIPOS_VENTA = ['venta_producto'];
+
+    /** @var list<string> */
+    public const TIPOS_ADELANTO = ['adelanto_efectivo', 'adelanto_queso'];
 
     /** @var list<string> */
     public const TIPOS_SUELDOS_PAGOS = [
@@ -81,6 +85,16 @@ class Liquidacion extends Model
     public function proveedor(): BelongsTo
     {
         return $this->belongsTo(Proveedor::class);
+    }
+
+    public function aplicacionesComoQuincena(): HasMany
+    {
+        return $this->hasMany(AdelantoAplicacion::class, 'quincena_liquidacion_id');
+    }
+
+    public function aplicacionesComoAdelanto(): HasMany
+    {
+        return $this->hasMany(AdelantoAplicacion::class, 'adelanto_liquidacion_id');
     }
 
     /** Scope: Adelantos pendientes de descuento */
