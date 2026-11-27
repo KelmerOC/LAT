@@ -308,24 +308,30 @@ class LatFuncionalidadesTest extends TestCase
     {
         $admin = User::where('usuario', 'donjusto')->firstOrFail();
 
-        // Agregar nueva tina
-        $this->actingAs($admin)->post('/panel/tinas', [
-            'codigo' => 'TINA-04',
-            'nombre' => 'Tina Queso Paria',
-            'capacidad_litros' => 400,
-            'tipo' => 'principal_queso',
-        ])->assertRedirect();
+        // Agregar nueva tina (con modo operativo habilitado para donjusto)
+        $this->actingAs($admin)
+            ->withSession(['admin_modo_operativo' => true])
+            ->post('/panel/tinas', [
+                'codigo' => 'TINA-04',
+                'nombre' => 'Tina Queso Paria',
+                'capacidad_litros' => 400,
+                'tipo' => 'principal_queso',
+            ])
+            ->assertRedirect();
 
         $tina = Tina::where('codigo', 'TINA-04')->firstOrFail();
 
         // Editar tina
-        $this->actingAs($admin)->put("/panel/tinas/{$tina->id}", [
-            'codigo' => 'TINA-04',
-            'nombre' => 'Tina Queso Paria Plus',
-            'capacidad_litros' => 450,
-            'tipo' => 'multiproposito',
-            'activa' => '1',
-        ])->assertRedirect();
+        $this->actingAs($admin)
+            ->withSession(['admin_modo_operativo' => true])
+            ->put("/panel/tinas/{$tina->id}", [
+                'codigo' => 'TINA-04',
+                'nombre' => 'Tina Queso Paria Plus',
+                'capacidad_litros' => 450,
+                'tipo' => 'multiproposito',
+                'activa' => '1',
+            ])
+            ->assertRedirect();
 
         $this->assertSame('Tina Queso Paria Plus', $tina->fresh()->nombre);
 
@@ -392,13 +398,16 @@ class LatFuncionalidadesTest extends TestCase
         $acopio = Acopio::where('planta_id', $admin->planta_id)->firstOrFail();
         $prov = Proveedor::where('planta_id', $admin->planta_id)->firstOrFail();
 
-        $this->actingAs($admin)->put("/panel/acopio/{$acopio->id}", [
-            'proveedor_id' => $prov->id,
-            'litros' => 55.5,
-            'calidad' => 'acida',
-            'metodo' => 'manual',
-            'hora' => '08:15',
-        ])->assertRedirect();
+        $this->actingAs($admin)
+            ->withSession(['admin_modo_operativo' => true])
+            ->put("/panel/acopio/{$acopio->id}", [
+                'proveedor_id' => $prov->id,
+                'litros' => 55.5,
+                'calidad' => 'acida',
+                'metodo' => 'manual',
+                'hora' => '08:15',
+            ])
+            ->assertRedirect();
 
         $acopioFresh = $acopio->fresh();
         $this->assertSame(55.5, $acopioFresh->litros);
@@ -613,11 +622,14 @@ class LatFuncionalidadesTest extends TestCase
         $admin = User::where('usuario', 'donjusto')->firstOrFail();
         $planta1 = Planta::where('codigo', 'PLT-01')->firstOrFail();
 
-        $this->actingAs($admin)->post('/panel/proveedor', [
-            'codigo' => '  prv-99  ',
-            'nombre' => 'Doña Rosa Condori',
-            'sector' => 'Anta Pampa',
-        ])->assertRedirect();
+        $this->actingAs($admin)
+            ->withSession(['admin_modo_operativo' => true])
+            ->post('/panel/proveedor', [
+                'codigo' => '  prv-99  ',
+                'nombre' => 'Doña Rosa Condori',
+                'sector' => 'Anta Pampa',
+            ])
+            ->assertRedirect();
 
         $prov = Proveedor::where('planta_id', $planta1->id)
             ->where('codigo', 'PRV-99')
@@ -625,18 +637,24 @@ class LatFuncionalidadesTest extends TestCase
         $this->assertSame('Anta Pampa', $prov->sector);
 
         // Código duplicado en minúsculas debe ser rechazado por la normalización case-insensitive
-        $this->actingAs($admin)->post('/panel/proveedor', [
-            'codigo' => 'prv-99',
-            'nombre' => 'Duplicado',
-            'sector' => 'Markjo',
-        ])->assertSessionHasErrors('codigo');
+        $this->actingAs($admin)
+            ->withSession(['admin_modo_operativo' => true])
+            ->post('/panel/proveedor', [
+                'codigo' => 'prv-99',
+                'nombre' => 'Duplicado',
+                'sector' => 'Markjo',
+            ])
+            ->assertSessionHasErrors('codigo');
 
         // Editar permitiendo vaciar sector
-        $this->actingAs($admin)->put("/panel/proveedor/{$prov->id}", [
-            'codigo' => 'prv-99b',
-            'nombre' => 'Doña Rosa Editada',
-            'sector' => '',
-        ])->assertRedirect();
+        $this->actingAs($admin)
+            ->withSession(['admin_modo_operativo' => true])
+            ->put("/panel/proveedor/{$prov->id}", [
+                'codigo' => 'prv-99b',
+                'nombre' => 'Doña Rosa Editada',
+                'sector' => '',
+            ])
+            ->assertRedirect();
 
         $provFresh = $prov->fresh();
         $this->assertSame('PRV-99B', $provFresh->codigo);
@@ -650,7 +668,10 @@ class LatFuncionalidadesTest extends TestCase
         $acopio = Acopio::where('planta_id', $admin->planta_id)->firstOrFail();
         $mov = Liquidacion::where('planta_id', $admin->planta_id)->firstOrFail();
 
-        $this->actingAs($admin)->delete("/panel/acopio/{$acopio->id}")->assertRedirect();
+        $this->actingAs($admin)
+            ->withSession(['admin_modo_operativo' => true])
+            ->delete("/panel/acopio/{$acopio->id}")
+            ->assertRedirect();
         $this->assertDatabaseMissing('acopios', ['id' => $acopio->id]);
 
         $this->actingAs($admin)->delete("/panel/movimiento/{$mov->id}")->assertRedirect();
@@ -676,21 +697,30 @@ class LatFuncionalidadesTest extends TestCase
             'destino' => 'pendiente',
         ]);
 
-        $this->actingAs($admin)->post("/panel/calidad/{$acopio->id}", [
-            'calidad' => 'buena',
-        ])->assertRedirect();
+        $this->actingAs($admin)
+            ->withSession(['admin_modo_operativo' => true])
+            ->post("/panel/calidad/{$acopio->id}", [
+                'calidad' => 'buena',
+            ])
+            ->assertRedirect();
         $this->assertSame('buena', $acopio->fresh()->calidad);
         $this->assertSame('queso_yogur', $acopio->fresh()->destino);
 
-        $this->actingAs($admin)->post("/panel/calidad/{$acopio->id}", [
-            'calidad' => 'acida',
-        ])->assertRedirect();
+        $this->actingAs($admin)
+            ->withSession(['admin_modo_operativo' => true])
+            ->post("/panel/calidad/{$acopio->id}", [
+                'calidad' => 'acida',
+            ])
+            ->assertRedirect();
         $this->assertSame('acida', $acopio->fresh()->calidad);
         $this->assertSame('quesillo_4_dias', $acopio->fresh()->destino);
 
-        $this->actingAs($admin)->post("/panel/calidad/{$acopio->id}", [
-            'calidad' => 'desconocida',
-        ])->assertSessionHasErrors('calidad');
+        $this->actingAs($admin)
+            ->withSession(['admin_modo_operativo' => true])
+            ->post("/panel/calidad/{$acopio->id}", [
+                'calidad' => 'desconocida',
+            ])
+            ->assertSessionHasErrors('calidad');
         $this->assertSame('acida', $acopio->fresh()->calidad);
     }
 

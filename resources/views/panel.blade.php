@@ -33,6 +33,7 @@
     'adelanto_efectivo' => 'Adelanto efectivo',
     'adelanto_queso'    => 'Adelanto queso',
     'ayuda_del_dia'     => 'Ayuda del día (sin DNI)',
+    'sueldo_personal'   => 'Sueldo de personal',
     'gasto_operativo'   => 'Gasto operativo',
     'venta_producto'    => 'Venta de producto',
   ];
@@ -130,7 +131,7 @@
 
 @push('scripts')
 <script src="{{ asset('js/chart.umd.min.js') }}"></script>
-<script src="{{ asset('js/lat-qr.js') }}"></script>
+<script src="{{ asset('js/lat-finanzas-grid.js') }}"></script>
 <script src="{{ asset('js/lat-notificaciones.js') }}" defer></script>
 <script>
   const recetasBasePlanta = @json($recetasBase ?? []);
@@ -244,12 +245,19 @@
     let inicial = defaultSection;
     const hashId = (window.location.hash || '').replace(/^#/, '');
     const searchParams = new URLSearchParams(window.location.search);
-    const hasAcopioFilter = Array.from(searchParams.keys()).some(k => k.startsWith('acopio_'));
+    const paramKeys = Array.from(searchParams.keys());
+    const hasAcopioFilter = paramKeys.some(k => k.startsWith('acopio_'));
+    const hasFinanzasFilter = paramKeys.some(k => k.startsWith('liq_') || k.startsWith('v_') || k.startsWith('s_'));
+    const hasInformesFilter = paramKeys.some(k => k.startsWith('inf_'));
 
     if (hashId && document.getElementById(hashId)) {
       inicial = hashId;
     } else if (hasAcopioFilter && document.getElementById('sec-acopio')) {
       inicial = 'sec-acopio';
+    } else if (hasFinanzasFilter && document.getElementById('sec-quincena')) {
+      inicial = 'sec-quincena';
+    } else if (hasInformesFilter && document.getElementById('sec-estadisticas')) {
+      inicial = 'sec-estadisticas';
     } else {
       try {
         const saved = sessionStorage.getItem(storageKey);
@@ -522,7 +530,19 @@
       }
     });
 
-    // Interceptor JS para Calidad Sanitaria, Cierre de Lote y Eliminaciones
+    function setConfirmMsgBold(before, boldText, after) {
+      if (!confirmMsgEl) return;
+      confirmMsgEl.textContent = '';
+      if (before) confirmMsgEl.appendChild(document.createTextNode(before));
+      if (boldText) {
+        const strongEl = document.createElement('strong');
+        strongEl.textContent = boldText;
+        confirmMsgEl.appendChild(strongEl);
+      }
+      if (after) confirmMsgEl.appendChild(document.createTextNode(after));
+    }
+
+    // Interceptor JS para Calidad Sanitaria, Cierre de Lote, Finanzas y Eliminaciones
     document.addEventListener('submit', function (e) {
       const form = e.target;
       if (!form.classList || !form.classList.contains('js-confirm-form')) return;
@@ -533,7 +553,99 @@
 
       const kind = form.dataset.confirmKind;
       let msg = tr('confirm.default_msg', '¿Está seguro de que desea aplicar este cambio?');
-      if (kind === 'trash_plant') {
+      let customMsgRendered = false;
+      if (kind === 'toggle_admin_ops') {
+        const activar = form.dataset.activar === '1';
+        if (confirmBadgeEl) {
+          confirmBadgeEl.className = activar ? 'confirm-status-notice is-verde' : 'confirm-status-notice is-amarillo';
+          confirmBadgeEl.textContent = activar
+            ? tr('confirm.admin_ops_on_badge', 'ACTIVAR MODO OPERATIVO DE PLANTA')
+            : tr('confirm.admin_ops_off_badge', 'VOLVER A MODO ADMINISTRADOR');
+          confirmBadgeEl.hidden = false;
+        }
+        if (btnConfirmar) btnConfirmar.className = activar ? 'btn btn-verde' : 'btn btn-ember';
+        setConfirmMsgBold(
+          tr('confirm.admin_ops_prefix', '¿Confirmas '),
+          activar ? tr('confirm.admin_ops_on_bold', 'activar el modo operativo') : tr('confirm.admin_ops_off_bold', 'desactivar el modo operativo'),
+          tr('confirm.admin_ops_suffix', ' en esta sesión para registrar y operar módulos de planta?')
+        );
+        customMsgRendered = true;
+      } else if (kind === 'save_liq_grid') {
+        if (confirmBadgeEl) {
+          confirmBadgeEl.className = 'confirm-status-notice is-amarillo';
+          confirmBadgeEl.textContent = tr('confirm.liq_grid_badge', 'ACTUALIZAR LIQUIDACIÓN QUINCENAL');
+          confirmBadgeEl.hidden = false;
+        }
+        if (btnConfirmar) btnConfirmar.className = 'btn btn-ember';
+        setConfirmMsgBold(
+          tr('confirm.liq_grid_prefix', '¿Guardar los cambios editados en '),
+          tr('confirm.liq_grid_bold', 'precios por litro, adelantos y estados de pago'),
+          tr('confirm.liq_grid_suffix', ' para los productores filtrados?')
+        );
+        customMsgRendered = true;
+      } else if (kind === 'send_excel') {
+        const destEl = form.querySelector('#rep-destinatario');
+        const tipoEl = form.querySelector('#rep-tipo');
+        const destNombre = destEl?.selectedOptions?.[0]?.textContent?.trim() || 'Contador';
+        const tipoNombre = tipoEl?.selectedOptions?.[0]?.textContent?.trim() || 'Excel';
+        if (confirmBadgeEl) {
+          confirmBadgeEl.className = 'confirm-status-notice is-verde';
+          confirmBadgeEl.textContent = tr('confirm.send_excel_badge', 'ENVIAR LIBRO EXCEL (.XLSX) AL CONTADOR');
+          confirmBadgeEl.hidden = false;
+        }
+        if (btnConfirmar) btnConfirmar.className = 'btn btn-verde';
+        setConfirmMsgBold(
+          tr('confirm.send_excel_prefix', '¿Generar y enviar '),
+          `${tipoNombre} → ${destNombre}`,
+          tr('confirm.send_excel_suffix', ' con notificación verde inmediata?')
+        );
+        customMsgRendered = true;
+      } else if (kind === 'review_excel') {
+        const archivo = form.dataset.archivo || 'reporte.xlsx';
+        if (confirmBadgeEl) {
+          confirmBadgeEl.className = 'confirm-status-notice is-verde';
+          confirmBadgeEl.textContent = tr('confirm.review_excel_badge', 'CONFIRMAR REVISIÓN CONTABLE');
+          confirmBadgeEl.hidden = false;
+        }
+        if (btnConfirmar) btnConfirmar.className = 'btn btn-verde';
+        setConfirmMsgBold(
+          tr('confirm.review_excel_prefix', '¿Marcar como revisado el archivo '),
+          archivo,
+          tr('confirm.review_excel_suffix', ' y notificar al remitente?')
+        );
+        customMsgRendered = true;
+      } else if (kind === 'send_accounting_notif') {
+        const destEl = form.querySelector('#nc-destinatario');
+        const asuntoEl = form.querySelector('#nc-asunto');
+        const destNombre = destEl?.selectedOptions?.[0]?.textContent?.trim() || 'Destinatario';
+        const asunto = asuntoEl?.value?.trim() || '';
+        if (confirmBadgeEl) {
+          confirmBadgeEl.className = 'confirm-status-notice is-verde';
+          confirmBadgeEl.textContent = tr('confirm.accounting_notif_badge', 'AVISO CONTABLE VERDE EN VIVO');
+          confirmBadgeEl.hidden = false;
+        }
+        if (btnConfirmar) btnConfirmar.className = 'btn btn-verde';
+        setConfirmMsgBold(
+          tr('confirm.accounting_notif_prefix', '¿Enviar notificación contable a '),
+          `${destNombre} (${asunto})`,
+          '?'
+        );
+        customMsgRendered = true;
+      } else if (kind === 'send_plant_report') {
+        const plantaNombre = form.dataset.planta || '';
+        if (confirmBadgeEl) {
+          confirmBadgeEl.className = 'confirm-status-notice is-verde';
+          confirmBadgeEl.textContent = tr('confirm.plant_report_badge', 'INFORME DE ACTIVIDAD DE PLANTA');
+          confirmBadgeEl.hidden = false;
+        }
+        if (btnConfirmar) btnConfirmar.className = 'btn btn-ember';
+        setConfirmMsgBold(
+          tr('confirm.plant_report_prefix', '¿Compilar y enviar el informe de las últimas 24h de '),
+          plantaNombre || tr('confirm.plant_report_default', 'esta planta'),
+          tr('confirm.plant_report_suffix', ' a Administración?')
+        );
+        customMsgRendered = true;
+      } else if (kind === 'trash_plant') {
         const nombrePl = form.dataset.nombre || '';
         const impacto = form.dataset.impacto || '';
         msg = `¿Enviar la planta "${nombrePl}" al tacho? (${impacto}). Podrás restaurarla durante 30 días antes de su eliminación definitiva.`;
@@ -669,7 +781,7 @@
       }
 
       pendingForm = form;
-      if (confirmMsgEl) confirmMsgEl.textContent = msg;
+      if (confirmMsgEl && !customMsgRendered) confirmMsgEl.textContent = msg;
       abrirModal('modal-confirmacion-lat', e.submitter || form.querySelector('button[type="submit"]'));
     });
 
@@ -920,14 +1032,38 @@
     document.querySelectorAll('.js-edit-mov').forEach(btn => {
       btn.addEventListener('click', () => {
         document.getElementById('form-edit-mov').action = baseMovUrl + '/' + btn.dataset.id;
-        document.getElementById('edit-mov-tipo').value = btn.dataset.tipo;
-        document.getElementById('edit-mov-prov').value = btn.dataset.proveedor;
-        document.getElementById('edit-mov-concepto').value = btn.dataset.concepto;
-        document.getElementById('edit-mov-unidades').value = btn.dataset.unidades;
-        document.getElementById('edit-mov-monto').value = btn.dataset.monto;
+        document.getElementById('edit-mov-tipo').value = btn.dataset.tipo || 'venta_producto';
+        const fechaMovEl = document.getElementById('edit-mov-fecha');
+        if (fechaMovEl) fechaMovEl.value = btn.dataset.fecha || '';
+        const prodMovEl = document.getElementById('edit-mov-producto');
+        if (prodMovEl) prodMovEl.value = btn.dataset.producto || '';
+        const canalMovEl = document.getElementById('edit-mov-canal');
+        if (canalMovEl) canalMovEl.value = btn.dataset.canal || '';
+        document.getElementById('edit-mov-prov').value = btn.dataset.proveedor || '';
+        document.getElementById('edit-mov-concepto').value = btn.dataset.concepto || '';
+        document.getElementById('edit-mov-unidades').value = btn.dataset.unidades || '0';
+        const punitMovEl = document.getElementById('edit-mov-punit');
+        if (punitMovEl) punitMovEl.value = btn.dataset.precioUnitario || '';
+        document.getElementById('edit-mov-monto').value = btn.dataset.monto || '';
         const fallbackTrigger = btn.closest('#modal-editar-datos') ? document.getElementById('btn-abrir-editar-datos') : btn;
         cerrarModal('modal-editar-datos');
         abrirModal('modal-edit-mov', fallbackTrigger || btn);
+      });
+    });
+    @endif
+
+    @if($usuario->esAdmin())
+    document.querySelectorAll('.js-ver-informe-planta').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const titleEl = document.getElementById('informe-modal-title');
+        const metaEl = document.getElementById('informe-modal-meta');
+        const preEl = document.getElementById('informe-modal-pre');
+        const dlEl = document.getElementById('informe-modal-download');
+        if (titleEl) titleEl.textContent = btn.dataset.titulo || tr('m5.report_modal_title', 'Informe de actividad de planta');
+        if (metaEl) metaEl.textContent = btn.dataset.meta || '';
+        if (preEl) preEl.textContent = btn.dataset.contenido || '';
+        if (dlEl) dlEl.href = btn.dataset.downloadUrl || '#';
+        abrirModal('modal-ver-informe-planta', btn);
       });
     });
     @endif
@@ -1586,49 +1722,6 @@
         reposo();
       }
     });
-  })();
-
-  // 6. Generador vivo de Código QR para acceso móvil
-  (function () {
-    const preview = document.getElementById('qr-svg-preview');
-    const baseInput = document.getElementById('qr-base-url');
-    const linkText = document.getElementById('qr-full-link-text');
-    const testLink = document.getElementById('qr-test-link');
-    const btnDownload = document.getElementById('btn-download-qr-svg');
-    if (!preview || !window.LAT_QR) return;
-
-    function buildFullUrl() {
-      const base = (baseInput ? baseInput.value.trim() : window.location.origin).replace(/\/+$/, '') || window.location.origin;
-      const path = preview.dataset.qrPath || '/login';
-      return base + path;
-    }
-
-    function refreshQr() {
-      const fullUrl = buildFullUrl();
-      window.LAT_QR.renderTo(preview, fullUrl, 210);
-      if (linkText) linkText.textContent = fullUrl;
-      if (testLink) testLink.href = fullUrl;
-    }
-
-    refreshQr();
-    if (baseInput) {
-      baseInput.addEventListener('input', refreshQr);
-    }
-
-    if (btnDownload) {
-      btnDownload.addEventListener('click', () => {
-        const svg = window.LAT_QR.toSvgString(buildFullUrl(), 420);
-        const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'codigo_qr_lat.svg';
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        setTimeout(() => URL.revokeObjectURL(url), 500);
-      });
-    }
   })();
 </script>
 @endpush

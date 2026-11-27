@@ -21,7 +21,7 @@ class ExcelExportService
         Collection $movimientos,
         Collection $rankingPlantas
     ): string {
-        $sheets = [
+        return $this->buildWorkbookFromSheets([
             [
                 'name' => $this->sanitizeSheetName(__('lat.excel_sheet_settlement')),
                 'xml' => $this->buildLiquidacionSheet($planta, $desde, $hasta, $liquidaciones),
@@ -38,8 +38,55 @@ class ExcelExportService
                 'name' => $this->sanitizeSheetName(__('lat.excel_sheet_plants')),
                 'xml' => $this->buildPlantasSheet($desde, $hasta, $rankingPlantas),
             ],
-        ];
+        ]);
+    }
 
+    /**
+     * Genera un libro .xlsx de una sola hoja para Liquidación Quincenal.
+     */
+    public function generarSoloLiquidacionXlsx(Planta $planta, string $desde, string $hasta, Collection $liquidaciones): string
+    {
+        return $this->buildWorkbookFromSheets([
+            [
+                'name' => $this->sanitizeSheetName(__('lat.excel_sheet_settlement')),
+                'xml' => $this->buildLiquidacionSheet($planta, $desde, $hasta, $liquidaciones),
+            ],
+        ]);
+    }
+
+    /**
+     * Genera un libro .xlsx de una sola hoja para Ventas de productos lácteos.
+     */
+    public function generarSoloVentasXlsx(Planta $planta, string $desde, string $hasta, Collection $ventas): string
+    {
+        return $this->buildWorkbookFromSheets([
+            [
+                'name' => $this->sanitizeSheetName('Ventas'),
+                'xml' => $this->buildVentasSheet($planta, $desde, $hasta, $ventas),
+            ],
+        ]);
+    }
+
+    /**
+     * Genera un libro .xlsx de una sola hoja para Sueldos y Pagos operativos.
+     */
+    public function generarSoloSueldosXlsx(Planta $planta, string $desde, string $hasta, Collection $sueldos): string
+    {
+        return $this->buildWorkbookFromSheets([
+            [
+                'name' => $this->sanitizeSheetName('Sueldos y Pagos'),
+                'xml' => $this->buildSueldosSheet($planta, $desde, $hasta, $sueldos),
+            ],
+        ]);
+    }
+
+    /**
+     * Ensambla un paquete OOXML (.xlsx) completo a partir de sus hojas XML.
+     *
+     * @param  array<int, array{name: string, xml: string}>  $sheets
+     */
+    private function buildWorkbookFromSheets(array $sheets): string
+    {
         $entries = [
             '[Content_Types].xml' => $this->buildContentTypes(count($sheets)),
             '_rels/.rels' => $this->buildRootRels(),
@@ -107,10 +154,10 @@ class ExcelExportService
                 $this->cellText("C{$r}", (string) ($fila->sector ?? $planta->ubicacion), $sTxt),
                 $this->cellNum("D{$r}", (float) $fila->litros, $sNum),
                 $this->cellNum("E{$r}", (float) $fila->precio_litro, $sCur),
-                $this->cellNum("F{$r}", (float) $fila->bruto, $sCur),
+                $this->cellFormula("F{$r}", "ROUND(D{$r}*E{$r},2)", (float) $fila->bruto, $sCur),
                 $this->cellNum("G{$r}", (float) $fila->adelantos, $sCur),
                 $this->cellNum("H{$r}", (float) $fila->comision, $sCur),
-                $this->cellNum("I{$r}", (float) $fila->neto, $sCur),
+                $this->cellFormula("I{$r}", "MAX(0,F{$r}-G{$r}-H{$r})", (float) $fila->neto, $sCur),
             ], 20);
             $r++;
         }
@@ -135,6 +182,169 @@ class ExcelExportService
         }
 
         return $this->wrapWorksheet($rows, [14, 28, 22, 18, 18, 18, 22, 18, 20], 4, $autoFilterRef);
+    }
+
+    private function buildVentasSheet(Planta $planta, string $desde, string $hasta, Collection $ventas): string
+    {
+        $productos = [
+            'queso_andino' => 'Queso andino',
+            'quesillo_fresco' => 'Quesillo fresco',
+            'yogur_natural' => 'Yogur natural',
+            'mantequilla' => 'Mantequilla',
+            'otro' => 'Otro producto',
+        ];
+        $canales = [
+            'feria_local' => 'Feria local',
+            'tienda_bodega' => 'Tienda / Bodega',
+            'cliente_directo' => 'Cliente directo',
+            'planta_interno' => 'Planta interno',
+            'otro' => 'Otro canal',
+        ];
+
+        $filas = $ventas->map(function (object $venta) use ($productos, $canales): array {
+            $cantidad = max(0, (int) ($venta->cantidad_unidades ?? 0));
+            $monto = round((float) ($venta->monto ?? 0), 2);
+            if ($cantidad === 0 && $monto > 0) {
+                $cantidad = 1;
+            }
+            $pUnit = $venta->precio_unitario !== null
+                ? round((float) $venta->precio_unitario, 2)
+                : ($cantidad > 0 ? round($monto / $cantidad, 2) : 0.0);
+
+            $prodClave = (string) ($venta->producto_categoria ?? '');
+            $canalClave = (string) ($venta->canal_referencia ?? '');
+
+            return [
+                'fecha' => $venta->fecha?->format('d/m/Y') ?? (string) $venta->fecha,
+                'col2' => $productos[$prodClave] ?? ($prodClave !== '' ? ucfirst(str_replace('_', ' ', $prodClave)) : 'Producto lácteo'),
+                'col3' => $canales[$canalClave] ?? ($canalClave !== '' ? $canalClave : ($venta->proveedor?->nombre ?? '-')),
+                'concepto' => (string) $venta->concepto,
+                'cantidad' => $cantidad,
+                'tarifa' => $pUnit,
+                'total' => round($cantidad * $pUnit, 2),
+            ];
+        })->all();
+
+        return $this->buildTablaConceptoTarifaSheet(
+            "REPORTE DE VENTAS · {$planta->nombre}",
+            "Ubicación: {$planta->ubicacion} | Período: {$desde} al {$hasta} | Generado: ".Carbon::now()->format('d/m/Y H:i'),
+            ['Fecha', 'Producto', 'Canal/Cliente', 'Concepto', 'Cantidad', 'P.Unit.', 'Total'],
+            $filas,
+            'Sin ventas registradas en este período.',
+            [13, 20, 24, 36, 14, 16, 18]
+        );
+    }
+
+    private function buildSueldosSheet(Planta $planta, string $desde, string $hasta, Collection $sueldos): string
+    {
+        $categorias = [
+            'sueldo_personal' => 'Sueldo de personal',
+            'ayuda_del_dia' => __('lat.mov_ayuda_del_dia'),
+            'adelanto_efectivo' => __('lat.mov_adelanto_efectivo'),
+            'adelanto_queso' => __('lat.mov_adelanto_queso'),
+            'gasto_operativo' => __('lat.mov_gasto_operativo'),
+        ];
+
+        $filas = $sueldos->map(function (object $mov) use ($categorias): array {
+            $cantidad = max(0, (int) ($mov->cantidad_unidades ?? 0));
+            $monto = round((float) ($mov->monto ?? 0), 2);
+            if ($cantidad === 0 && $monto > 0) {
+                $cantidad = 1;
+            }
+            $tarifa = $mov->precio_unitario !== null
+                ? round((float) $mov->precio_unitario, 2)
+                : ($cantidad > 0 ? round($monto / $cantidad, 2) : 0.0);
+
+            $beneficiario = trim((string) ($mov->canal_referencia ?? ''));
+            if ($beneficiario === '') {
+                $beneficiario = (string) ($mov->proveedor?->nombre ?? __('lat.excel_external_labor'));
+            }
+
+            return [
+                'fecha' => $mov->fecha?->format('d/m/Y') ?? (string) $mov->fecha,
+                'col2' => $categorias[$mov->tipo] ?? (string) $mov->tipo,
+                'col3' => $beneficiario,
+                'concepto' => (string) $mov->concepto,
+                'cantidad' => $cantidad,
+                'tarifa' => $tarifa,
+                'total' => round($cantidad * $tarifa, 2),
+            ];
+        })->all();
+
+        return $this->buildTablaConceptoTarifaSheet(
+            "SUELDOS, PAGOS Y ADELANTOS · {$planta->nombre}",
+            "Ubicación: {$planta->ubicacion} | Período: {$desde} al {$hasta} | Generado: ".Carbon::now()->format('d/m/Y H:i'),
+            ['Fecha', 'Categoría', 'Beneficiario', 'Concepto', 'Días/Cant.', 'Tarifa', 'Total'],
+            $filas,
+            'Sin sueldos ni pagos registrados en este período.',
+            [13, 24, 24, 36, 14, 16, 18]
+        );
+    }
+
+    /**
+     * Construye una hoja tabular de 7 columnas (A..G) con fórmula Total = E*F y fila SUM.
+     *
+     * @param  list<string>  $headers
+     * @param  array<int, array{fecha: string, col2: string, col3: string, concepto: string, cantidad: int, tarifa: float, total: float}>  $filas
+     * @param  list<int>  $widths
+     */
+    private function buildTablaConceptoTarifaSheet(
+        string $titulo,
+        string $subtitulo,
+        array $headers,
+        array $filas,
+        string $emptyLabel,
+        array $widths
+    ): string {
+        $rows = [];
+        $rows[] = $this->rowXml(1, [$this->cellText('A1', $titulo, 1)], 26);
+        $rows[] = $this->rowXml(2, [$this->cellText('A2', $subtitulo, 2)], 18);
+        $rows[] = $this->rowXml(3, [], 8);
+        $rows[] = $this->headerRowXml(4, $headers);
+
+        $r = 5;
+        $sumCant = 0;
+        $sumTotal = 0.0;
+
+        foreach (array_values($filas) as $idx => $fila) {
+            $zebra = ($idx % 2 === 1);
+            $sTxt = $zebra ? 5 : 4;
+            $sInt = $zebra ? 14 : 13;
+            $sCur = $zebra ? 9 : 8;
+
+            $sumCant += $fila['cantidad'];
+            $sumTotal += $fila['total'];
+
+            $rows[] = $this->rowXml($r, [
+                $this->cellText("A{$r}", $fila['fecha'], $sTxt),
+                $this->cellText("B{$r}", $fila['col2'], $sTxt),
+                $this->cellText("C{$r}", $fila['col3'], $sTxt),
+                $this->cellText("D{$r}", $fila['concepto'], $sTxt),
+                $this->cellNum("E{$r}", $fila['cantidad'], $sInt),
+                $this->cellNum("F{$r}", $fila['tarifa'], $sCur),
+                $this->cellFormula("G{$r}", "E{$r}*F{$r}", $fila['total'], $sCur),
+            ], 20);
+            $r++;
+        }
+
+        $lastDataRow = $r - 1;
+        if ($lastDataRow < 5) {
+            $rows[] = $this->rowXml($r, [$this->cellText("A{$r}", $emptyLabel, 4)], 20);
+            $autoFilterRef = null;
+        } else {
+            $rows[] = $this->rowXml($r, [
+                $this->cellText("A{$r}", __('lat.excel_totals'), 10),
+                $this->cellText("B{$r}", ($lastDataRow - 4).' registros', 10),
+                $this->cellText("C{$r}", '', 10),
+                $this->cellText("D{$r}", '', 10),
+                $this->cellFormula("E{$r}", "SUM(E5:E{$lastDataRow})", $sumCant, 12),
+                $this->cellText("F{$r}", '-', 10),
+                $this->cellFormula("G{$r}", "SUM(G5:G{$lastDataRow})", round($sumTotal, 2), 11),
+            ], 22);
+            $autoFilterRef = "A4:G{$lastDataRow}";
+        }
+
+        return $this->wrapWorksheet($rows, $widths, 4, $autoFilterRef);
     }
 
     private function buildAcopiosSheet(Planta $planta, string $desde, string $hasta, Collection $acopios): string

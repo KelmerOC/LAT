@@ -194,7 +194,12 @@ return [
     'mov_ayuda_del_dia' => 'Ayuda del día (sin DNI)',
     'mov_gasto_operativo' => 'Gasto operativo',
     'mov_venta_producto' => 'Venta de producto lácteo',
+    'mov_sueldo_personal' => 'Sueldo de personal',
     'mov_quincena' => 'Liquidación quincenal',
+
+    // Modo operativo de administración
+    'admin_ops_enabled' => 'Modo operativo activado para esta sesión.',
+    'admin_ops_disabled' => 'Modo operativo desactivado.',
 
     'excel_zip_error' => "No se pudo comprimir la entrada ':name' del archivo XLSX.",
 ];

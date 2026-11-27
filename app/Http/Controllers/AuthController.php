@@ -144,7 +144,7 @@ class AuthController extends Controller
                 'tinas.ver', 'tinas.operar', 'tinas.gestionar',
                 'finanzas.ver', 'finanzas.registrar', 'finanzas.editar', 'finanzas.exportar', 'finanzas.enviar_excel',
                 'estadisticas.ver',
-                'admin.usuarios', 'admin.qr',
+                'admin.usuarios',
             ];
 
             return User::create([

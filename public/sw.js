@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'lat-compacto-v5';
+const CACHE_VERSION = 'lat-compacto-v6';
 const STATIC_ASSETS = [
   '/css/lat-design-system.css',
   '/css/lat-dashboard.css',
@@ -6,6 +6,7 @@ const STATIC_ASSETS = [
   '/js/lat-offline.js',
   '/js/lat-qr.js',
   '/js/lat-notificaciones.js',
+  '/js/lat-finanzas-grid.js',
   '/js/chart.umd.min.js',
   '/fonts/inter-var-latin.woff2',
   '/fonts/gloock-400-latin.woff2',
@@ -42,8 +43,8 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
 
-  // Nunca cachear descargas Excel, endpoints de acceso QR, cambios de idioma ni polling de notificaciones
-  if (url.pathname.includes('exportar') || url.pathname.includes('reportes-excel') || url.pathname.startsWith('/acceso-qr') || url.pathname.startsWith('/idioma') || url.pathname.startsWith('/panel/notificaciones')) {
+  // Nunca cachear descargas Excel, informes TXT, modo operativo, cambios de idioma ni polling de notificaciones
+  if (url.pathname.includes('exportar') || url.pathname.includes('reportes-excel') || url.pathname.includes('/estadisticas/informes') || url.pathname.includes('/admin/modo-operativo') || url.pathname.startsWith('/idioma') || url.pathname.startsWith('/panel/notificaciones')) {
     return;
   }
 

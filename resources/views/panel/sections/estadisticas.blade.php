@@ -155,4 +155,116 @@
       </div>
     </div>
   </div>
+
+  @if($usuario->esAdmin())
+    <div class="panel-card" id="card-informes-planta" style="margin-top: 1.5rem;">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; margin-bottom: 1rem;">
+        <div>
+          <h3 data-i18n="m5.reports_history_title">Historial de Informes de Administradores de Planta</h3>
+          <p style="margin: 0;" data-i18n="m5.reports_history_sub">Informes automáticos cada 24h y reportes manuales enviados por los encargados de planta en archivo de texto trazable.</p>
+        </div>
+        <span class="chip chip-celeste">{{ ($informesPlanta ?? collect())->count() }} informe(s)</span>
+      </div>
+
+      <form method="GET" action="{{ route('panel') }}#sec-estadisticas" class="excel-filter-bar" style="margin-bottom: 1rem;">
+        <div class="form-grupo">
+          <label for="f-inf-planta" class="form-label" data-i18n="m6.col_plant">Planta</label>
+          <select id="f-inf-planta" name="inf_planta_id" class="select-lat">
+            <option value="" data-i18n="m5.filter_all_plants">Todas las plantas</option>
+            @foreach($plantas as $pl)
+              <option value="{{ $pl->id }}" @selected((string) ($filtrosInformes['planta_id'] ?? '') === (string) $pl->id)>{{ $pl->codigo }} · {{ $pl->nombre }}</option>
+            @endforeach
+          </select>
+        </div>
+        <div class="form-grupo">
+          <label for="f-inf-desde" class="form-label" data-i18n="m4.filter_from">Desde</label>
+          <input type="date" id="f-inf-desde" name="inf_fecha_desde" class="input-lat" value="{{ $filtrosInformes['fecha_desde'] ?? '' }}">
+        </div>
+        <div class="form-grupo">
+          <label for="f-inf-hasta" class="form-label" data-i18n="m4.filter_to">Hasta</label>
+          <input type="date" id="f-inf-hasta" name="inf_fecha_hasta" class="input-lat" value="{{ $filtrosInformes['fecha_hasta'] ?? '' }}">
+        </div>
+        <div class="form-grupo">
+          <label for="f-inf-origen" class="form-label" data-i18n="m5.col_origin">Origen</label>
+          <select id="f-inf-origen" name="inf_origen" class="select-lat">
+            <option value="" data-i18n="m5.filter_all_origins">Todos</option>
+            <option value="automatico_24h" @selected(($filtrosInformes['origen'] ?? '') === 'automatico_24h') data-i18n="m5.origin_auto">Automático 24h</option>
+            <option value="manual_admin_planta" @selected(($filtrosInformes['origen'] ?? '') === 'manual_admin_planta') data-i18n="m5.origin_manual">Manual (Encargado)</option>
+          </select>
+        </div>
+        <div class="excel-filter-actions">
+          <button type="submit" class="btn btn-ocean btn-compacto" data-i18n="common.filter">Filtrar</button>
+          <a href="{{ route('panel') }}#sec-estadisticas" class="btn btn-outline btn-compacto" data-i18n="common.clear">Limpiar</a>
+        </div>
+      </form>
+
+      <div class="tabla-region" role="region" aria-label="Historial de Informes de Administradores de Planta" data-i18n-aria="m5.reports_history_title" tabindex="0">
+        <table class="tabla-plana">
+          <thead>
+            <tr>
+              <th scope="col" data-i18n="m5.col_datetime">Fecha / Hora</th>
+              <th scope="col" data-i18n="m6.col_plant">Planta</th>
+              <th scope="col" data-i18n="m5.col_origin">Origen</th>
+              <th scope="col" data-i18n="m5.col_responsible">Responsable</th>
+              <th scope="col" class="num" data-i18n="m5.col_actions_count">Acciones</th>
+              <th scope="col" data-i18n="m1.col_actions">Opciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            @forelse(($informesPlanta ?? collect()) as $inf)
+              @php
+                $esAutoInf = $inf->origen === 'automatico_24h';
+                $metaInf = ($inf->planta?->codigo ?? 'PLT') . ' · ' . ($inf->planta?->nombre ?? 'Planta') . ' · ' . ($inf->created_at?->format('d/m/Y H:i') ?? '') . ' · ' . ($inf->emisor?->name ?? 'Sistema 24h');
+              @endphp
+              <tr>
+                <td class="num-tabular">{{ $inf->created_at?->format('d/m/Y H:i') }}</td>
+                <td>
+                  <strong>{{ $inf->planta?->codigo ?? 'PLT' }} · {{ $inf->planta?->nombre ?? 'Planta' }}</strong>
+                  <small>{{ $inf->resumen_titulo }}</small>
+                </td>
+                <td>
+                  <span class="chip {{ $esAutoInf ? 'chip-celeste' : 'chip-verde' }}" data-i18n="{{ $esAutoInf ? 'm5.origin_auto' : 'm5.origin_manual' }}">
+                    {{ $esAutoInf ? 'Automático 24h' : 'Manual (Encargado)' }}
+                  </span>
+                </td>
+                <td>{{ $inf->emisor?->name ?? 'Sistema automático' }}</td>
+                <td class="num num-tabular">{{ (int) ($inf->total_acciones ?? 0) }}</td>
+                <td>
+                  <div style="display: flex; gap: 0.35rem; flex-wrap: wrap;">
+                    <button type="button" class="btn-micro js-ver-informe-planta"
+                      data-titulo="{{ $inf->resumen_titulo }}"
+                      data-meta="{{ $metaInf }}"
+                      data-contenido="{{ $inf->contenido_texto }}"
+                      data-download-url="{{ route('panel.estadisticas.informes.download', $inf->id) }}">
+                      <span data-i18n="m5.btn_view_txt">Ver informe .txt</span>
+                    </button>
+                    <a href="{{ route('panel.estadisticas.informes.download', $inf->id) }}" class="btn-micro">
+                      {!! $icoDescarga !!} <span data-i18n="m5.btn_download_txt">Descargar .txt</span>
+                    </a>
+                  </div>
+                </td>
+              </tr>
+            @empty
+              <tr>
+                <td colspan="6" style="text-align: center; padding: 1.5rem; color: var(--color-graphite);" data-i18n="m5.reports_empty">No hay informes de actividad registrados con estos filtros.</td>
+              </tr>
+            @endforelse
+          </tbody>
+        </table>
+      </div>
+    </div>
+  @elseif($usuario->cargo === 'encargado_planta' || $usuario->tienePermiso('admin.usuarios'))
+    <div class="panel-card" id="card-enviar-informe-planta" style="margin-top: 1.5rem;">
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+        <div>
+          <h3 style="margin-bottom: 0.25rem;" data-i18n="m5.send_report_title">Enviar informe manual de actividad a Administración</h3>
+          <p style="margin: 0;" data-i18n="m5.send_report_sub">Compila la bitácora y métricas de las últimas 24 horas de {{ $plantaActiva->nombre }} y la envía al Administrador Total.</p>
+        </div>
+        <form id="form-enviar-informe-planta" method="POST" action="{{ route('panel.informes_planta.enviar') }}" class="js-confirm-form" data-confirm-kind="send_plant_report" data-planta="{{ $plantaActiva->nombre }}">
+          @csrf
+          <button type="submit" class="btn btn-ember" data-i18n="m5.btn_send_report">Enviar informe de planta</button>
+        </form>
+      </div>
+    </div>
+  @endif
 </section>

@@ -96,10 +96,14 @@
                     <button type="button" class="btn-micro js-edit-mov"
                       data-id="{{ $m->id }}"
                       data-tipo="{{ $m->tipo }}"
+                      data-fecha="{{ $m->fecha?->format('Y-m-d') ?? '' }}"
+                      data-producto="{{ $m->producto_categoria ?? '' }}"
+                      data-canal="{{ $m->canal_referencia ?? '' }}"
                       data-proveedor="{{ $m->proveedor_id ?? '' }}"
                       data-concepto="{{ $m->concepto }}"
                       data-unidades="{{ $m->cantidad_unidades ?? 0 }}"
-                      data-monto="{{ $m->monto }}" data-i18n="common.edit">Editar</button>
+                      data-precio-unitario="{{ $m->precio_unitario !== null ? number_format($m->precio_unitario, 2, '.', '') : '' }}"
+                      data-monto="{{ number_format($m->monto, 2, '.', '') }}" data-i18n="common.edit">Editar</button>
                   </td>
                 </tr>
               @empty
@@ -276,18 +280,45 @@
     <form method="POST" id="form-edit-mov" action="">
       @csrf @method('PUT')
       <div class="modal-body">
-        <div class="form-grupo">
-          <label class="form-label" for="edit-mov-tipo" data-i18n="m4.lbl_type">Tipo</label>
-          <select name="tipo" id="edit-mov-tipo" class="select-lat">
-            <option value="venta_producto" data-i18n="m4.mov_type_venta_producto">Venta de producto lácteo</option>
-            <option value="adelanto_efectivo" data-i18n="m4.mov_type_adelanto_efectivo">Adelanto en efectivo</option>
-            <option value="adelanto_queso" data-i18n="m4.mov_type_adelanto_queso">Adelanto en moldes de queso</option>
-            <option value="ayuda_del_dia" data-i18n="m4.mov_type_ayuda_del_dia">Ayuda del día (sin DNI)</option>
-            <option value="gasto_operativo" data-i18n="m4.mov_type_gasto_operativo">Gasto operativo</option>
-          </select>
+        <div class="grid-form-2">
+          <div class="form-grupo">
+            <label class="form-label" for="edit-mov-tipo" data-i18n="m4.lbl_type">Tipo</label>
+            <select name="tipo" id="edit-mov-tipo" class="select-lat">
+              <option value="venta_producto" data-i18n="m4.mov_type_venta_producto">Venta de producto lácteo</option>
+              <option value="sueldo_personal" data-i18n="m4.mov_type_sueldo_personal">Sueldo de personal</option>
+              <option value="adelanto_efectivo" data-i18n="m4.mov_type_adelanto_efectivo">Adelanto en efectivo</option>
+              <option value="adelanto_queso" data-i18n="m4.mov_type_adelanto_queso">Adelanto en moldes de queso</option>
+              <option value="ayuda_del_dia" data-i18n="m4.mov_type_ayuda_del_dia">Ayuda del día (sin DNI)</option>
+              <option value="gasto_operativo" data-i18n="m4.mov_type_gasto_operativo">Gasto operativo</option>
+            </select>
+          </div>
+          <div class="form-grupo">
+            <label class="form-label" for="edit-mov-fecha" data-i18n="m4.col_date">Fecha</label>
+            <input type="date" name="fecha" id="edit-mov-fecha" class="input-lat" max="{{ \Carbon\Carbon::today()->toDateString() }}">
+          </div>
+        </div>
+        <div class="grid-form-2">
+          <div class="form-grupo">
+            <label class="form-label" for="edit-mov-producto" data-i18n="m4.col_product">Producto (si aplica)</label>
+            <select name="producto_categoria" id="edit-mov-producto" class="select-lat">
+              <option value="">—</option>
+              @foreach(\App\Models\Liquidacion::PRODUCTOS_VENTA as $prodKey)
+                <option value="{{ $prodKey }}" data-i18n="m4.prod_{{ $prodKey }}">{{ ucwords(str_replace('_', ' ', $prodKey)) }}</option>
+              @endforeach
+            </select>
+          </div>
+          <div class="form-grupo">
+            <label class="form-label" for="edit-mov-canal" data-i18n="m4.col_channel">Canal / Ref. (si aplica)</label>
+            <select name="canal_referencia" id="edit-mov-canal" class="select-lat">
+              <option value="">—</option>
+              @foreach(\App\Models\Liquidacion::CANALES_VENTA as $canalKey)
+                <option value="{{ $canalKey }}" data-i18n="m4.canal_{{ $canalKey }}">{{ ucwords(str_replace('_', ' ', $canalKey)) }}</option>
+              @endforeach
+            </select>
+          </div>
         </div>
         <div class="form-grupo">
-          <label class="form-label" for="edit-mov-prov" data-i18n="m4.lbl_prov">Productor (si aplica)</label>
+          <label class="form-label" for="edit-mov-prov" data-i18n="m4.lbl_prov">Productor / Beneficiario (si aplica)</label>
           <select name="proveedor_id" id="edit-mov-prov" class="select-lat">
             <option value="" data-i18n="m4.opt_none_plant">Ninguno / planta</option>
             @foreach($proveedores as $prov)
@@ -299,10 +330,14 @@
           <label class="form-label" for="edit-mov-concepto" data-i18n="m4.lbl_concept">Concepto</label>
           <input type="text" name="concepto" id="edit-mov-concepto" class="input-lat" required maxlength="160">
         </div>
-        <div class="grid-form-2">
+        <div class="grid-form-3">
           <div class="form-grupo">
-            <label class="form-label" for="edit-mov-unidades" data-i18n="m4.lbl_units">Unidades / Moldes</label>
+            <label class="form-label" for="edit-mov-unidades" data-i18n="m4.lbl_units">Unidades / Días</label>
             <input type="number" min="0" name="cantidad_unidades" id="edit-mov-unidades" class="input-lat">
+          </div>
+          <div class="form-grupo">
+            <label class="form-label" for="edit-mov-punit" data-i18n="m4.col_unit_price">P. Unit. / Tarifa (S/)</label>
+            <input type="number" step="0.1" min="0" name="precio_unitario" id="edit-mov-punit" class="input-lat">
           </div>
           <div class="form-grupo">
             <label class="form-label" for="edit-mov-monto" data-i18n="m4.lbl_amount">Monto (S/)</label>
@@ -947,6 +982,26 @@
         <button type="submit" class="btn btn-ember" data-i18n="modal.save_user_btn">Guardar cambios y permisos</button>
       </div>
     </form>
+  </div>
+</div>
+@endif
+
+<!-- MODAL: VER INFORME DE ACTIVIDAD DE PLANTA (.TXT) -->
+@if($usuario->esAdmin())
+<div class="modal-overlay" id="modal-ver-informe-planta" hidden role="dialog" aria-modal="true" aria-labelledby="informe-modal-title">
+  <div class="modal-swiss modal-lg">
+    <div class="modal-head">
+      <h2 id="informe-modal-title" data-i18n="m5.report_modal_title">Informe de actividad de planta</h2>
+      <button type="button" class="modal-close" data-close-modal="modal-ver-informe-planta" aria-label="Cerrar" data-i18n-aria="modal.close_aria">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p id="informe-modal-meta" style="margin: 0 0 0.75rem; font-size: 0.88rem; color: var(--color-graphite);"></p>
+      <pre id="informe-modal-pre" class="informe-txt-viewer"></pre>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn btn-outline" data-close-modal="modal-ver-informe-planta" data-i18n="common.close">Cerrar</button>
+      <a id="informe-modal-download" class="btn btn-ember" href="#" data-i18n="m5.btn_download_txt">Descargar .txt</a>
+    </div>
   </div>
 </div>
 @endif

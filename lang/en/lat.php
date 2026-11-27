@@ -194,7 +194,12 @@ return [
     'mov_ayuda_del_dia' => 'Day help (no ID)',
     'mov_gasto_operativo' => 'Operating expense',
     'mov_venta_producto' => 'Dairy product sale',
+    'mov_sueldo_personal' => 'Staff payroll',
     'mov_quincena' => 'Biweekly settlement',
+
+    // Admin operational mode
+    'admin_ops_enabled' => 'Operational mode enabled for this session.',
+    'admin_ops_disabled' => 'Operational mode disabled.',
 
     'excel_zip_error' => "Could not compress entry ':name' of the XLSX file.",
 ];

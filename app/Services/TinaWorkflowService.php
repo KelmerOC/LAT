@@ -7,6 +7,7 @@ use App\Models\Lote;
 use App\Models\NotificacionPanel;
 use App\Models\Planta;
 use App\Models\Tina;
+use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -210,6 +211,7 @@ class TinaWorkflowService
      * Registra una notificación persistente en el panel de la planta.
      *
      * @param  array<string, mixed>  $datos
+     * @param  list<string>|null  $rolesDestino
      */
     public function notificar(
         int $plantaId,
@@ -218,7 +220,11 @@ class TinaWorkflowService
         string $titulo,
         string $mensaje,
         array $datos = [],
-        ?int $creadoPor = null
+        ?int $creadoPor = null,
+        ?int $destinatarioId = null,
+        ?array $rolesDestino = null,
+        string $colorTema = 'default',
+        bool $alcanceGlobal = false
     ): NotificacionPanel {
         return NotificacionPanel::create([
             'planta_id' => $plantaId,
@@ -228,6 +234,10 @@ class TinaWorkflowService
             'mensaje' => substr($mensaje, 0, 320),
             'datos' => $datos !== [] ? $datos : null,
             'creado_por' => $creadoPor,
+            'destinatario_id' => $destinatarioId,
+            'roles_destino' => $rolesDestino !== null && $rolesDestino !== [] ? array_values($rolesDestino) : null,
+            'color_tema' => substr($colorTema !== '' ? $colorTema : 'default', 0, 20),
+            'alcance_global' => $alcanceGlobal,
             'leida_por' => [],
         ]);
     }
@@ -303,19 +313,21 @@ class TinaWorkflowService
                     'lote_id' => $lote->id,
                     'tina_id' => $lote->tina_id,
                     'tina_codigo' => $tinaCodigo,
-                ]
+                ],
+                rolesDestino: ['encargado_planta', 'control_tina']
             );
         }
     }
 
     /**
-     * Obtiene notificaciones recientes de la planta en una sola consulta SQL.
+     * Obtiene notificaciones recientes visibles para el usuario en una sola consulta SQL.
      *
      * @return array{
      *     items: list<array{
      *         id: int,
      *         tipo: string,
      *         modulo_destino: string,
+     *         color_tema: string,
      *         titulo: string,
      *         mensaje: string,
      *         datos: array<string, mixed>,
@@ -327,18 +339,43 @@ class TinaWorkflowService
      *     ultimo_id: int
      * }
      */
-    public function obtenerNotificacionesParaUsuario(int $plantaId, int $userId, int $afterId = 0, int $limit = 15): array
+    public function obtenerNotificacionesParaUsuario(int $plantaId, int|User $usuarioOrId, int $afterId = 0, int $limit = 15): array
     {
-        $recientes = NotificacionPanel::dePlanta($plantaId)
-            ->latest('id')
-            ->limit($limit)
-            ->get();
+        if ($usuarioOrId instanceof User) {
+            $userId = (int) $usuarioOrId->id;
+            $query = NotificacionPanel::query();
 
-        $mapeadas = $recientes->map(function (NotificacionPanel $notif) use ($userId): array {
+            if ($usuarioOrId->esAdmin()) {
+                $query->where(function ($q) use ($plantaId, $userId): void {
+                    $q->where('planta_id', $plantaId)
+                        ->orWhere('alcance_global', true)
+                        ->orWhere('destinatario_id', $userId);
+                });
+            } else {
+                $query->where('planta_id', $plantaId)
+                    ->where('alcance_global', false);
+            }
+
+            $visibles = $query->latest('id')
+                ->limit($limit * 3)
+                ->get()
+                ->filter(fn (NotificacionPanel $notif): bool => $notif->esVisiblePara($usuarioOrId, $plantaId))
+                ->take($limit)
+                ->values();
+        } else {
+            $userId = $usuarioOrId;
+            $visibles = NotificacionPanel::dePlanta($plantaId)
+                ->latest('id')
+                ->limit($limit)
+                ->get();
+        }
+
+        $mapeadas = $visibles->map(function (NotificacionPanel $notif) use ($userId): array {
             return [
                 'id' => $notif->id,
                 'tipo' => $notif->tipo,
                 'modulo_destino' => $notif->modulo_destino,
+                'color_tema' => $notif->color_tema ?? 'default',
                 'titulo' => $notif->titulo,
                 'mensaje' => $notif->mensaje,
                 'datos' => is_array($notif->datos) ? $notif->datos : [],
@@ -355,7 +392,7 @@ class TinaWorkflowService
         return [
             'items' => $items,
             'no_leidas' => $mapeadas->where('leida', false)->count(),
-            'ultimo_id' => max($afterId, (int) ($recientes->max('id') ?? 0)),
+            'ultimo_id' => max($afterId, (int) ($visibles->max('id') ?? 0)),
         ];
     }
 }

@@ -38,7 +38,7 @@
         </div>
         <ul id="notif-tray-list" class="lat-notif-list">
           @forelse(($notifData['items'] ?? []) as $nf)
-            <li class="lat-notif-item {{ !empty($nf['leida']) ? 'is-read' : 'is-unread' }} is-{{ $nf['tipo'] ?? 'info' }}" data-notif-id="{{ $nf['id'] }}" data-modulo="{{ $nf['modulo_destino'] ?? 'general' }}">
+            <li class="lat-notif-item {{ !empty($nf['leida']) ? 'is-read' : 'is-unread' }} is-{{ $nf['tipo'] ?? 'info' }} is-color-{{ $nf['color_tema'] ?? 'default' }}" data-notif-id="{{ $nf['id'] }}" data-modulo="{{ $nf['modulo_destino'] ?? 'general' }}" data-color-tema="{{ $nf['color_tema'] ?? 'default' }}">
               <div class="lat-notif-item-head">
                 <strong>{{ $nf['titulo'] }}</strong>
                 <small class="num-tabular">{{ $nf['creada_en'] ?? '' }}</small>
@@ -73,6 +73,16 @@
             </option>
           @endforeach
         </select>
+      </form>
+    @endif
+
+    @if($usuario->esAdmin())
+      <form method="POST" action="{{ route('panel.admin.modo_operativo') }}" id="form-toggle-modo-operativo" class="js-confirm-form" data-confirm-kind="toggle_admin_ops" data-activar="{{ !empty($modoOperativoAdmin) ? '0' : '1' }}" style="margin: 0;">
+        @csrf
+        <input type="hidden" name="activar" value="{{ !empty($modoOperativoAdmin) ? '0' : '1' }}">
+        <button type="submit" id="btn-toggle-modo-operativo" class="btn {{ !empty($modoOperativoAdmin) ? 'btn-verde' : 'btn-outline' }} btn-compacto" data-i18n="{{ !empty($modoOperativoAdmin) ? 'topbar.admin_ops_disable' : 'topbar.admin_ops_enable' }}">
+          {{ !empty($modoOperativoAdmin) ? 'Modo operativo: Activo' : 'Activar modo operativo' }}
+        </button>
       </form>
     @endif
 

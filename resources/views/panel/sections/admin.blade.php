@@ -8,7 +8,6 @@
     'estadisticas' => 'Estadísticas',
     'admin'        => 'Usuarios/Plantas',
   ];
-  $qrFlash = session('qr_generado');
 @endphp
 
 <section id="sec-admin" class="tab-panel" aria-label="Administración de plantas y usuarios" data-i18n-aria="tab.admin" hidden>
@@ -138,113 +137,17 @@
     @endif
   @endif
 
-  @if($usuario->tieneAlgunPermiso(['admin.qr', 'admin.usuarios']))
+  @if(! $usuario->esAdmin() && $usuario->tienePermiso('admin.usuarios'))
     <div class="panel-card panel-card-celeste" style="margin-bottom: 1.5rem;">
-      <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; margin-bottom: 1rem;">
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
         <div>
-          <h2 style="margin-bottom: 0.25rem;">Acceso Móvil por Código QR</h2>
-          <p style="margin: 0;">Genera un código QR para que un recolector o evaluador se registre/ingrese desde su celular y pruebe el acopio en campo.</p>
+          <h3 style="margin-bottom: 0.25rem;" data-i18n="m6.plant_isolated_title">Gestión aislada de planta · {{ $plantaActiva->codigo }}</h3>
+          <p style="margin: 0;" data-i18n="m6.plant_isolated_sub">Los usuarios creados o editados aquí operan únicamente en {{ $plantaActiva->nombre }}. Puedes enviar un informe de actividad a Administración cuando lo necesites.</p>
         </div>
-      </div>
-
-      <div class="panel-grid-2" style="align-items: start;">
-        <form method="POST" action="{{ route('admin.qr.store') }}" class="panel-card" style="padding: 1.25rem;">
+        <form method="POST" action="{{ route('panel.informes_planta.enviar') }}" class="js-confirm-form" data-confirm-kind="send_plant_report" data-planta="{{ $plantaActiva->nombre }}">
           @csrf
-          <div class="form-grupo">
-            <label for="qr-etiqueta" class="form-label">Nombre de la invitación / prueba</label>
-            <input type="text" id="qr-etiqueta" name="etiqueta" class="input-lat" required value="Evaluación Móvil Campo" maxlength="120">
-          </div>
-          <div class="grid-form-2">
-            <div class="form-grupo">
-              <label for="qr-cargo" class="form-label">Rol asignado</label>
-              <select id="qr-cargo" name="cargo_asignado" class="select-lat">
-                <option value="recolector_ruta">Recolector en ruta (Acopio)</option>
-                <option value="control_tina">Control de tina / calidad</option>
-                <option value="encargado_planta">Encargado de planta</option>
-                <option value="contador_externo">Contador externo</option>
-              </select>
-            </div>
-            <div class="form-grupo">
-              <label for="qr-planta-id" class="form-label">Planta destino</label>
-              @if($usuario->esAdmin())
-                <select id="qr-planta-id" name="planta_id" class="select-lat">
-                  @foreach($plantas as $pl)
-                    <option value="{{ $pl->id }}" @selected($pl->id === $plantaActiva->id)>{{ $pl->codigo }} · {{ $pl->nombre }}</option>
-                  @endforeach
-                </select>
-              @else
-                <input type="hidden" name="planta_id" value="{{ $plantaActiva->id }}">
-                <input type="text" id="qr-planta-id" class="input-lat" value="{{ $plantaActiva->nombre }}" readonly>
-              @endif
-            </div>
-          </div>
-          <div class="grid-form-2">
-            <div class="form-grupo">
-              <label for="qr-horas" class="form-label">Vigencia (horas)</label>
-              <input type="number" id="qr-horas" name="horas_vigencia" class="input-lat" min="1" max="168" value="24">
-            </div>
-            <div class="form-grupo">
-              <label for="qr-usos" class="form-label">Máx. registros</label>
-              <input type="number" id="qr-usos" name="max_usos" class="input-lat" min="1" max="50" value="10">
-            </div>
-          </div>
-          <button type="submit" class="btn btn-ember btn-bloque">Generar Código QR Móvil</button>
+          <button type="submit" class="btn btn-ember btn-compacto" data-i18n="m5.btn_send_report">Enviar informe de planta</button>
         </form>
-
-        <div class="panel-card" style="padding: 1.25rem;">
-          @if($qrFlash)
-            <div class="qr-preview-box">
-              <div id="qr-svg-preview" data-qr-path="{{ $qrFlash['url_path'] }}"></div>
-              <div style="flex: 1; min-width: 200px;">
-                <span class="chip chip-verde" style="margin-bottom: 0.45rem;">QR listo · {{ $qrFlash['planta'] }}</span>
-                <p style="margin: 0 0 0.5rem; font-size: 0.88rem;">Expira: <strong>{{ $qrFlash['expira_en'] }}</strong> · Máx. {{ $qrFlash['max_usos'] }} usos</p>
-                <div class="form-grupo" style="margin-bottom: 0.65rem;">
-                  <label for="qr-base-url" class="form-label" style="font-size: 0.8rem;">URL base / IP LAN para celular</label>
-                  <input type="url" id="qr-base-url" class="input-lat" value="{{ url('/') }}" style="min-height: 38px; font-size: 0.85rem;">
-                </div>
-                <p id="qr-full-link-text" style="font-size: 0.78rem; word-break: break-all; color: var(--color-graphite); margin-bottom: 0.65rem;"></p>
-                <div style="display: flex; gap: 0.45rem; flex-wrap: wrap;">
-                  <button type="button" id="btn-download-qr-svg" class="btn-micro">Descargar SVG</button>
-                  <a id="qr-test-link" href="{{ $qrFlash['url_path'] }}" target="_blank" rel="noopener" class="btn-micro">Probar enlace</a>
-                </div>
-              </div>
-            </div>
-          @else
-            <div class="qr-preview-box">
-              <div id="qr-svg-preview" data-qr-path="{{ route('login', [], false) }}"></div>
-              <div style="flex: 1; min-width: 200px;">
-                <span class="chip chip-celeste" style="margin-bottom: 0.45rem;">QR rápido a Login</span>
-                <p style="margin: 0 0 0.5rem; font-size: 0.88rem;">Genera un enlace de invitación a la izquierda para registrar un usuario nuevo desde celular, o escanea este QR para abrir <strong>/login</strong>.</p>
-                <div class="form-grupo" style="margin-bottom: 0.65rem;">
-                  <label for="qr-base-url" class="form-label" style="font-size: 0.8rem;">URL base / IP LAN para celular</label>
-                  <input type="url" id="qr-base-url" class="input-lat" value="{{ url('/') }}" style="min-height: 38px; font-size: 0.85rem;">
-                </div>
-                <p id="qr-full-link-text" style="font-size: 0.78rem; word-break: break-all; color: var(--color-graphite); margin-bottom: 0.65rem;"></p>
-                <button type="button" id="btn-download-qr-svg" class="btn-micro">Descargar SVG</button>
-              </div>
-            </div>
-          @endif
-
-          @if($qrAccesos->isNotEmpty())
-            <div style="margin-top: 1rem; border-top: 1px solid var(--color-hairline); padding-top: 0.85rem;">
-              <strong style="font-size: 0.86rem;">Códigos QR recientes ({{ $plantaActiva->codigo }})</strong>
-              <ul class="qr-history-list">
-                @foreach($qrAccesos as $qra)
-                  <li>
-                    <div>
-                      <strong>{{ $qra->etiqueta }}</strong>
-                      <small>{{ $qra->cargo_asignado }} · Usos: {{ $qra->usos_actuales }}/{{ $qra->max_usos }} · Vence: {{ $qra->expira_en?->format('d/m H:i') }}</small>
-                    </div>
-                    <form method="POST" action="{{ route('admin.qr.delete', $qra->id) }}">
-                      @csrf @method('DELETE')
-                      <button type="submit" class="btn-micro btn-micro-danger">Revocar</button>
-                    </form>
-                  </li>
-                @endforeach
-              </ul>
-            </div>
-          @endif
-        </div>
       </div>
     </div>
   @endif

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Planta;
 use App\Models\Tina;
 use App\Models\User;
+use App\Services\InformePlantaService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -16,6 +17,8 @@ use Illuminate\Validation\Rule;
  */
 class AdminController extends Controller
 {
+    public function __construct(protected InformePlantaService $informes) {}
+
     private function asegurarPermiso(Request $request, string $permiso): User
     {
         $user = $request->user();
@@ -42,9 +45,14 @@ class AdminController extends Controller
             return User::PLANTILLAS_CARGO['administracion'];
         }
 
+        $prohibidosNoAdmin = ['admin.plantas', 'dashboard.ver_red', 'admin.usuarios'];
+        if (! $actor->esAdmin() && $permisosInput !== null && array_intersect($permisosInput, $prohibidosNoAdmin) !== []) {
+            abort(403, __('lat.admin_permissions_exceed_rank'));
+        }
+
         $asignables = $actor->permisosAsignables();
         $fueraDeAlcanceActuales = ($target && ! $actor->esAdmin())
-            ? array_values(array_diff($target->permisosEfectivos(), $asignables))
+            ? array_values(array_diff($target->permisosEfectivos(), $asignables, $prohibidosNoAdmin))
             : [];
 
         if ($permisosInput === null) {
@@ -131,7 +139,7 @@ class AdminController extends Controller
             'usuario.unique' => __('lat.admin_usuario_unique'),
         ]);
 
-        if (! $actor->esAdmin() && (int) $datos['planta_id'] !== (int) $actor->planta_id) {
+        if (! $actor->esAdmin() && ($actor->planta_id === null || (int) $datos['planta_id'] !== (int) $actor->planta_id)) {
             abort(403, __('lat.admin_only_own_plant_create'));
         }
 
@@ -143,7 +151,7 @@ class AdminController extends Controller
         $permisosFinales = $this->resolverPermisosPermitidos($actor, $datos['cargo'], $permisosInput);
         $rangoFinal = $this->resolverRango($datos['cargo'], $datos['rango'] ?? null, $permisosFinales);
 
-        User::create([
+        $creado = User::create([
             'planta_id' => $actor->esAdmin() ? $datos['planta_id'] : $actor->planta_id,
             'name' => $datos['name'],
             'usuario' => $datos['usuario'],
@@ -155,6 +163,17 @@ class AdminController extends Controller
             'activo' => true,
             'creado_por' => $actor->id,
         ]);
+
+        if ($creado->planta_id !== null) {
+            $this->informes->registrarActividad(
+                (int) $creado->planta_id,
+                $actor->id,
+                'admin',
+                'usuario_creado',
+                "Usuario creado: {$creado->name} (@{$creado->usuario}, {$creado->cargo}).",
+                ['target_user_id' => $creado->id, 'cargo' => $creado->cargo]
+            );
+        }
 
         return back()->with('exito', __('lat.admin_user_created'));
     }
@@ -183,7 +202,7 @@ class AdminController extends Controller
             'permisos.*' => ['string'],
         ]);
 
-        if (! $actor->esAdmin() && (int) $datos['planta_id'] !== (int) $actor->planta_id) {
+        if (! $actor->esAdmin() && ($actor->planta_id === null || (int) $datos['planta_id'] !== (int) $actor->planta_id)) {
             abort(403, __('lat.admin_cannot_transfer_plant'));
         }
 
@@ -223,6 +242,17 @@ class AdminController extends Controller
 
         $target->update($payload);
 
+        if ($target->planta_id !== null) {
+            $this->informes->registrarActividad(
+                (int) $target->planta_id,
+                $actor->id,
+                'admin',
+                'usuario_actualizado',
+                "Usuario actualizado: {$target->name} (@{$target->usuario}, {$target->cargo}).",
+                ['target_user_id' => $target->id, 'activo' => $target->activo]
+            );
+        }
+
         return back()->with('exito', __('lat.admin_user_updated'));
     }
 
@@ -239,7 +269,23 @@ class AdminController extends Controller
             abort(403, __('lat.admin_rank_cannot_edit_user'));
         }
 
+        $plantaId = $target->planta_id;
+        $nombre = $target->name;
+        $usuarioNombre = $target->usuario;
+        $targetId = $target->id;
+
         $target->delete();
+
+        if ($plantaId !== null) {
+            $this->informes->registrarActividad(
+                (int) $plantaId,
+                $actor->id,
+                'admin',
+                'usuario_eliminado',
+                "Usuario eliminado: {$nombre} (@{$usuarioNombre}).",
+                ['target_user_id' => $targetId]
+            );
+        }
 
         return back()->with('exito', 'Usuario eliminado del sistema correctamente.');
     }

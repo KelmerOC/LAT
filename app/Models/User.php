@@ -100,9 +100,18 @@ class User extends Authenticatable
             'permisos' => [
                 'admin.usuarios' => ['label' => 'Gestionar usuarios (Rango)', 'desc' => 'Crear/editar usuarios con credenciales y permisos propios.'],
                 'admin.plantas' => ['label' => 'Gestionar y cambiar plantas', 'desc' => 'Crear/editar/eliminar plantas lácteas y alternar planta activa.'],
-                'admin.qr' => ['label' => 'Generar códigos QR de acceso móvil', 'desc' => 'Crear enlaces y códigos QR para registro y acceso desde celular.'],
             ],
         ],
+    ];
+
+    /** @var list<string> */
+    public const PERMISOS_OPERATIVOS_ADMIN = [
+        'acopio.crear',
+        'acopio.editar',
+        'acopio.proveedores',
+        'calidad.evaluar',
+        'tinas.operar',
+        'tinas.gestionar',
     ];
 
     /**
@@ -113,20 +122,21 @@ class User extends Authenticatable
     public const PLANTILLAS_CARGO = [
         'administracion' => [
             'dashboard.ver', 'dashboard.ver_red',
-            'acopio.ver', 'acopio.editar', 'acopio.proveedores',
-            'calidad.ver', 'calidad.evaluar',
-            'tinas.ver', 'tinas.gestionar',
+            'acopio.ver',
+            'calidad.ver',
+            'tinas.ver',
             'finanzas.ver', 'finanzas.registrar', 'finanzas.editar', 'finanzas.exportar', 'finanzas.enviar_excel',
             'estadisticas.ver',
-            'admin.usuarios', 'admin.plantas', 'admin.qr',
+            'admin.usuarios', 'admin.plantas',
         ],
         'encargado_planta' => [
             'dashboard.ver',
             'acopio.ver', 'acopio.crear', 'acopio.editar', 'acopio.proveedores',
             'calidad.ver', 'calidad.evaluar',
             'tinas.ver', 'tinas.operar', 'tinas.gestionar',
-            'finanzas.ver', 'finanzas.registrar', 'finanzas.enviar_excel',
+            'finanzas.ver', 'finanzas.registrar', 'finanzas.editar', 'finanzas.exportar', 'finanzas.enviar_excel',
             'estadisticas.ver',
+            'admin.usuarios',
         ],
         'recolector_ruta' => [
             'acopio.ver', 'acopio.crear', 'acopio.editar', 'acopio.proveedores',
@@ -204,6 +214,14 @@ class User extends Authenticatable
     }
 
     /**
+     * Indica si el usuario administrador activó el modo operativo de planta en sesión.
+     */
+    public function modoOperativoActivo(): bool
+    {
+        return $this->esAdmin() && session('admin_modo_operativo', false) === true;
+    }
+
+    /**
      * Resuelve la lista efectiva de permisos activos del usuario.
      *
      * @return list<string>
@@ -215,7 +233,9 @@ class User extends Authenticatable
         }
 
         if ($this->cargo === 'administracion') {
-            return self::PLANTILLAS_CARGO['administracion'];
+            return $this->modoOperativoActivo()
+                ? array_values(array_unique(array_merge(self::PLANTILLAS_CARGO['administracion'], self::PERMISOS_OPERATIVOS_ADMIN)))
+                : self::PLANTILLAS_CARGO['administracion'];
         }
 
         $validos = self::todasLasClavesPermisos();
@@ -267,7 +287,7 @@ class User extends Authenticatable
             'tinas' => ['tinas.ver', 'tinas.operar', 'tinas.gestionar'],
             'finanzas' => ['finanzas.ver', 'finanzas.registrar', 'finanzas.editar', 'finanzas.exportar', 'finanzas.enviar_excel'],
             'estadisticas' => ['estadisticas.ver'],
-            'admin' => ['admin.usuarios', 'admin.plantas', 'admin.qr'],
+            'admin' => ['admin.usuarios', 'admin.plantas'],
         ];
 
         if (! isset($mapaSeccion[$seccion])) {
@@ -320,7 +340,10 @@ class User extends Authenticatable
             return [];
         }
 
-        return $this->permisosEfectivos();
+        return array_values(array_diff(
+            $this->permisosEfectivos(),
+            ['admin.plantas', 'dashboard.ver_red', 'admin.usuarios']
+        ));
     }
 
     /**
@@ -340,7 +363,7 @@ class User extends Authenticatable
             return false;
         }
 
-        if ($objetivo->id === $this->id || $objetivo->esAdmin()) {
+        if ($objetivo->id === $this->id || $objetivo->esAdmin() || $objetivo->cargo === 'encargado_planta') {
             return false;
         }
 
@@ -352,7 +375,9 @@ class User extends Authenticatable
             return false;
         }
 
-        return (int) $objetivo->planta_id === (int) $this->planta_id;
+        return $this->planta_id !== null
+            && $objetivo->planta_id !== null
+            && (int) $objetivo->planta_id === (int) $this->planta_id;
     }
 
     public function etiquetaCargo(): string

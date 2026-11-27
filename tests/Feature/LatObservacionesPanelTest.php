@@ -314,12 +314,15 @@ class LatObservacionesPanelTest extends TestCase
             ->whereDoesntHave('loteActivo')
             ->firstOrFail();
 
-        $panelRes = $this->actingAs($admin)->get('/panel');
+        $panelRes = $this->actingAs($admin)
+            ->withSession(['admin_modo_operativo' => true])
+            ->get('/panel');
         $panelRes->assertOk();
         $panelRes->assertSee('disabled aria-disabled="true"', false);
         $panelRes->assertSee(route('panel.tinas.delete', $tinaLibre->id), false);
 
         $resActive = $this->actingAs($admin)
+            ->withSession(['admin_modo_operativo' => true])
             ->withCookie('lat_locale', $locale)
             ->delete("/panel/tinas/{$tinaActiva->id}");
         $resActive->assertSessionHasErrors([
@@ -328,6 +331,7 @@ class LatObservacionesPanelTest extends TestCase
         $this->assertModelExists($tinaActiva);
 
         $resDeleteIdle = $this->actingAs($admin)
+            ->withSession(['admin_modo_operativo' => true])
             ->withCookie('lat_locale', $locale)
             ->delete("/panel/tinas/{$tinaLibre->id}");
         $resDeleteIdle->assertRedirect();
@@ -352,25 +356,29 @@ class LatObservacionesPanelTest extends TestCase
     {
         $admin = User::where('usuario', 'donjusto')->firstOrFail();
 
-        $resCrear = $this->actingAs($admin)->post('/panel/tinas', [
-            'codigo' => $inputCodigo,
-            'nombre' => 'Tina Normalizada',
-            'capacidad_litros' => 300,
-            'tipo' => 'principal_queso',
-        ]);
+        $resCrear = $this->actingAs($admin)
+            ->withSession(['admin_modo_operativo' => true])
+            ->post('/panel/tinas', [
+                'codigo' => $inputCodigo,
+                'nombre' => 'Tina Normalizada',
+                'capacidad_litros' => 300,
+                'tipo' => 'principal_queso',
+            ]);
 
         $resCrear->assertRedirect();
         $tina = Tina::where('planta_id', $admin->planta_id)
             ->where('codigo', $codigoEsperado)
             ->firstOrFail();
 
-        $resEditar = $this->actingAs($admin)->put("/panel/tinas/{$tina->id}", [
-            'codigo' => strtolower($inputCodigo),
-            'nombre' => 'Tina Editada Prefijo',
-            'capacidad_litros' => 350,
-            'tipo' => 'multiproposito',
-            'activa' => '1',
-        ]);
+        $resEditar = $this->actingAs($admin)
+            ->withSession(['admin_modo_operativo' => true])
+            ->put("/panel/tinas/{$tina->id}", [
+                'codigo' => strtolower($inputCodigo),
+                'nombre' => 'Tina Editada Prefijo',
+                'capacidad_litros' => 350,
+                'tipo' => 'multiproposito',
+                'activa' => '1',
+            ]);
 
         $resEditar->assertRedirect();
         $this->assertSame($codigoEsperado, $tina->fresh()->codigo);
@@ -399,6 +407,7 @@ class LatObservacionesPanelTest extends TestCase
         $conteoInicial = Tina::where('planta_id', $admin->planta_id)->count();
 
         $this->actingAs($admin)
+            ->withSession(['admin_modo_operativo' => true])
             ->post('/panel/tinas', [
                 'codigo' => $inputInvalido,
                 'nombre' => 'Tina Inválida',
@@ -410,6 +419,7 @@ class LatObservacionesPanelTest extends TestCase
         $this->assertSame($conteoInicial, Tina::where('planta_id', $admin->planta_id)->count());
 
         $this->actingAs($admin)
+            ->withSession(['admin_modo_operativo' => true])
             ->put("/panel/tinas/{$tinaExistente->id}", [
                 'codigo' => $inputInvalido,
                 'nombre' => 'Nombre No Guardado',

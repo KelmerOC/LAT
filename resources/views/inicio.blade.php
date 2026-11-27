@@ -263,6 +263,22 @@
     </div>
   </section>
 
+  <section id="anuncio-qr-registro" class="seccion landing-qr-banner" aria-labelledby="titulo-qr-registro">
+    <div class="contenedor">
+      <div class="landing-qr-card">
+        <div class="landing-qr-copy">
+          <span class="chip chip-ember" data-i18n="home.qr_badge">Puedes registrarte ahora</span>
+          <h2 id="titulo-qr-registro" data-i18n="home.qr_title">Puedes registrarte ahora</h2>
+          <p data-i18n="home.qr_sub">Escanea el código QR desde tu celular o regístrate directamente para crear tu planta lechera y operar el panel sin costo (S/ 0.00).</p>
+          <a href="{{ route('registro') }}" class="btn btn-ember btn-grande" data-i18n="home.qr_cta">Registrarse ahora</a>
+        </div>
+        <div class="landing-qr-visual">
+          <div id="landing-qr-svg" class="landing-qr-box" data-qr-url="{{ route('registro') }}" role="img" aria-label="Código QR para registrarse en LAT"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <section class="cierre lienzo-acuarela" aria-labelledby="titulo-cierre">
     <div class="aguada aguada-cielo" aria-hidden="true" style="transform: scaleX(-1) scale(1.12);"></div>
     <div class="contenedor">
@@ -279,6 +295,7 @@
 @endsection
 
 @push('scripts')
+  <script src="{{ asset('js/lat-qr.js') }}"></script>
   <script>
     let indiceActual = 0;
     let intervaloBanner = null;
@@ -357,6 +374,11 @@
           mostrarSlide(indiceActual);
           actualizarBotonPausa();
         });
+      }
+      const landingQrBox = document.getElementById('landing-qr-svg');
+      if (landingQrBox && window.LAT_QR) {
+        const qrUrl = landingQrBox.dataset.qrUrl || window.location.origin + '/registrarse';
+        window.LAT_QR.renderTo(landingQrBox, qrUrl, 190);
       }
     });
   </script>

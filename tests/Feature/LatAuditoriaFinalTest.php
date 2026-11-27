@@ -5,7 +5,6 @@ namespace Tests\Feature;
 use App\Models\Acopio;
 use App\Models\Planta;
 use App\Models\Proveedor;
-use App\Models\QrAcceso;
 use App\Models\ReporteExcel;
 use App\Models\Tina;
 use App\Models\User;
@@ -72,9 +71,12 @@ class LatAuditoriaFinalTest extends TestCase
         $admin = User::where('usuario', 'donjusto')->firstOrFail();
         $planta1 = Planta::where('codigo', 'PLT-01')->firstOrFail();
 
-        // Tina con lote activo NO se puede eliminar; tina sin lote SÍ
+        // Tina con lote activo NO se puede eliminar; tina sin lote SÍ (con modo operativo activo para admin)
         $tinaConLote = Tina::where('planta_id', $planta1->id)->whereHas('loteActivo')->firstOrFail();
-        $this->actingAs($admin)->delete("/panel/tinas/{$tinaConLote->id}")->assertSessionHasErrors('tina');
+        $this->actingAs($admin)
+            ->withSession(['admin_modo_operativo' => true])
+            ->delete("/panel/tinas/{$tinaConLote->id}")
+            ->assertSessionHasErrors('tina');
         $this->assertDatabaseHas('tinas', ['id' => $tinaConLote->id]);
 
         $tinaLibre = Tina::create([
@@ -85,12 +87,18 @@ class LatAuditoriaFinalTest extends TestCase
             'tipo' => 'quesillo',
             'activa' => true,
         ]);
-        $this->actingAs($admin)->delete("/panel/tinas/{$tinaLibre->id}")->assertRedirect();
+        $this->actingAs($admin)
+            ->withSession(['admin_modo_operativo' => true])
+            ->delete("/panel/tinas/{$tinaLibre->id}")
+            ->assertRedirect();
         $this->assertDatabaseMissing('tinas', ['id' => $tinaLibre->id]);
 
         // Proveedor con acopios se desactiva para no perder contabilidad; sin acopios se elimina
         $provConHistorial = Proveedor::where('planta_id', $planta1->id)->firstOrFail();
-        $this->actingAs($admin)->delete("/panel/proveedor/{$provConHistorial->id}")->assertRedirect();
+        $this->actingAs($admin)
+            ->withSession(['admin_modo_operativo' => true])
+            ->delete("/panel/proveedor/{$provConHistorial->id}")
+            ->assertRedirect();
         $this->assertFalse($provConHistorial->fresh()->activo);
 
         $provSinHistorial = Proveedor::create([
@@ -100,7 +108,10 @@ class LatAuditoriaFinalTest extends TestCase
             'sector' => 'Anta',
             'activo' => true,
         ]);
-        $this->actingAs($admin)->delete("/panel/proveedor/{$provSinHistorial->id}")->assertRedirect();
+        $this->actingAs($admin)
+            ->withSession(['admin_modo_operativo' => true])
+            ->delete("/panel/proveedor/{$provSinHistorial->id}")
+            ->assertRedirect();
         $this->assertDatabaseMissing('proveedores', ['id' => $provSinHistorial->id]);
 
         // Eliminar usuario (no puede auto-eliminarse)
@@ -233,52 +244,29 @@ class LatAuditoriaFinalTest extends TestCase
         $this->assertSame('revisado', $reporte->fresh()->estado);
     }
 
-    public function test_flujo_completo_codigo_qr_movil_para_registro_y_acopio(): void
+    public function test_qr_panel_eliminado_y_anuncio_qr_publico_en_landing(): void
     {
         $admin = User::where('usuario', 'donjusto')->firstOrFail();
         $planta1 = Planta::where('codigo', 'PLT-01')->firstOrFail();
 
-        $resQr = $this->actingAs($admin)->post('/panel/admin/qr', [
-            'etiqueta' => 'Prueba Profesor Celular',
+        $this->actingAs($admin)->post('/panel/admin/qr', [
+            'etiqueta' => 'Obsoleto',
             'cargo_asignado' => 'recolector_ruta',
             'planta_id' => $planta1->id,
-            'horas_vigencia' => 12,
-            'max_usos' => 1,
-        ]);
-        $resQr->assertRedirect();
-        $resQr->assertSessionHas('qr_generado');
+        ])->assertNotFound();
 
-        $qrFlash = session('qr_generado');
-        $urlPath = $qrFlash['url_path'];
+        $this->get('/acceso-qr/token-demo')->assertNotFound();
 
-        // Cerrar sesión y abrir URL del QR desde el celular
-        auth()->logout();
-        $this->get($urlPath)->assertStatus(200)->assertSee('Acceso Móvil Rápido');
+        $panelRes = $this->actingAs($admin)->get('/panel');
+        $panelRes->assertOk();
+        $panelRes->assertDontSee('id="qr-svg-preview"', false);
 
-        // Registrarse desde el celular y entrar directo a Acopio
-        $this->post($urlPath.'/registrar', [
-            'name' => 'Prof. Evaluador',
-            'usuario' => 'profe.movil',
-            'password' => 'ClaveProfe123',
-            'password_confirmation' => 'ClaveProfe123',
-        ])->assertRedirect('/panel#sec-acopio');
-
-        $this->assertAuthenticated();
-        $profe = User::where('usuario', 'profe.movil')->firstOrFail();
-        $this->assertSame('recolector_ruta', $profe->cargo);
-        $this->assertSame($planta1->id, $profe->planta_id);
-
-        // El profesor ya puede registrar acopio desde el celular
-        $prov = Proveedor::where('planta_id', $planta1->id)->firstOrFail();
-        $this->actingAs($profe)->post('/panel/acopio', [
-            'proveedor_id' => $prov->id,
-            'litros' => 15.0,
-        ])->assertRedirect();
-
-        // Al haberse agotado max_usos=1, otro acceso debe mostrarse expirado
-        auth()->logout();
-        $this->get($urlPath)->assertStatus(200)->assertSee('expirado o revocado');
-        $this->assertSame(1, QrAcceso::firstOrFail()->usos_actuales);
+        $landingRes = $this->get('/');
+        $landingRes->assertOk();
+        $landingRes->assertSee('id="anuncio-qr-registro"', false);
+        $landingRes->assertSee('id="landing-qr-svg"', false);
+        $landingRes->assertSee(route('registro'), false);
+        $landingRes->assertSee('Puedes registrarte ahora');
     }
 
     public function test_optimizacion_consultas_panel_sin_n_mas_uno_excesivo(): void

@@ -114,12 +114,21 @@ class LacteoService
 
     /**
      * Calcula la liquidación quincenal por productor aislada por planta.
+     *
+     * @param  array{proveedor_id?: int|string|null, sector?: string|null, estado_pago?: string|null}|null  $filtros
      */
-    public function liquidarQuincena(string $desde, string $hasta, float $precioLitro = 1.65, ?int $plantaId = null): Collection
-    {
+    public function liquidarQuincena(
+        string $desde,
+        string $hasta,
+        float $precioLitro = 1.65,
+        ?int $plantaId = null,
+        ?array $filtros = null
+    ): Collection {
         $proveedores = Proveedor::query()
             ->select('id', 'planta_id', 'codigo', 'nombre', 'sector', 'activo')
             ->when($plantaId !== null, fn ($q) => $q->where('planta_id', $plantaId))
+            ->when(! empty($filtros['proveedor_id']), fn ($q) => $q->where('id', (int) $filtros['proveedor_id']))
+            ->when(! empty($filtros['sector']), fn ($q) => $q->where('sector', (string) $filtros['sector']))
             ->where(function ($q) use ($desde, $hasta, $plantaId): void {
                 $q->where('activo', true)
                     ->orWhereHas('acopios', function ($sub) use ($desde, $hasta, $plantaId): void {
@@ -161,7 +170,18 @@ class LacteoService
             ->selectRaw('proveedor_id, SUM(monto) as total_adelantos')
             ->pluck('total_adelantos', 'proveedor_id');
 
-        return $proveedores->map(function (Proveedor $p) use ($acopiosPorProveedor, $adelantosMap, $precioLitro): object {
+        $quincenasQuery = Liquidacion::whereIn('proveedor_id', $ids)
+            ->where('tipo', 'quincena')
+            ->when($plantaId !== null, fn ($q) => $q->where('planta_id', $plantaId));
+        $this->aplicarRangoFecha($quincenasQuery, $desde, $hasta);
+
+        $quincenasMap = $quincenasQuery
+            ->orderByDesc('id')
+            ->get(['proveedor_id', 'estado_pago'])
+            ->unique('proveedor_id')
+            ->keyBy('proveedor_id');
+
+        $filas = $proveedores->map(function (Proveedor $p) use ($acopiosPorProveedor, $adelantosMap, $quincenasMap, $precioLitro): object {
             $acopio = $acopiosPorProveedor->get($p->id);
             $litros = (float) ($acopio->total_litros ?? 0);
             $rawBruto = (float) ($acopio->total_bruto ?? 0);
@@ -169,6 +189,17 @@ class LacteoService
             $adelanto = (float) ($adelantosMap[$p->id] ?? 0);
             $comision = 0.00;
             $neto = max(0, round($bruto - $adelanto, 2));
+
+            $quincena = $quincenasMap->get($p->id);
+            if ($quincena !== null && in_array($quincena->estado_pago, Liquidacion::ESTADOS_PAGO, true)) {
+                $estadoPago = (string) $quincena->estado_pago;
+            } elseif ($bruto > 0 && $neto <= 0.0) {
+                $estadoPago = 'pagado';
+            } elseif ($adelanto > 0 && $bruto > 0) {
+                $estadoPago = 'parcial';
+            } else {
+                $estadoPago = 'pendiente';
+            }
 
             return (object) [
                 'proveedor_id' => $p->id,
@@ -181,8 +212,16 @@ class LacteoService
                 'adelantos' => $adelanto,
                 'comision' => $comision,
                 'neto' => $neto,
+                'estado_pago' => $estadoPago,
             ];
         });
+
+        if (! empty($filtros['estado_pago'])) {
+            $estadoBuscado = (string) $filtros['estado_pago'];
+            $filas = $filas->where('estado_pago', $estadoBuscado)->values();
+        }
+
+        return $filas;
     }
 
     /**

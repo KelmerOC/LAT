@@ -4,7 +4,6 @@ use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\PanelController;
-use App\Http\Controllers\QrAccesoController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -22,14 +21,6 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::get('/registrarse', [AuthController::class, 'showRegister'])->name('registro');
 Route::post('/registrarse', [AuthController::class, 'register'])->middleware('throttle:5,1');
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
-
-// Acceso y registro rápido desde celular mediante Código QR
-Route::get('/acceso-qr/{token}', [QrAccesoController::class, 'mostrar'])
-    ->middleware('throttle:20,1')
-    ->name('qr.show');
-Route::post('/acceso-qr/{token}/registrar', [QrAccesoController::class, 'registrar'])
-    ->middleware('throttle:10,1')
-    ->name('qr.register');
 
 // Zona Privada (Protegida por Autenticación y Permisos Granulares)
 Route::middleware('auth')->prefix('panel')->group(function (): void {
@@ -77,13 +68,18 @@ Route::middleware('auth')->prefix('panel')->group(function (): void {
         ->middleware('permiso:tinas.operar')
         ->name('panel.tina');
 
-    // Notificaciones internas del panel
+    // Notificaciones internas del panel y comunicación contable
     Route::get('/notificaciones/poll', [PanelController::class, 'consultarNotificaciones'])
         ->name('panel.notificaciones.poll');
     Route::post('/notificaciones/leer', [PanelController::class, 'marcarNotificacionesLeidas'])
         ->name('panel.notificaciones.leer');
+    Route::post('/notificaciones/contable', [PanelController::class, 'enviarNotificacionContable'])
+        ->name('panel.notificaciones.contable');
 
-    // Módulo 4: Movimientos, Ventas y Proveedores
+    // Módulo 4: Movimientos, Ventas, Liquidación editable y Proveedores
+    Route::put('/finanzas/liquidacion-grid', [PanelController::class, 'guardarLiquidacionGrid'])
+        ->middleware('permiso:finanzas.editar')
+        ->name('panel.finanzas.liquidacion_grid');
     Route::post('/movimiento', [PanelController::class, 'registrarMovimiento'])
         ->middleware('permiso:finanzas.registrar')
         ->name('panel.movimiento');
@@ -120,7 +116,15 @@ Route::middleware('auth')->prefix('panel')->group(function (): void {
         ->middleware('permiso:finanzas.exportar,finanzas.ver')
         ->name('panel.reportes_excel.review');
 
-    // Módulo 6: Administración de Plantas (con Papelera), Usuarios y QR Móvil
+    // Módulo 5: Estadísticas e Informes de Actividad por Planta
+    Route::post('/informes-planta/enviar', [PanelController::class, 'enviarInformePlantaManual'])
+        ->name('panel.informes_planta.enviar');
+    Route::get('/estadisticas/informes/{id}/descargar', [PanelController::class, 'descargarInformePlantaTxt'])
+        ->name('panel.estadisticas.informes.download');
+
+    // Módulo 6: Administración de Plantas (con Papelera), Usuarios y Modo Operativo
+    Route::post('/admin/modo-operativo', [PanelController::class, 'alternarModoOperativo'])
+        ->name('panel.admin.modo_operativo');
     Route::post('/admin/usuarios', [AdminController::class, 'crearUsuario'])
         ->middleware('permiso:admin.usuarios')
         ->name('admin.usuarios.store');
@@ -145,11 +149,4 @@ Route::middleware('auth')->prefix('panel')->group(function (): void {
     Route::delete('/admin/plantas/{id}/definitivo', [AdminController::class, 'eliminarPlantaDefinitivo'])
         ->middleware('permiso:admin.plantas')
         ->name('admin.plantas.force_delete');
-
-    Route::post('/admin/qr', [QrAccesoController::class, 'crear'])
-        ->middleware('permiso:admin.qr,admin.usuarios')
-        ->name('admin.qr.store');
-    Route::delete('/admin/qr/{id}', [QrAccesoController::class, 'revocar'])
-        ->middleware('permiso:admin.qr,admin.usuarios')
-        ->name('admin.qr.delete');
 });

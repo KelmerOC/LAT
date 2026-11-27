@@ -194,7 +194,12 @@ return [
     'mov_ayuda_del_dia' => 'P\'unchaw yanapay (mana DNI-yuq)',
     'mov_gasto_operativo' => 'Llank\'ay gastu',
     'mov_venta_producto' => 'Lichi ruru rantikuy',
+    'mov_sueldo_personal' => 'Llank\'aqkunap pagun',
     'mov_quincena' => 'Quincena paga',
+
+    // Kamachiqpa llank'ay mudun
+    'admin_ops_enabled' => 'Kay yaykuypaq llank\'ay muduqa kichasqañam.',
+    'admin_ops_disabled' => 'Llank\'ay muduqa wisq\'asqañam.',
 
     'excel_zip_error' => "Manam atikurqanchu XLSX willañiqip ':name' yaykunan ñit'iyta.",
 ];

@@ -90,9 +90,21 @@
       badgeEl.hidden = count <= 0;
     }
 
-    function irASeccionTinas() {
-      const btnTina = document.querySelector('#dash-nav-list .dash-nav-btn[data-section="sec-tina"]');
-      if (btnTina) btnTina.click();
+    const MODULO_SECCION_MAP = {
+      tinas: 'sec-tina',
+      finanzas: 'sec-quincena',
+      estadisticas: 'sec-estadisticas',
+    };
+
+    function obtenerBtnModulo(modulo) {
+      const secId = MODULO_SECCION_MAP[String(modulo || '')];
+      if (!secId) return null;
+      return document.querySelector(`#dash-nav-list .dash-nav-btn[data-section="${secId}"]`);
+    }
+
+    function irAModulo(modulo) {
+      const btn = obtenerBtnModulo(modulo);
+      if (btn) btn.click();
     }
 
     function posicionarTrayMovil() {
@@ -132,11 +144,16 @@
       } catch (_) {}
     }
 
+    function esNotifVerde(notif) {
+      return notif && (notif.color_tema === 'verde' || notif.tipo === 'comunicacion_contable');
+    }
+
     function extractNotifFromEl(el) {
-      const tipoCls = Array.from(el.classList).find((c) => c.startsWith('is-') && c !== 'is-unread' && c !== 'is-read');
+      const tipoCls = Array.from(el.classList).find((c) => c.startsWith('is-') && c !== 'is-unread' && c !== 'is-read' && c !== 'is-color-verde');
       return {
         id: Number(el.dataset.notifId || el.dataset.id || 0),
         tipo: el.dataset.tipo || (tipoCls ? tipoCls.slice(3) : 'info'),
+        color_tema: el.dataset.colorTema || (el.classList.contains('is-color-verde') ? 'verde' : ''),
         modulo_destino: el.dataset.modulo || el.dataset.moduloDestino || '',
         titulo: el.dataset.titulo || el.querySelector('.lat-notif-title, strong')?.textContent?.trim() || '',
         mensaje: el.dataset.mensaje || el.querySelector('.lat-notif-msg, p')?.textContent?.trim() || '',
@@ -146,12 +163,13 @@
 
     function crearElementoTray(notif) {
       const li = document.createElement('li');
-      li.className = 'lat-notif-item ' + (notif.leida ? 'is-read' : 'is-unread') + ' is-' + sanitizeTipo(notif.tipo);
+      li.className = 'lat-notif-item ' + (notif.leida ? 'is-read' : 'is-unread') + ' is-' + sanitizeTipo(notif.tipo) + (esNotifVerde(notif) ? ' is-color-verde' : '');
       li.setAttribute('role', 'button');
       li.tabIndex = 0;
       li.dataset.notifId = String(notif.id || '');
       li.dataset.id = String(notif.id || '');
       li.dataset.tipo = String(notif.tipo || 'info');
+      if (notif.color_tema) li.dataset.colorTema = String(notif.color_tema);
       if (notif.modulo_destino) li.dataset.modulo = String(notif.modulo_destino);
       if (notif.titulo) li.dataset.titulo = String(notif.titulo);
       if (notif.mensaje) li.dataset.mensaje = String(notif.mensaje);
@@ -197,7 +215,7 @@
       if (!stack || !notif) return;
 
       const card = document.createElement('div');
-      card.className = 'lat-live-alert is-' + sanitizeTipo(notif.tipo);
+      card.className = 'lat-live-alert is-' + sanitizeTipo(notif.tipo) + (esNotifVerde(notif) ? ' is-color-verde' : '');
       card.setAttribute('role', 'status');
 
       const body = document.createElement('div');
@@ -228,7 +246,8 @@
       actions.style.alignItems = 'center';
       actions.style.gap = '0.35rem';
       actions.style.flexShrink = '0';
-      if ((notif.modulo_destino || notif.modulo) === 'tinas') {
+      const moduloDestino = notif.modulo_destino || notif.modulo || '';
+      if (obtenerBtnModulo(moduloDestino)) {
         const btnVer = document.createElement('button');
         btnVer.type = 'button';
         btnVer.className = 'btn-micro';
@@ -244,7 +263,7 @@
             }
             marcarLeidaEnServidor({ notificacion_id: Number(notif.id) });
           }
-          irASeccionTinas();
+          irAModulo(moduloDestino);
           card.remove();
         });
         actions.appendChild(btnVer);
@@ -325,6 +344,7 @@
             const notif = {
               id: Number(raw.id || 0),
               tipo: raw.tipo || 'info',
+              color_tema: raw.color_tema || '',
               titulo: raw.titulo || raw.title || '',
               mensaje: raw.mensaje || raw.message || '',
               modulo_destino: raw.modulo_destino || raw.modulo || '',
@@ -396,8 +416,8 @@
           actualizarBadge();
           marcarLeidaEnServidor({ notificacion_id: id });
         }
-        if (modulo === 'tinas') {
-          irASeccionTinas();
+        if (obtenerBtnModulo(modulo)) {
+          irAModulo(modulo);
           cerrarTray();
         }
       });

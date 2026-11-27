@@ -545,7 +545,7 @@ class LatFlujoTinasNotificacionesTest extends TestCase
     public function test_finalizar_lote_emite_notificacion_devuelta_por_poll_y_marcable_como_leida(): void
     {
         $operador = User::where('usuario', 'carlos.anta')->firstOrFail();
-        $admin = User::where('usuario', 'donjusto')->firstOrFail();
+        $receptor = User::where('usuario', 'sabina.tina')->firstOrFail();
         $lote = Lote::with('tina')
             ->where('planta_id', $operador->planta_id)
             ->enProceso()
@@ -569,7 +569,7 @@ class LatFlujoTinasNotificacionesTest extends TestCase
         $this->assertSame('tinas', $notif->modulo_destino);
         $this->assertSame($lote->id, $notif->datos['lote_id'] ?? null);
 
-        $pollRes = $this->actingAs($admin)->getJson('/panel/notificaciones/poll');
+        $pollRes = $this->actingAs($receptor)->getJson('/panel/notificaciones/poll');
         $pollRes->assertOk()
             ->assertJsonPath('no_leidas', 1)
             ->assertJsonFragment([
@@ -578,7 +578,7 @@ class LatFlujoTinasNotificacionesTest extends TestCase
                 'leida' => false,
             ]);
 
-        $leerRes = $this->actingAs($admin)->postJson('/panel/notificaciones/leer', [
+        $leerRes = $this->actingAs($receptor)->postJson('/panel/notificaciones/leer', [
             'notificacion_id' => $notif->id,
         ]);
         $leerRes->assertOk()
@@ -587,9 +587,9 @@ class LatFlujoTinasNotificacionesTest extends TestCase
                 'no_leidas' => 0,
             ]);
 
-        $this->assertTrue($notif->fresh()->estaLeidaPor($admin->id));
+        $this->assertTrue($notif->fresh()->estaLeidaPor($receptor->id));
 
-        $pollDespues = $this->actingAs($admin)->getJson('/panel/notificaciones/poll');
+        $pollDespues = $this->actingAs($receptor)->getJson('/panel/notificaciones/poll');
         $pollDespues->assertOk()
             ->assertJsonPath('no_leidas', 0)
             ->assertJsonFragment([
@@ -677,7 +677,9 @@ class LatFlujoTinasNotificacionesTest extends TestCase
             ->put('/panel/tinas/recetas-base', $payload)
             ->assertForbidden();
 
-        $res = $this->actingAs($admin)->put('/panel/tinas/recetas-base', $payload);
+        $res = $this->actingAs($admin)
+            ->withSession(['admin_modo_operativo' => true])
+            ->put('/panel/tinas/recetas-base', $payload);
 
         $res->assertRedirect();
         $res->assertSessionHas('exito', __('lat.base_recipes_updated'));
@@ -727,12 +729,15 @@ class LatFlujoTinasNotificacionesTest extends TestCase
     {
         $admin = User::where('usuario', 'donjusto')->firstOrFail();
 
-        $this->actingAs($admin)->post('/panel/tinas', [
-            'codigo' => '08',
-            'nombre' => 'Tina Mantequillera',
-            'capacidad_litros' => 120,
-            'tipo' => 'Mantequilla artesanal',
-        ])->assertRedirect();
+        $this->actingAs($admin)
+            ->withSession(['admin_modo_operativo' => true])
+            ->post('/panel/tinas', [
+                'codigo' => '08',
+                'nombre' => 'Tina Mantequillera',
+                'capacidad_litros' => 120,
+                'tipo' => 'Mantequilla artesanal',
+            ])
+            ->assertRedirect();
 
         $tina = Tina::where('planta_id', $admin->planta_id)
             ->where('codigo', 'TINA-08')
@@ -755,6 +760,7 @@ class LatFlujoTinasNotificacionesTest extends TestCase
         $admin = User::where('usuario', 'donjusto')->firstOrFail();
 
         $this->actingAs($admin)
+            ->withSession(['admin_modo_operativo' => true])
             ->withCookie('lat_locale', $locale)
             ->post('/panel/tinas', [
                 'codigo' => $sufijo,
