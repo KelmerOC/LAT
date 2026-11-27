@@ -32,11 +32,11 @@ class LatRolesFinanzasInformesTest extends TestCase
 
     public function test_notificaciones_de_tina_solo_llegan_a_encargado_de_planta_y_control_de_tina(): void
     {
-        $encargado = User::where('usuario', 'carlos.anta')->firstOrFail();
-        $controlTina = User::where('usuario', 'sabina.tina')->firstOrFail();
-        $recolector = User::where('usuario', 'mateo.ruta')->firstOrFail();
-        $contador = User::where('usuario', 'contador.marco')->firstOrFail();
-        $admin = User::where('usuario', 'donjusto')->firstOrFail();
+        $encargado = User::where('usuario', 'andres.anta')->firstOrFail();
+        $controlTina = User::where('usuario', 'valeria.tina')->firstOrFail();
+        $recolector = User::where('usuario', 'javier.ruta')->firstOrFail();
+        $contador = User::where('usuario', 'contador.ricardo')->firstOrFail();
+        $admin = User::where('usuario', 'rodrigo')->firstOrFail();
         $prov = Proveedor::where('planta_id', $encargado->planta_id)->firstOrFail();
 
         $acopio = Acopio::create([
@@ -102,7 +102,7 @@ class LatRolesFinanzasInformesTest extends TestCase
 
     public function test_admin_total_bloqueado_en_operaciones_m1_m2_m3_por_defecto_y_habilitado_con_interruptor(): void
     {
-        $admin = User::where('usuario', 'donjusto')->firstOrFail();
+        $admin = User::where('usuario', 'rodrigo')->firstOrFail();
         $planta1 = Planta::where('codigo', 'PLT-01')->firstOrFail();
         $prov = Proveedor::where('planta_id', $planta1->id)->firstOrFail();
         $acopio = Acopio::where('planta_id', $planta1->id)->whereNull('lote_id')->firstOrFail();
@@ -218,10 +218,10 @@ class LatRolesFinanzasInformesTest extends TestCase
     {
         Storage::fake('local');
 
-        $encargado = User::where('usuario', 'carlos.anta')->firstOrFail();
-        $contador = User::where('usuario', 'contador.marco')->firstOrFail();
-        $admin = User::where('usuario', 'donjusto')->firstOrFail();
-        $recolector = User::where('usuario', 'mateo.ruta')->firstOrFail();
+        $encargado = User::where('usuario', 'andres.anta')->firstOrFail();
+        $contador = User::where('usuario', 'contador.ricardo')->firstOrFail();
+        $admin = User::where('usuario', 'rodrigo')->firstOrFail();
+        $recolector = User::where('usuario', 'javier.ruta')->firstOrFail();
 
         // 1. Encargado envía Excel al contador -> notificación verde solo para contador
         $this->actingAs($encargado)->post('/panel/reportes-excel/enviar', [
@@ -321,7 +321,7 @@ class LatRolesFinanzasInformesTest extends TestCase
 
     public function test_liquidacion_estilo_excel_edicion_filtros_y_descarga_exclusiva(): void
     {
-        $admin = User::where('usuario', 'donjusto')->firstOrFail();
+        $admin = User::where('usuario', 'rodrigo')->firstOrFail();
         $prov = Proveedor::where('planta_id', $admin->planta_id)->where('codigo', 'PRV-01')->firstOrFail();
 
         $hoy = Carbon::today();
@@ -402,7 +402,7 @@ class LatRolesFinanzasInformesTest extends TestCase
 
     public function test_tablas_separadas_ventas_y_sueldos_filtros_y_descargas_exclusivas(): void
     {
-        $admin = User::where('usuario', 'donjusto')->firstOrFail();
+        $admin = User::where('usuario', 'rodrigo')->firstOrFail();
 
         $this->actingAs($admin)->post('/panel/movimiento', [
             'tipo' => 'venta_producto',
@@ -517,8 +517,8 @@ class LatRolesFinanzasInformesTest extends TestCase
 
     public function test_aislamiento_estricto_de_administrador_de_planta_e_informes_automaticos_y_manuales(): void
     {
-        $encargado = User::where('usuario', 'carlos.anta')->firstOrFail();
-        $admin = User::where('usuario', 'donjusto')->firstOrFail();
+        $encargado = User::where('usuario', 'andres.anta')->firstOrFail();
+        $admin = User::where('usuario', 'rodrigo')->firstOrFail();
         $planta1 = Planta::where('codigo', 'PLT-01')->firstOrFail();
         $planta2 = Planta::where('codigo', 'PLT-02')->firstOrFail();
 
@@ -610,8 +610,8 @@ class LatRolesFinanzasInformesTest extends TestCase
 
     public function test_finanzas_oculta_formulas_excel_y_actualiza_litros_manual_o_desde_acopios(): void
     {
-        $admin = User::where('usuario', 'donjusto')->firstOrFail();
-        $recolector = User::where('usuario', 'mateo.ruta')->firstOrFail();
+        $admin = User::where('usuario', 'rodrigo')->firstOrFail();
+        $recolector = User::where('usuario', 'javier.ruta')->firstOrFail();
         $prov = Proveedor::where('planta_id', $admin->planta_id)->where('codigo', 'PRV-01')->firstOrFail();
 
         $hoy = Carbon::today();

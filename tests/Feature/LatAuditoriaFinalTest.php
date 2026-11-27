@@ -28,7 +28,7 @@ class LatAuditoriaFinalTest extends TestCase
 
     public function test_papelera_plantas_eliminar_restaurar_purga_30_dias_y_proteccion_ultima_planta(): void
     {
-        $admin = User::where('usuario', 'donjusto')->firstOrFail();
+        $admin = User::where('usuario', 'rodrigo')->firstOrFail();
         $planta1 = Planta::where('codigo', 'PLT-01')->firstOrFail();
         $planta2 = Planta::where('codigo', 'PLT-02')->firstOrFail();
         $planta3 = Planta::where('codigo', 'PLT-03')->firstOrFail();
@@ -68,7 +68,7 @@ class LatAuditoriaFinalTest extends TestCase
 
     public function test_crud_eliminar_tina_proveedor_y_usuario(): void
     {
-        $admin = User::where('usuario', 'donjusto')->firstOrFail();
+        $admin = User::where('usuario', 'rodrigo')->firstOrFail();
         $planta1 = Planta::where('codigo', 'PLT-01')->firstOrFail();
 
         // Tina con lote activo NO se puede eliminar; tina sin lote SÍ (con modo operativo activo para admin)
@@ -116,14 +116,14 @@ class LatAuditoriaFinalTest extends TestCase
 
         // Eliminar usuario (no puede auto-eliminarse)
         $this->actingAs($admin)->delete("/panel/admin/usuarios/{$admin->id}")->assertSessionHasErrors('usuario');
-        $mateo = User::where('usuario', 'mateo.ruta')->firstOrFail();
+        $mateo = User::where('usuario', 'javier.ruta')->firstOrFail();
         $this->actingAs($admin)->delete("/panel/admin/usuarios/{$mateo->id}")->assertRedirect();
         $this->assertDatabaseMissing('users', ['id' => $mateo->id]);
     }
 
     public function test_separacion_rol_admin_no_realiza_acopio_ni_opera_tina(): void
     {
-        $admin = User::where('usuario', 'donjusto')->firstOrFail();
+        $admin = User::where('usuario', 'rodrigo')->firstOrFail();
         $prov = Proveedor::where('planta_id', $admin->planta_id)->firstOrFail();
         $tina = Tina::where('planta_id', $admin->planta_id)->firstOrFail();
 
@@ -142,7 +142,7 @@ class LatAuditoriaFinalTest extends TestCase
 
     public function test_fecha_acopio_filtros_y_validacion_minima_litros_para_evitar_gotita(): void
     {
-        $recolector = User::where('usuario', 'mateo.ruta')->firstOrFail();
+        $recolector = User::where('usuario', 'javier.ruta')->firstOrFail();
         $prov = Proveedor::where('planta_id', $recolector->planta_id)->where('codigo', 'PRV-01')->firstOrFail();
 
         // Rechaza "una gotita" (0.1 L y 0.5 L < min:1)
@@ -184,7 +184,7 @@ class LatAuditoriaFinalTest extends TestCase
 
     public function test_sincronizacion_offline_es_idempotente_por_uuid(): void
     {
-        $recolector = User::where('usuario', 'mateo.ruta')->firstOrFail();
+        $recolector = User::where('usuario', 'javier.ruta')->firstOrFail();
         $prov = Proveedor::where('planta_id', $recolector->planta_id)->firstOrFail();
         $uuid = (string) Str::uuid();
 
@@ -217,8 +217,8 @@ class LatAuditoriaFinalTest extends TestCase
     {
         Storage::fake('local');
 
-        $encargado = User::where('usuario', 'carlos.anta')->firstOrFail();
-        $contador = User::where('usuario', 'contador.marco')->firstOrFail();
+        $encargado = User::where('usuario', 'andres.anta')->firstOrFail();
+        $contador = User::where('usuario', 'contador.ricardo')->firstOrFail();
 
         $this->actingAs($encargado)->post('/panel/reportes-excel/enviar', [
             'destinatario_id' => $contador->id,
@@ -246,7 +246,7 @@ class LatAuditoriaFinalTest extends TestCase
 
     public function test_qr_panel_eliminado_y_anuncio_qr_publico_en_landing(): void
     {
-        $admin = User::where('usuario', 'donjusto')->firstOrFail();
+        $admin = User::where('usuario', 'rodrigo')->firstOrFail();
         $planta1 = Planta::where('codigo', 'PLT-01')->firstOrFail();
 
         $this->actingAs($admin)->post('/panel/admin/qr', [
@@ -271,7 +271,7 @@ class LatAuditoriaFinalTest extends TestCase
 
     public function test_optimizacion_consultas_panel_sin_n_mas_uno_excesivo(): void
     {
-        $admin = User::where('usuario', 'donjusto')->firstOrFail();
+        $admin = User::where('usuario', 'rodrigo')->firstOrFail();
 
         DB::enableQueryLog();
         $this->actingAs($admin)->get('/panel')->assertStatus(200);

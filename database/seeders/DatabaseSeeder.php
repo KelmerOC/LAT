@@ -58,8 +58,8 @@ class DatabaseSeeder extends Seeder
         $admin = User::create([
             'planta_id' => $planta1->id,
             'name' => 'Ing. Rodrigo Quispe',
-            'usuario' => 'donjusto',
-            'email' => 'donjusto@sanborreal.pe',
+            'usuario' => 'rodrigo',
+            'email' => 'rodrigo@sanborreal.pe',
             'password' => $password,
             'cargo' => 'administracion',
             'rango' => 'administrador',
@@ -70,8 +70,8 @@ class DatabaseSeeder extends Seeder
         $encargado = User::create([
             'planta_id' => $planta1->id,
             'name' => 'Ing. Andrés Huamán',
-            'usuario' => 'carlos.anta',
-            'email' => 'carlos@sanborreal.pe',
+            'usuario' => 'andres.anta',
+            'email' => 'andres@sanborreal.pe',
             'password' => $password,
             'cargo' => 'encargado_planta',
             'rango' => 'supervisor',
@@ -83,8 +83,8 @@ class DatabaseSeeder extends Seeder
         $recolector = User::create([
             'planta_id' => $planta1->id,
             'name' => 'Téc. Javier Condori',
-            'usuario' => 'mateo.ruta',
-            'email' => 'mateo@sanborreal.pe',
+            'usuario' => 'javier.ruta',
+            'email' => 'javier@sanborreal.pe',
             'password' => $password,
             'cargo' => 'recolector_ruta',
             'rango' => 'operador',
@@ -96,8 +96,8 @@ class DatabaseSeeder extends Seeder
         User::create([
             'planta_id' => $planta1->id,
             'name' => 'Téc. Valeria Cárdenas',
-            'usuario' => 'sabina.tina',
-            'email' => 'sabina@sanborreal.pe',
+            'usuario' => 'valeria.tina',
+            'email' => 'valeria@sanborreal.pe',
             'password' => $password,
             'cargo' => 'control_tina',
             'rango' => 'operador',
@@ -109,7 +109,7 @@ class DatabaseSeeder extends Seeder
         User::create([
             'planta_id' => $planta1->id,
             'name' => 'CPC Ricardo Paredes',
-            'usuario' => 'contador.marco',
+            'usuario' => 'contador.ricardo',
             'email' => 'contador@sanborreal.pe',
             'password' => $password,
             'cargo' => 'contador_externo',

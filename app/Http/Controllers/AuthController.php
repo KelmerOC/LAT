@@ -51,9 +51,9 @@ class AuthController extends Controller
             ])->onlyInput('login');
         }
 
-        $esCorreo = filter_var(trim((string) $credenciales['login']), FILTER_VALIDATE_EMAIL) !== false;
+        $esCorreo = filter_var($loginNormalizado, FILTER_VALIDATE_EMAIL) !== false;
         $campo = $esCorreo ? 'email' : 'usuario';
-        $valorLogin = $esCorreo ? trim((string) $credenciales['login']) : $loginNormalizado;
+        $valorLogin = $loginNormalizado;
 
         if (Auth::attempt([$campo => $valorLogin, 'password' => $credenciales['password'], 'activo' => true], $request->boolean('remember'))) {
             RateLimiter::clear($throttleKey);

@@ -56,7 +56,7 @@ class LatFuncionalidadesTest extends TestCase
 
     public function test_admin_crea_y_edita_credenciales_de_usuario_y_no_admin_es_bloqueado(): void
     {
-        $admin = User::where('usuario', 'donjusto')->firstOrFail();
+        $admin = User::where('usuario', 'rodrigo')->firstOrFail();
         $planta = Planta::where('codigo', 'PLT-01')->firstOrFail();
 
         $res = $this->actingAs($admin)->post('/panel/admin/usuarios', [
@@ -96,7 +96,7 @@ class LatFuncionalidadesTest extends TestCase
 
     public function test_usuario_personalizado_solo_ve_y_accede_a_sus_secciones_y_controles(): void
     {
-        $admin = User::where('usuario', 'donjusto')->firstOrFail();
+        $admin = User::where('usuario', 'rodrigo')->firstOrFail();
         $planta = Planta::where('codigo', 'PLT-01')->firstOrFail();
 
         // Crear usuario personalizado con acceso únicamente a Tinas (ver + operar)
@@ -158,7 +158,7 @@ class LatFuncionalidadesTest extends TestCase
 
     public function test_control_granular_ver_sin_editar_bloquea_modificaciones(): void
     {
-        $admin = User::where('usuario', 'donjusto')->firstOrFail();
+        $admin = User::where('usuario', 'rodrigo')->firstOrFail();
         $planta = Planta::where('codigo', 'PLT-01')->firstOrFail();
 
         $this->actingAs($admin)->post('/panel/admin/usuarios', [
@@ -198,7 +198,7 @@ class LatFuncionalidadesTest extends TestCase
 
     public function test_rango_delegado_permite_crear_usuarios_solo_en_su_planta_y_sin_escalar(): void
     {
-        $admin = User::where('usuario', 'donjusto')->firstOrFail();
+        $admin = User::where('usuario', 'rodrigo')->firstOrFail();
         $planta1 = Planta::where('codigo', 'PLT-01')->firstOrFail();
         $planta2 = Planta::where('codigo', 'PLT-02')->firstOrFail();
 
@@ -263,7 +263,7 @@ class LatFuncionalidadesTest extends TestCase
 
     public function test_dashboard_retorna_series_temporales_y_respeta_filtro_de_rango(): void
     {
-        $admin = User::where('usuario', 'donjusto')->firstOrFail();
+        $admin = User::where('usuario', 'rodrigo')->firstOrFail();
 
         $res7d = $this->actingAs($admin)->get('/panel?rango=7d');
         $res7d->assertStatus(200);
@@ -280,7 +280,7 @@ class LatFuncionalidadesTest extends TestCase
 
     public function test_admin_gestiona_plantas_y_cambia_planta_activa(): void
     {
-        $admin = User::where('usuario', 'donjusto')->firstOrFail();
+        $admin = User::where('usuario', 'rodrigo')->firstOrFail();
 
         $this->actingAs($admin)->post('/panel/admin/plantas', [
             'codigo' => 'PLT-04',
@@ -306,7 +306,7 @@ class LatFuncionalidadesTest extends TestCase
 
     public function test_multiples_tinas_agregar_editar_iniciar_y_finalizar_lote(): void
     {
-        $admin = User::where('usuario', 'donjusto')->firstOrFail();
+        $admin = User::where('usuario', 'rodrigo')->firstOrFail();
 
         // Agregar nueva tina (con modo operativo habilitado para donjusto)
         $this->actingAs($admin)
@@ -336,7 +336,7 @@ class LatFuncionalidadesTest extends TestCase
         $this->assertSame('Tina Queso Paria Plus', $tina->fresh()->nombre);
 
         // Iniciar, actualizar y finalizar lote con usuario operativo de tina (admin no opera en campo)
-        $operadorTina = User::where('usuario', 'carlos.anta')->firstOrFail();
+        $operadorTina = User::where('usuario', 'andres.anta')->firstOrFail();
         $prov = Proveedor::where('planta_id', $tina->planta_id)->firstOrFail();
         $acopio1 = Acopio::create([
             'planta_id' => $tina->planta_id,
@@ -394,7 +394,7 @@ class LatFuncionalidadesTest extends TestCase
 
     public function test_edicion_de_datos_acopio_y_movimiento(): void
     {
-        $admin = User::where('usuario', 'donjusto')->firstOrFail();
+        $admin = User::where('usuario', 'rodrigo')->firstOrFail();
         $acopio = Acopio::where('planta_id', $admin->planta_id)->firstOrFail();
         $prov = Proveedor::where('planta_id', $admin->planta_id)->firstOrFail();
 
@@ -427,7 +427,7 @@ class LatFuncionalidadesTest extends TestCase
 
     public function test_exportacion_excel_xlsx_valida_y_estadisticas_de_plantas(): void
     {
-        $admin = User::where('usuario', 'donjusto')->firstOrFail();
+        $admin = User::where('usuario', 'rodrigo')->firstOrFail();
 
         // Verificar carga del panel con estadísticas y ranking
         $panelRes = $this->actingAs($admin)->get('/panel');
@@ -451,7 +451,7 @@ class LatFuncionalidadesTest extends TestCase
 
     public function test_cambio_de_idioma_persiste_en_sesion(): void
     {
-        $admin = User::where('usuario', 'donjusto')->firstOrFail();
+        $admin = User::where('usuario', 'rodrigo')->firstOrFail();
 
         $this->get('/idioma/qu')->assertStatus(302);
         $this->get('/')->assertStatus(200)
@@ -475,7 +475,7 @@ class LatFuncionalidadesTest extends TestCase
     public function test_login_acepta_mayusculas_rechaza_invalidos_e_inactivos_y_logout_cierra_sesion(): void
     {
         $resLogin = $this->post('/login', [
-            'login' => 'DONJUSTO',
+            'login' => 'RODRIGO',
             'password' => 'secreto123',
         ]);
         $resLogin->assertRedirect('/panel');
@@ -486,17 +486,17 @@ class LatFuncionalidadesTest extends TestCase
         $this->assertGuest();
 
         $resBad = $this->post('/login', [
-            'login' => 'donjusto',
+            'login' => 'rodrigo',
             'password' => 'clave-incorrecta',
         ]);
         $resBad->assertSessionHasErrors('login');
         $this->assertGuest();
 
-        $inactivo = User::where('usuario', 'mateo.ruta')->firstOrFail();
+        $inactivo = User::where('usuario', 'javier.ruta')->firstOrFail();
         $inactivo->update(['activo' => false]);
 
         $resInactivo = $this->post('/login', [
-            'login' => 'mateo.ruta',
+            'login' => 'javier.ruta',
             'password' => 'secreto123',
         ]);
         $resInactivo->assertSessionHasErrors('login');
@@ -505,7 +505,7 @@ class LatFuncionalidadesTest extends TestCase
 
     public function test_usuario_desactivado_con_sesion_abierta_es_desconectado_al_entrar_al_panel(): void
     {
-        $user = User::where('usuario', 'mateo.ruta')->firstOrFail();
+        $user = User::where('usuario', 'javier.ruta')->firstOrFail();
         $this->actingAs($user);
 
         $user->update(['activo' => false]);
@@ -518,7 +518,7 @@ class LatFuncionalidadesTest extends TestCase
 
     public function test_cambiar_planta_y_aislamiento_multiplanta_en_edicion_panel_y_excel(): void
     {
-        $admin = User::where('usuario', 'donjusto')->firstOrFail();
+        $admin = User::where('usuario', 'rodrigo')->firstOrFail();
         $planta1 = Planta::where('codigo', 'PLT-01')->firstOrFail();
         $planta2 = Planta::where('codigo', 'PLT-02')->firstOrFail();
 
@@ -619,7 +619,7 @@ class LatFuncionalidadesTest extends TestCase
 
     public function test_crear_y_editar_proveedor_normaliza_codigo_y_permite_vaciar_sector(): void
     {
-        $admin = User::where('usuario', 'donjusto')->firstOrFail();
+        $admin = User::where('usuario', 'rodrigo')->firstOrFail();
         $planta1 = Planta::where('codigo', 'PLT-01')->firstOrFail();
 
         $this->actingAs($admin)
@@ -664,7 +664,7 @@ class LatFuncionalidadesTest extends TestCase
 
     public function test_eliminar_acopio_y_movimiento_con_permisos_validos(): void
     {
-        $admin = User::where('usuario', 'donjusto')->firstOrFail();
+        $admin = User::where('usuario', 'rodrigo')->firstOrFail();
         $acopio = Acopio::where('planta_id', $admin->planta_id)->firstOrFail();
         $mov = Liquidacion::where('planta_id', $admin->planta_id)->firstOrFail();
 
@@ -680,7 +680,7 @@ class LatFuncionalidadesTest extends TestCase
 
     public function test_evaluar_calidad_aprueba_desvia_y_rechaza_valor_invalido(): void
     {
-        $admin = User::where('usuario', 'donjusto')->firstOrFail();
+        $admin = User::where('usuario', 'rodrigo')->firstOrFail();
         $prov = Proveedor::where('planta_id', $admin->planta_id)->firstOrFail();
 
         $acopio = Acopio::create([
@@ -726,7 +726,7 @@ class LatFuncionalidadesTest extends TestCase
 
     public function test_movimientos_calculan_y_recalculan_descontado_segun_tipo(): void
     {
-        $admin = User::where('usuario', 'donjusto')->firstOrFail();
+        $admin = User::where('usuario', 'rodrigo')->firstOrFail();
         $prov = Proveedor::where('planta_id', $admin->planta_id)->firstOrFail();
 
         $this->actingAs($admin)->post('/panel/movimiento', [
@@ -765,7 +765,7 @@ class LatFuncionalidadesTest extends TestCase
 
     public function test_tina_inactiva_y_lote_terminado_o_litros_invalidos_son_bloqueados(): void
     {
-        $operador = User::where('usuario', 'carlos.anta')->firstOrFail();
+        $operador = User::where('usuario', 'andres.anta')->firstOrFail();
         $tinaInactiva = Tina::create([
             'planta_id' => $operador->planta_id,
             'codigo' => 'TINA-OFF',
@@ -829,7 +829,7 @@ class LatFuncionalidadesTest extends TestCase
 
     public function test_proteccion_horizontal_supervisor_no_puede_editar_ni_desactivar_otro_supervisor(): void
     {
-        $admin = User::where('usuario', 'donjusto')->firstOrFail();
+        $admin = User::where('usuario', 'rodrigo')->firstOrFail();
         $planta1 = Planta::where('codigo', 'PLT-01')->firstOrFail();
 
         $this->actingAs($admin)->post('/panel/admin/usuarios', [
@@ -974,7 +974,7 @@ class LatFuncionalidadesTest extends TestCase
         $this->assertSame('qu', session('locale'));
 
         $resLogin = $this->withCookie('lat_locale', 'qu')->post('/login', [
-            'login' => 'mateo.ruta',
+            'login' => 'javier.ruta',
             'password' => 'secreto123',
         ]);
         $resLogin->assertRedirect('/panel');
@@ -1017,7 +1017,7 @@ class LatFuncionalidadesTest extends TestCase
 
     public function test_exportar_excel_en_quechua_genera_ooxml_y_sumif_coherente(): void
     {
-        $admin = User::where('usuario', 'donjusto')->firstOrFail();
+        $admin = User::where('usuario', 'rodrigo')->firstOrFail();
 
         $this->get('/idioma/qu')->assertStatus(302)->assertCookie('lat_locale', 'qu');
 
@@ -1095,7 +1095,7 @@ class LatFuncionalidadesTest extends TestCase
         config(['app.env' => 'production', 'lat.demo_logins' => true]);
         $resLoginProd = $this->get('/login');
         $resLoginProd->assertStatus(200);
-        foreach (['donjusto@sanborreal.pe', 'carlos.anta', 'sabina.tina', 'contador.marco', 'mateo.ruta'] as $usuario) {
+        foreach (['rodrigo@sanborreal.pe', 'andres.anta', 'valeria.tina', 'contador.ricardo', 'javier.ruta'] as $usuario) {
             $resLoginProd->assertSee("data-usuario=\"{$usuario}\"", false);
         }
         $resLoginProd->assertDontSee('lucia.personal', false);
@@ -1105,5 +1105,108 @@ class LatFuncionalidadesTest extends TestCase
         $this->get('/login')
             ->assertStatus(200)
             ->assertDontSee('class="perfiles"', false);
+    }
+
+    public function test_cinco_perfiles_profesionales_inician_sesion_y_credenciales_antiguas_fallan(): void
+    {
+        $credencialesValidas = [
+            'rodrigo@sanborreal.pe',
+            'RODRIGO@SANBORREAL.PE',
+            'rodrigo',
+            'andres.anta',
+            'andres@sanborreal.pe',
+            'valeria.tina',
+            'valeria@sanborreal.pe',
+            'contador.ricardo',
+            'contador@sanborreal.pe',
+            'javier.ruta',
+            'javier@sanborreal.pe',
+        ];
+
+        foreach ($credencialesValidas as $identificador) {
+            $this->post('/login', [
+                'login' => $identificador,
+                'password' => 'secreto123',
+            ])->assertRedirect('/panel');
+            $this->assertAuthenticated();
+            $this->actingAs(auth()->user())->get('/panel')->assertOk();
+            $this->post('/logout')->assertRedirect('/');
+            $this->assertGuest();
+        }
+
+        foreach (['donjusto', 'carlos.anta', 'sabina.tina', 'contador.marco', 'mateo.ruta', 'lucia.personal'] as $antiguo) {
+            $this->post('/login', [
+                'login' => $antiguo,
+                'password' => 'secreto123',
+            ])->assertSessionHasErrors('login');
+            $this->assertGuest();
+        }
+    }
+
+    public function test_migracion_credenciales_actualiza_usuarios_legados_y_elimina_lucia(): void
+    {
+        $planta = Planta::where('codigo', 'PLT-01')->firstOrFail();
+
+        // Simular base legada previa (como Render antes del despliegue)
+        User::where('usuario', 'rodrigo')->update([
+            'name' => 'Don Justo Quispe',
+            'usuario' => 'donjusto',
+            'email' => 'donjusto@sanborreal.pe',
+        ]);
+        User::where('usuario', 'andres.anta')->update([
+            'name' => 'Carlos Quispe',
+            'usuario' => 'carlos.anta',
+            'email' => 'carlos@sanborreal.pe',
+        ]);
+        User::where('usuario', 'valeria.tina')->update([
+            'name' => 'Sabina Huillca',
+            'usuario' => 'sabina.tina',
+            'email' => 'sabina@sanborreal.pe',
+        ]);
+        User::where('usuario', 'contador.ricardo')->update([
+            'name' => 'Marco Antonio',
+            'usuario' => 'contador.marco',
+            'email' => 'contador@sanborreal.pe',
+        ]);
+        User::where('usuario', 'javier.ruta')->update([
+            'name' => 'Mateo Triveño',
+            'usuario' => 'mateo.ruta',
+            'email' => 'mateo@sanborreal.pe',
+        ]);
+        User::create([
+            'planta_id' => $planta->id,
+            'name' => 'Lucía Condori',
+            'usuario' => 'lucia.personal',
+            'email' => null,
+            'password' => bcrypt('secreto123'),
+            'cargo' => 'personalizado',
+            'rango' => 'personalizado',
+            'permisos' => ['calidad.ver', 'tinas.ver'],
+            'activo' => true,
+        ]);
+
+        $migracion = require database_path('migrations/2026_11_26_233500_actualizar_credenciales_profesionales.php');
+        $migracion->up();
+
+        $this->assertDatabaseMissing('users', ['usuario' => 'lucia.personal']);
+        $this->assertDatabaseMissing('users', ['usuario' => 'donjusto']);
+
+        foreach ([
+            ['rodrigo', 'rodrigo@sanborreal.pe', 'Ing. Rodrigo Quispe'],
+            ['andres.anta', 'andres@sanborreal.pe', 'Ing. Andrés Huamán'],
+            ['valeria.tina', 'valeria@sanborreal.pe', 'Téc. Valeria Cárdenas'],
+            ['contador.ricardo', 'contador@sanborreal.pe', 'CPC Ricardo Paredes'],
+            ['javier.ruta', 'javier@sanborreal.pe', 'Téc. Javier Condori'],
+        ] as [$usuario, $email, $nombre]) {
+            $this->assertDatabaseHas('users', [
+                'usuario' => $usuario,
+                'email' => $email,
+                'name' => $nombre,
+                'activo' => true,
+            ]);
+            $this->post('/login', ['login' => $usuario, 'password' => 'secreto123'])
+                ->assertRedirect('/panel');
+            $this->post('/logout')->assertRedirect('/');
+        }
     }
 }

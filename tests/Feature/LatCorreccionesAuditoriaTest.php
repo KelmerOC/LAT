@@ -32,7 +32,7 @@ class LatCorreccionesAuditoriaTest extends TestCase
 
     public function test_adelantos_pagados_no_se_descuentan_dos_veces_y_arrastran_solo_saldo_pendiente(): void
     {
-        $admin = User::where('usuario', 'donjusto')->firstOrFail();
+        $admin = User::where('usuario', 'rodrigo')->firstOrFail();
         $planta = Planta::findOrFail($admin->planta_id);
         $prov = Proveedor::create([
             'planta_id' => $planta->id,
@@ -187,8 +187,8 @@ class LatCorreccionesAuditoriaTest extends TestCase
 
     public function test_acopio_vinculado_a_lote_bloquea_edicion_y_borrado_y_cierra_bypass_de_calidad(): void
     {
-        $recolector = User::where('usuario', 'mateo.ruta')->firstOrFail();
-        $operador = User::where('usuario', 'carlos.anta')->firstOrFail();
+        $recolector = User::where('usuario', 'javier.ruta')->firstOrFail();
+        $operador = User::where('usuario', 'andres.anta')->firstOrFail();
         $prov = Proveedor::where('planta_id', $recolector->planta_id)->firstOrFail();
         $prov2 = Proveedor::where('planta_id', $recolector->planta_id)->where('id', '!=', $prov->id)->firstOrFail();
         $tinaLibre = Tina::where('planta_id', $recolector->planta_id)->where('codigo', 'TINA-03')->firstOrFail();
@@ -254,7 +254,7 @@ class LatCorreccionesAuditoriaTest extends TestCase
 
     public function test_temperatura_se_guarda_en_lote_con_litros_decimales_y_formulario_separado(): void
     {
-        $operador = User::where('usuario', 'carlos.anta')->firstOrFail();
+        $operador = User::where('usuario', 'andres.anta')->firstOrFail();
         $tinaLibre = Tina::where('planta_id', $operador->planta_id)->where('codigo', 'TINA-03')->firstOrFail();
         $prov = Proveedor::where('planta_id', $operador->planta_id)->firstOrFail();
 
@@ -305,9 +305,9 @@ class LatCorreccionesAuditoriaTest extends TestCase
 
     public function test_descartar_conserva_ficha_excluye_de_tinas_y_liquidacion_paga_solo_evaluada_aprovechable(): void
     {
-        $evaluador = User::where('usuario', 'sabina.tina')->firstOrFail();
-        $admin = User::where('usuario', 'donjusto')->firstOrFail();
-        $operador = User::where('usuario', 'carlos.anta')->firstOrFail();
+        $evaluador = User::where('usuario', 'valeria.tina')->firstOrFail();
+        $admin = User::where('usuario', 'rodrigo')->firstOrFail();
+        $operador = User::where('usuario', 'andres.anta')->firstOrFail();
         $planta = Planta::findOrFail($evaluador->planta_id);
         $tinaLibre = Tina::where('planta_id', $planta->id)->where('codigo', 'TINA-03')->firstOrFail();
         $prov = Proveedor::create([
@@ -405,7 +405,7 @@ class LatCorreccionesAuditoriaTest extends TestCase
 
     public function test_tinas_css_oculta_hidden_y_modal_muestra_recibida_evaluada_y_aviso_fuera_de_filtro(): void
     {
-        $operador = User::where('usuario', 'carlos.anta')->firstOrFail();
+        $operador = User::where('usuario', 'andres.anta')->firstOrFail();
 
         $css = file_get_contents(public_path('css/lat-dashboard.css'));
         $this->assertIsString($css);
@@ -422,9 +422,9 @@ class LatCorreccionesAuditoriaTest extends TestCase
 
     public function test_calidad_busca_pendientes_de_otros_dias_sin_depender_del_filtro_de_acopio(): void
     {
-        $controlTina = User::where('usuario', 'sabina.tina')->firstOrFail();
-        $recolector = User::where('usuario', 'mateo.ruta')->firstOrFail();
-        $encargado = User::where('usuario', 'carlos.anta')->firstOrFail();
+        $controlTina = User::where('usuario', 'valeria.tina')->firstOrFail();
+        $recolector = User::where('usuario', 'javier.ruta')->firstOrFail();
+        $encargado = User::where('usuario', 'andres.anta')->firstOrFail();
         $prov = Proveedor::where('planta_id', $controlTina->planta_id)->firstOrFail();
 
         $ayer = Carbon::yesterday()->toDateString();
@@ -465,7 +465,7 @@ class LatCorreccionesAuditoriaTest extends TestCase
 
     public function test_boton_de_acopio_dice_registrar_entrega_en_vista_y_traducciones(): void
     {
-        $recolector = User::where('usuario', 'mateo.ruta')->firstOrFail();
+        $recolector = User::where('usuario', 'javier.ruta')->firstOrFail();
 
         $res = $this->actingAs($recolector)->get('/panel');
         $res->assertOk();
@@ -481,7 +481,7 @@ class LatCorreccionesAuditoriaTest extends TestCase
 
     public function test_excel_ventas_y_sueldos_respeta_monto_real_y_sueldo_personal_cuenta_en_gastos(): void
     {
-        $admin = User::where('usuario', 'donjusto')->firstOrFail();
+        $admin = User::where('usuario', 'rodrigo')->firstOrFail();
         $plantaId = $admin->planta_id;
         $hoy = Carbon::today()->toDateString();
 
@@ -557,7 +557,7 @@ class LatCorreccionesAuditoriaTest extends TestCase
 
     public function test_tina_normaliza_tipos_preestablecidos_y_conserva_texto_libre(): void
     {
-        $admin = User::where('usuario', 'donjusto')->firstOrFail();
+        $admin = User::where('usuario', 'rodrigo')->firstOrFail();
 
         $this->actingAs($admin)
             ->withSession(['admin_modo_operativo' => true])
@@ -603,7 +603,7 @@ class LatCorreccionesAuditoriaTest extends TestCase
 
     public function test_finanzas_usa_step_centavos_y_offline_implementa_chunks_y_limpieza_cache(): void
     {
-        $admin = User::where('usuario', 'donjusto')->firstOrFail();
+        $admin = User::where('usuario', 'rodrigo')->firstOrFail();
         $html = $this->actingAs($admin)->get('/panel')->assertOk()->getContent();
 
         $this->assertStringContainsString('id="nv-total" name="monto" class="input-lat js-venta-total" min="0.5" max="1000000" step="0.01"', $html);
@@ -626,9 +626,9 @@ class LatCorreccionesAuditoriaTest extends TestCase
     {
         Storage::fake('local');
 
-        $admin = User::where('usuario', 'donjusto')->firstOrFail();
-        $contador = User::where('usuario', 'contador.marco')->firstOrFail();
-        $recolector = User::where('usuario', 'mateo.ruta')->firstOrFail();
+        $admin = User::where('usuario', 'rodrigo')->firstOrFail();
+        $contador = User::where('usuario', 'contador.ricardo')->firstOrFail();
+        $recolector = User::where('usuario', 'javier.ruta')->firstOrFail();
 
         // Desactivar y reactivar recolector sin enviar permisos
         $recolector->update(['activo' => false]);

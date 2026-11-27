@@ -28,7 +28,7 @@ class LatSeguridadOwaspTest extends TestCase
     public function test_owasp_a01_registro_publico_no_puede_escalar_a_otras_plantas_ni_editar_usuarios_ajenos(): void
     {
         $planta1 = Planta::where('codigo', 'PLT-01')->firstOrFail();
-        $adminP1 = User::where('usuario', 'donjusto')->firstOrFail();
+        $adminP1 = User::where('usuario', 'rodrigo')->firstOrFail();
 
         $this->post('/registrarse', [
             'name' => 'Dueño Planta Nueva',
@@ -69,7 +69,7 @@ class LatSeguridadOwaspTest extends TestCase
     public function test_owasp_a01_idor_cruzado_entre_plantas_es_bloqueado_en_todas_las_rutas(): void
     {
         $planta2 = Planta::where('codigo', 'PLT-02')->firstOrFail();
-        $encargadoP1 = User::where('usuario', 'carlos.anta')->firstOrFail();
+        $encargadoP1 = User::where('usuario', 'andres.anta')->firstOrFail();
 
         $provP2 = Proveedor::where('planta_id', $planta2->id)->firstOrFail();
         $acopioP2 = Acopio::where('planta_id', $planta2->id)->firstOrFail();
@@ -99,7 +99,7 @@ class LatSeguridadOwaspTest extends TestCase
         // No puede descargar reporte Excel de otra planta
         Storage::fake('local');
         Storage::disk('local')->put('reportes_excel/p2.xlsx', 'fake');
-        $adminP1 = User::where('usuario', 'donjusto')->firstOrFail();
+        $adminP1 = User::where('usuario', 'rodrigo')->firstOrFail();
         $repP2 = ReporteExcel::create([
             'planta_id' => $planta2->id,
             'remitente_id' => $adminP1->id,
@@ -125,8 +125,8 @@ class LatSeguridadOwaspTest extends TestCase
 
     public function test_owasp_a03_sql_injection_xss_y_excel_formula_injection(): void
     {
-        $encargado = User::where('usuario', 'carlos.anta')->firstOrFail();
-        $admin = User::where('usuario', 'donjusto')->firstOrFail();
+        $encargado = User::where('usuario', 'andres.anta')->firstOrFail();
+        $admin = User::where('usuario', 'rodrigo')->firstOrFail();
 
         // 1. SQL Injection en login y en filtros de acopio
         $this->post('/login', [
@@ -178,14 +178,14 @@ class LatSeguridadOwaspTest extends TestCase
     {
         for ($i = 0; $i < 5; $i++) {
             $this->post('/login', [
-                'login' => 'donjusto',
+                'login' => 'rodrigo',
                 'password' => 'clave-incorrecta',
             ])->assertSessionHasErrors('login');
         }
 
         // El 6.º intento debe quedar bloqueado por el rate limiter
         $resBloqueo = $this->post('/login', [
-            'login' => 'donjusto',
+            'login' => 'rodrigo',
             'password' => 'secreto123',
         ]);
         $resBloqueo->assertSessionHasErrors('login');

@@ -29,8 +29,8 @@ class LatFlujoTinasNotificacionesTest extends TestCase
 
     public function test_recolector_ruta_tiene_acopio_editar_y_puede_editar_y_eliminar_acopios(): void
     {
-        $recolector = User::where('usuario', 'mateo.ruta')->firstOrFail();
-        $sinEditar = User::where('usuario', 'sabina.tina')->firstOrFail();
+        $recolector = User::where('usuario', 'javier.ruta')->firstOrFail();
+        $sinEditar = User::where('usuario', 'valeria.tina')->firstOrFail();
         $prov = Proveedor::where('planta_id', $recolector->planta_id)->firstOrFail();
         $acopio = Acopio::create([
             'planta_id' => $recolector->planta_id,
@@ -85,8 +85,8 @@ class LatFlujoTinasNotificacionesTest extends TestCase
 
     public function test_acopio_manual_y_sync_guardan_calidad_y_destino_pendiente_y_se_reflejan_en_panel(): void
     {
-        $recolector = User::where('usuario', 'mateo.ruta')->firstOrFail();
-        $admin = User::where('usuario', 'donjusto')->firstOrFail();
+        $recolector = User::where('usuario', 'javier.ruta')->firstOrFail();
+        $admin = User::where('usuario', 'rodrigo')->firstOrFail();
         $prov = Proveedor::where('planta_id', $recolector->planta_id)->where('codigo', 'PRV-01')->firstOrFail();
         $uuidManual = (string) Str::uuid();
         $uuidSync = (string) Str::uuid();
@@ -142,8 +142,8 @@ class LatFlujoTinasNotificacionesTest extends TestCase
     public function test_calidad_sanitaria_tres_acciones_actualizan_y_emiten_notificaciones_a_tinas(): void
     {
         $this->travelTo(Carbon::today()->setTime(10, 0, 0));
-        $evaluador = User::where('usuario', 'sabina.tina')->firstOrFail();
-        $recolector = User::where('usuario', 'mateo.ruta')->firstOrFail();
+        $evaluador = User::where('usuario', 'valeria.tina')->firstOrFail();
+        $recolector = User::where('usuario', 'javier.ruta')->firstOrFail();
         $prov = Proveedor::where('planta_id', $evaluador->planta_id)->where('codigo', 'PRV-01')->firstOrFail();
 
         $crearPendiente = fn (float $litros): Acopio => Acopio::create([
@@ -235,7 +235,7 @@ class LatFlujoTinasNotificacionesTest extends TestCase
     #[TestWith(['descartada'])]
     public function test_calidad_sanitaria_bloquea_reclasificar_o_descartar_acopio_ya_asignado_a_lote(string $accion): void
     {
-        $evaluador = User::where('usuario', 'sabina.tina')->firstOrFail();
+        $evaluador = User::where('usuario', 'valeria.tina')->firstOrFail();
         $prov = Proveedor::where('planta_id', $evaluador->planta_id)->firstOrFail();
         $tina = Tina::where('planta_id', $evaluador->planta_id)->where('codigo', 'TINA-03')->firstOrFail();
 
@@ -286,7 +286,7 @@ class LatFlujoTinasNotificacionesTest extends TestCase
     public function test_iniciar_lote_con_multiples_acopios_suma_litros_enlaza_acopios_y_guarda_receta_manual(): void
     {
         $this->travelTo(Carbon::today()->setTime(10, 15, 0));
-        $operador = User::where('usuario', 'carlos.anta')->firstOrFail();
+        $operador = User::where('usuario', 'andres.anta')->firstOrFail();
         $tinaLibre = Tina::where('planta_id', $operador->planta_id)->where('codigo', 'TINA-03')->firstOrFail();
         $prov = Proveedor::where('planta_id', $operador->planta_id)->firstOrFail();
 
@@ -352,7 +352,7 @@ class LatFlujoTinasNotificacionesTest extends TestCase
 
     public function test_iniciar_lote_rechaza_acopios_vacios(): void
     {
-        $operador = User::where('usuario', 'carlos.anta')->firstOrFail();
+        $operador = User::where('usuario', 'andres.anta')->firstOrFail();
         $tinaLibre = Tina::where('planta_id', $operador->planta_id)->where('codigo', 'TINA-03')->firstOrFail();
 
         $res = $this->actingAs($operador)->post("/panel/tinas/{$tinaLibre->id}/lote", [
@@ -366,7 +366,7 @@ class LatFlujoTinasNotificacionesTest extends TestCase
 
     public function test_iniciar_lote_rechaza_acopio_pendiente(): void
     {
-        $operador = User::where('usuario', 'carlos.anta')->firstOrFail();
+        $operador = User::where('usuario', 'andres.anta')->firstOrFail();
         $tinaLibre = Tina::where('planta_id', $operador->planta_id)->where('codigo', 'TINA-03')->firstOrFail();
         $prov = Proveedor::where('planta_id', $operador->planta_id)->firstOrFail();
 
@@ -397,7 +397,7 @@ class LatFlujoTinasNotificacionesTest extends TestCase
 
     public function test_iniciar_lote_rechaza_acopio_ya_usado_en_otro_lote(): void
     {
-        $operador = User::where('usuario', 'carlos.anta')->firstOrFail();
+        $operador = User::where('usuario', 'andres.anta')->firstOrFail();
         $tinaLibre = Tina::where('planta_id', $operador->planta_id)->where('codigo', 'TINA-03')->firstOrFail();
         $loteExistente = Lote::where('planta_id', $operador->planta_id)->enProceso()->firstOrFail();
         $prov = Proveedor::where('planta_id', $operador->planta_id)->firstOrFail();
@@ -431,7 +431,7 @@ class LatFlujoTinasNotificacionesTest extends TestCase
 
     public function test_iniciar_lote_rechaza_acopio_de_otra_planta(): void
     {
-        $operador = User::where('usuario', 'carlos.anta')->firstOrFail();
+        $operador = User::where('usuario', 'andres.anta')->firstOrFail();
         $tinaLibre = Tina::where('planta_id', $operador->planta_id)->where('codigo', 'TINA-03')->firstOrFail();
         $plantaVecina = Planta::where('codigo', 'PLT-02')->firstOrFail();
         $acopioVecino = Acopio::where('planta_id', $plantaVecina->id)->where('calidad', 'buena')->firstOrFail();
@@ -449,7 +449,7 @@ class LatFlujoTinasNotificacionesTest extends TestCase
 
     public function test_iniciar_lote_rechaza_suma_que_supera_capacidad_de_tina(): void
     {
-        $operador = User::where('usuario', 'carlos.anta')->firstOrFail();
+        $operador = User::where('usuario', 'andres.anta')->firstOrFail();
         $tinaLibre = Tina::where('planta_id', $operador->planta_id)->where('codigo', 'TINA-03')->firstOrFail();
         $prov = Proveedor::where('planta_id', $operador->planta_id)->firstOrFail();
 
@@ -496,7 +496,7 @@ class LatFlujoTinasNotificacionesTest extends TestCase
     public function test_actualizar_solo_temperatura_preserva_receta_manual_y_temporizador_y_editar_receta_reinicia_cronometro(): void
     {
         $this->travelTo(Carbon::today()->setTime(10, 30, 0));
-        $operador = User::where('usuario', 'carlos.anta')->firstOrFail();
+        $operador = User::where('usuario', 'andres.anta')->firstOrFail();
         $tinaLibre = Tina::where('planta_id', $operador->planta_id)->where('codigo', 'TINA-03')->firstOrFail();
         $inicioOriginal = Carbon::now()->subMinutes(15);
 
@@ -554,8 +554,8 @@ class LatFlujoTinasNotificacionesTest extends TestCase
 
     public function test_finalizar_lote_emite_notificacion_devuelta_por_poll_y_marcable_como_leida(): void
     {
-        $operador = User::where('usuario', 'carlos.anta')->firstOrFail();
-        $receptor = User::where('usuario', 'sabina.tina')->firstOrFail();
+        $operador = User::where('usuario', 'andres.anta')->firstOrFail();
+        $receptor = User::where('usuario', 'valeria.tina')->firstOrFail();
         $lote = Lote::with('tina')
             ->where('planta_id', $operador->planta_id)
             ->enProceso()
@@ -626,7 +626,7 @@ class LatFlujoTinasNotificacionesTest extends TestCase
     public function test_cronometro_vencido_dispara_notificacion_una_sola_vez_de_forma_idempotente(): void
     {
         $this->freezeTime();
-        $operador = User::where('usuario', 'carlos.anta')->firstOrFail();
+        $operador = User::where('usuario', 'andres.anta')->firstOrFail();
         $tinaLibre = Tina::where('planta_id', $operador->planta_id)->where('codigo', 'TINA-03')->firstOrFail();
 
         $lote = Lote::create([
@@ -660,8 +660,8 @@ class LatFlujoTinasNotificacionesTest extends TestCase
 
     public function test_personalizar_recetas_base_persiste_en_planta_y_rechaza_usuarios_sin_permiso(): void
     {
-        $admin = User::where('usuario', 'donjusto')->firstOrFail();
-        $sinPermiso = User::where('usuario', 'sabina.tina')->firstOrFail();
+        $admin = User::where('usuario', 'rodrigo')->firstOrFail();
+        $sinPermiso = User::where('usuario', 'valeria.tina')->firstOrFail();
 
         $payload = [
             'recetas' => [
@@ -705,7 +705,7 @@ class LatFlujoTinasNotificacionesTest extends TestCase
         $this->assertSame(7.5, $recetas['quesillo']['litros_x_molde']);
 
         // Verificar que la dosificación usa la nueva receta base al iniciar un lote sin sobreescribir insumos
-        $operador = User::where('usuario', 'carlos.anta')->firstOrFail();
+        $operador = User::where('usuario', 'andres.anta')->firstOrFail();
         $tinaLibre = Tina::where('planta_id', $operador->planta_id)->where('codigo', 'TINA-03')->firstOrFail();
         $prov = Proveedor::where('planta_id', $operador->planta_id)->firstOrFail();
         $ac = Acopio::create([
@@ -737,7 +737,7 @@ class LatFlujoTinasNotificacionesTest extends TestCase
 
     public function test_tina_con_tipo_texto_libre_persiste_y_renderiza_sin_fuga_de_clave_i18n(): void
     {
-        $admin = User::where('usuario', 'donjusto')->firstOrFail();
+        $admin = User::where('usuario', 'rodrigo')->firstOrFail();
 
         $this->actingAs($admin)
             ->withSession(['admin_modo_operativo' => true])
@@ -767,7 +767,7 @@ class LatFlujoTinasNotificacionesTest extends TestCase
     #[TestWith(['qu', '11', 'TINA-11'])]
     public function test_prefijo_tina_usa_vat_en_ingles_y_tina_en_espanol_y_quechua(string $locale, string $sufijo, string $codigoEsperado): void
     {
-        $admin = User::where('usuario', 'donjusto')->firstOrFail();
+        $admin = User::where('usuario', 'rodrigo')->firstOrFail();
 
         $this->actingAs($admin)
             ->withSession(['admin_modo_operativo' => true])

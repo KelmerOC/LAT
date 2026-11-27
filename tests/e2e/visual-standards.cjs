@@ -128,7 +128,32 @@ async function checkVisibleFormLabels(page) {
 
     await page.screenshot({ path: path.join(OUT, `${nombre}_login.png`), fullPage: false });
 
-    // Ingresar al panel como donjusto
+    if (nombre === 'desktop') {
+      const perfilesEsperados = ['rodrigo@sanborreal.pe', 'andres.anta', 'valeria.tina', 'contador.ricardo', 'javier.ruta'];
+      const botonesCount = await page.locator('.perfil-btn').count();
+      check(`${nombre} /login tiene exactamente 5 accesos rápidos profesionales`, botonesCount === 5, `count=${botonesCount}`);
+
+      for (const usr of perfilesEsperados) {
+        await page.click(`.perfil-btn[data-usuario="${usr}"]`);
+        const vals = await page.evaluate(() => ({
+          login: document.getElementById('login').value,
+          pass: document.getElementById('password').value,
+        }));
+        check(`${nombre} /login perfil ${usr} rellena credenciales`, vals.login === usr && vals.pass === 'secreto123', JSON.stringify(vals));
+        await Promise.all([
+          page.waitForURL('**/panel**'),
+          page.click('button[type=submit].btn-ember'),
+        ]);
+        await page.waitForLoadState('networkidle');
+        check(`${nombre} /login perfil ${usr} accede a /panel`, page.url().includes('/panel'), page.url());
+        await page.click('form.js-logout-form button[type="submit"]');
+        await page.waitForLoadState('networkidle');
+        await page.goto(BASE + '/login', { waitUntil: 'networkidle' });
+      }
+      await page.click('.perfil-btn[data-usuario="rodrigo@sanborreal.pe"]');
+    }
+
+    // Ingresar al panel como rodrigo
     await Promise.all([
       page.waitForURL('**/panel**'),
       page.click('button[type=submit].btn-ember'),
@@ -741,7 +766,7 @@ async function checkVisibleFormLabels(page) {
     check(`${nombre} sin errores JS ni de consola`, errores.length === 0, errores.join(' | '));
     await ctx.close();
 
-    // 7. Verificar controles operativos de acopio.crear (#btn-voz, .botonera, dictado qu) y start_batch con carlos.anta
+    // 7. Verificar controles operativos de acopio.crear (#btn-voz, .botonera, dictado qu) y start_batch con andres.anta
     const ctxOp = await browser.newContext({ viewport: vp });
     const pageOp = await ctxOp.newPage();
     const erroresOp = [];
@@ -752,7 +777,7 @@ async function checkVisibleFormLabels(page) {
       }
     });
     await pageOp.goto(BASE + '/login', { waitUntil: 'networkidle' });
-    await pageOp.click('.perfil-btn[data-usuario="carlos.anta"]');
+    await pageOp.click('.perfil-btn[data-usuario="andres.anta"]');
     await Promise.all([
       pageOp.waitForURL('**/panel**'),
       pageOp.click('button[type=submit].btn-ember'),
@@ -778,8 +803,8 @@ async function checkVisibleFormLabels(page) {
         teclaCount: teclas.length,
       };
     });
-    check(`${nombre} /panel [carlos.anta] #btn-voz altura >= 48px`, opAcopioHeights.vozHeight >= 48, `${opAcopioHeights.vozHeight}px`);
-    check(`${nombre} /panel [carlos.anta] .botonera button altura >= 48px`,
+    check(`${nombre} /panel [andres.anta] #btn-voz altura >= 48px`, opAcopioHeights.vozHeight >= 48, `${opAcopioHeights.vozHeight}px`);
+    check(`${nombre} /panel [andres.anta] .botonera button altura >= 48px`,
       opAcopioHeights.teclaCount > 0 && opAcopioHeights.teclaMinHeight >= 48,
       `${opAcopioHeights.teclaMinHeight}px`);
 
@@ -802,23 +827,23 @@ async function checkVisibleFormLabels(page) {
         transcripcion: document.getElementById('transcripcion-voz')?.textContent?.trim() || '',
       };
     });
-    check(`${nombre} /panel [carlos.anta][qu] dictado "kimsa chunka pichqayuq litru" -> 35 L`,
+    check(`${nombre} /panel [andres.anta][qu] dictado "kimsa chunka pichqayuq litru" -> 35 L`,
       vozQuResult.litros === '35' && vozQuResult.metodo === 'voz' && vozQuResult.transcripcion.includes('Uyarisqa'),
       JSON.stringify(vozQuResult));
 
     await navToOpSection('sec-tina');
 
     const openIniciarBtn = await pageOp.$('#sec-tina .js-open-iniciar-tina');
-    check(`${nombre} /panel [carlos.anta] tina libre tiene botón .js-open-iniciar-tina`, !!openIniciarBtn);
+    check(`${nombre} /panel [andres.anta] tina libre tiene botón .js-open-iniciar-tina`, !!openIniciarBtn);
     if (openIniciarBtn) {
       await openIniciarBtn.click();
       await pageOp.waitForTimeout(150);
 
       const iniciarOpen = await pageOp.$eval('#modal-iniciar-tina', el => !el.hidden);
-      check(`${nombre} /panel [carlos.anta] click .js-open-iniciar-tina abre #modal-iniciar-tina`, iniciarOpen);
+      check(`${nombre} /panel [andres.anta] click .js-open-iniciar-tina abre #modal-iniciar-tina`, iniciarOpen);
 
       const sinLabelIniciar = await checkVisibleFormLabels(pageOp);
-      check(`${nombre} /panel [carlos.anta] #modal-iniciar-tina campos visibles con label accesible`,
+      check(`${nombre} /panel [andres.anta] #modal-iniciar-tina campos visibles con label accesible`,
         sinLabelIniciar.length === 0,
         sinLabelIniciar.join(', '));
 
@@ -844,7 +869,7 @@ async function checkVisibleFormLabels(page) {
           resumenTxt: document.getElementById('it-litros-resumen')?.textContent?.trim() || '',
         };
       });
-      check(`${nombre} /panel [carlos.anta] seleccionar múltiples .js-it-acopio-cb actualiza #it-litros-total en vivo`,
+      check(`${nombre} /panel [andres.anta] seleccionar múltiples .js-it-acopio-cb actualiza #it-litros-total en vivo`,
         seleccion.count >= 2
           && Math.abs(seleccion.litrosTotalVal - seleccion.expectedSum) < 0.05
           && seleccion.resumenTxt.includes(seleccion.expectedSum.toFixed(1)),
@@ -860,7 +885,7 @@ async function checkVisibleFormLabels(page) {
         confirmOpen: !document.getElementById('modal-confirmacion-lat')?.hidden,
         msg: document.getElementById('confirm-modal-message')?.textContent?.trim() || '',
       }));
-      check(`${nombre} /panel [carlos.anta] enviar #form-iniciar-tina abre #modal-confirmacion-lat con código de tina`,
+      check(`${nombre} /panel [andres.anta] enviar #form-iniciar-tina abre #modal-confirmacion-lat con código de tina`,
         startBatchModal.iniciarStillOpen && startBatchModal.confirmOpen && startBatchModal.msg.includes('TINA-') && startBatchModal.msg.includes('60 min'),
         JSON.stringify(startBatchModal));
 
@@ -870,16 +895,16 @@ async function checkVisibleFormLabels(page) {
         confirmClosed: !!document.getElementById('modal-confirmacion-lat')?.hidden,
         iniciarStillOpen: !document.getElementById('modal-iniciar-tina')?.hidden,
       }));
-      check(`${nombre} /panel [carlos.anta] primer Escape cierra solo #modal-confirmacion-lat`,
+      check(`${nombre} /panel [andres.anta] primer Escape cierra solo #modal-confirmacion-lat`,
         afterFirstEsc.confirmClosed && afterFirstEsc.iniciarStillOpen,
         JSON.stringify(afterFirstEsc));
 
       await pageOp.keyboard.press('Escape');
       await pageOp.waitForTimeout(150);
       const iniciarClosedAfterSecondEsc = await pageOp.$eval('#modal-iniciar-tina', el => el.hidden);
-      check(`${nombre} /panel [carlos.anta] segundo Escape cierra #modal-iniciar-tina`, iniciarClosedAfterSecondEsc);
+      check(`${nombre} /panel [andres.anta] segundo Escape cierra #modal-iniciar-tina`, iniciarClosedAfterSecondEsc);
     }
-    check(`${nombre} [carlos.anta] sin errores JS ni de consola`, erroresOp.length === 0, erroresOp.join(' | '));
+    check(`${nombre} [andres.anta] sin errores JS ni de consola`, erroresOp.length === 0, erroresOp.join(' | '));
     await ctxOp.close();
   }
 

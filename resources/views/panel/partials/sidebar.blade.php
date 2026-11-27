@@ -75,7 +75,7 @@
 
   <div class="dash-sidebar-foot">
     <div class="dash-user-mini">
-      <div class="dash-user-avatar" aria-hidden="true">{{ strtoupper(substr($usuario->name, 0, 2)) }}</div>
+      <div class="dash-user-avatar" aria-hidden="true">{{ mb_strtoupper(mb_substr($usuario->name, 0, 2, 'UTF-8'), 'UTF-8') }}</div>
       <div class="dash-user-meta">
         <strong>{{ $usuario->name }}</strong>
         <span><span data-i18n="m6.role_{{ $usuario->cargo }}">{{ $usuario->etiquetaCargo() }}</span> · <span data-i18n="m6.rank_{{ $usuario->rango }}">{{ $usuario->etiquetaRango() }}</span></span>

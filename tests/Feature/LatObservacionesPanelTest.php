@@ -27,7 +27,7 @@ class LatObservacionesPanelTest extends TestCase
 
     public function test_acopio_por_voz_flashea_aviso_y_renderiza_controles_de_edicion_y_eliminacion(): void
     {
-        $encargado = User::where('usuario', 'carlos.anta')->firstOrFail();
+        $encargado = User::where('usuario', 'andres.anta')->firstOrFail();
         $prov = Proveedor::where('planta_id', $encargado->planta_id)
             ->where('codigo', 'PRV-01')
             ->firstOrFail();
@@ -79,7 +79,7 @@ class LatObservacionesPanelTest extends TestCase
 
     public function test_acopio_manual_no_flashea_aviso_voz_y_usuario_sin_editar_no_ve_acciones_en_aviso(): void
     {
-        $recolector = User::where('usuario', 'mateo.ruta')->firstOrFail();
+        $recolector = User::where('usuario', 'javier.ruta')->firstOrFail();
         $prov = Proveedor::where('planta_id', $recolector->planta_id)
             ->where('codigo', 'PRV-01')
             ->firstOrFail();
@@ -170,7 +170,7 @@ class LatObservacionesPanelTest extends TestCase
 
     public function test_editar_acopio_actualiza_preserva_y_limpia_frase_dictada_y_renderiza_confirmacion(): void
     {
-        $encargado = User::where('usuario', 'carlos.anta')->firstOrFail();
+        $encargado = User::where('usuario', 'andres.anta')->firstOrFail();
         $prov = Proveedor::where('planta_id', $encargado->planta_id)
             ->where('codigo', 'PRV-01')
             ->firstOrFail();
@@ -232,7 +232,7 @@ class LatObservacionesPanelTest extends TestCase
 
     public function test_aviso_calidad_tinas_calcula_litros_de_hoy_incluso_con_filtros_de_acopio_activos(): void
     {
-        $encargado = User::where('usuario', 'carlos.anta')->firstOrFail();
+        $encargado = User::where('usuario', 'andres.anta')->firstOrFail();
         $prov = Proveedor::where('planta_id', $encargado->planta_id)
             ->where('codigo', 'PRV-01')
             ->firstOrFail();
@@ -278,8 +278,8 @@ class LatObservacionesPanelTest extends TestCase
 
     public function test_tina_libre_renderiza_confirmacion_iniciar_lote_solo_para_quien_opera(): void
     {
-        $operador = User::where('usuario', 'carlos.anta')->firstOrFail();
-        $admin = User::where('usuario', 'donjusto')->firstOrFail();
+        $operador = User::where('usuario', 'andres.anta')->firstOrFail();
+        $admin = User::where('usuario', 'rodrigo')->firstOrFail();
         $tinaLibre = Tina::where('planta_id', $operador->planta_id)
             ->where('codigo', 'TINA-03')
             ->firstOrFail();
@@ -306,7 +306,7 @@ class LatObservacionesPanelTest extends TestCase
     #[TestWith(['qu'])]
     public function test_eliminar_tina_activa_bloquea_con_mensaje_localizado_y_tina_libre_se_elimina(string $locale): void
     {
-        $admin = User::where('usuario', 'donjusto')->firstOrFail();
+        $admin = User::where('usuario', 'rodrigo')->firstOrFail();
         $tinaActiva = Tina::where('planta_id', $admin->planta_id)
             ->whereHas('loteActivo')
             ->firstOrFail();
@@ -354,7 +354,7 @@ class LatObservacionesPanelTest extends TestCase
     #[DataProvider('codigosTinaValidosProvider')]
     public function test_crear_y_editar_tina_normaliza_prefijo_tina(string $inputCodigo, string $codigoEsperado): void
     {
-        $admin = User::where('usuario', 'donjusto')->firstOrFail();
+        $admin = User::where('usuario', 'rodrigo')->firstOrFail();
 
         $resCrear = $this->actingAs($admin)
             ->withSession(['admin_modo_operativo' => true])
@@ -400,7 +400,7 @@ class LatObservacionesPanelTest extends TestCase
     #[DataProvider('codigosTinaInvalidosProvider')]
     public function test_crear_y_editar_tina_rechaza_codigo_invalido_con_prefijo_tina(string $inputInvalido): void
     {
-        $admin = User::where('usuario', 'donjusto')->firstOrFail();
+        $admin = User::where('usuario', 'rodrigo')->firstOrFail();
         $tinaExistente = Tina::where('planta_id', $admin->planta_id)
             ->where('codigo', 'TINA-03')
             ->firstOrFail();
@@ -447,7 +447,7 @@ class LatObservacionesPanelTest extends TestCase
     #[DataProvider('codigosPlantaValidosProvider')]
     public function test_crear_y_editar_planta_normaliza_prefijo_plt(string $inputCodigo, string $codigoEsperado): void
     {
-        $admin = User::where('usuario', 'donjusto')->firstOrFail();
+        $admin = User::where('usuario', 'rodrigo')->firstOrFail();
 
         $resCrear = $this->actingAs($admin)->post('/panel/admin/plantas', [
             'codigo' => $inputCodigo,
@@ -488,7 +488,7 @@ class LatObservacionesPanelTest extends TestCase
     #[DataProvider('codigosPlantaInvalidosProvider')]
     public function test_crear_y_editar_planta_rechaza_codigo_invalido_con_prefijo_plt(string $inputInvalido): void
     {
-        $admin = User::where('usuario', 'donjusto')->firstOrFail();
+        $admin = User::where('usuario', 'rodrigo')->firstOrFail();
         $plantaExistente = Planta::where('codigo', 'PLT-02')->firstOrFail();
         $conteoInicial = Planta::count();
 
@@ -518,7 +518,7 @@ class LatObservacionesPanelTest extends TestCase
 
     public function test_panel_no_duplica_selector_de_idioma_en_topbar_y_preserva_selector_en_sidebar(): void
     {
-        $admin = User::where('usuario', 'donjusto')->firstOrFail();
+        $admin = User::where('usuario', 'rodrigo')->firstOrFail();
 
         $res = $this->actingAs($admin)->get('/panel');
 
