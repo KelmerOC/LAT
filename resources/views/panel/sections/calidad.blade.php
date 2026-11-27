@@ -36,38 +36,61 @@
                 <td>
                   @if($acopio->destino === 'quesillo_4_dias')
                     <span data-i18n="m2.dest_quesillo">Tina quesillo 4 días</span>
-                  @else
+                  @elseif($acopio->destino === 'queso_yogur')
                     <span data-i18n="m2.dest_main">Tina principal (queso / yogur)</span>
+                  @else
+                    <span data-i18n="m2.dest_pending">Pendiente de prueba</span>
+                  @endif
+                  @if($acopio->evaluado_en)
+                    <small class="num-tabular">{{ $acopio->evaluado_en->format('d/m H:i') }}</small>
                   @endif
                 </td>
                 @if($usuario->tienePermiso('calidad.evaluar'))
+                  @php $bloqueadoEnLote = $acopio->lote_id !== null; @endphp
                   <td>
-                    <div class="acciones-celda">
-                      <form method="POST" action="{{ route('panel.calidad', $acopio->id) }}"
-                        class="js-confirm-form"
-                        data-confirm-kind="calidad"
-                        data-nombre="{{ $acopio->proveedor->nombre }}"
-                        data-litros="{{ number_format($acopio->litros, 1) }}"
-                        data-estado-key="buena">
-                        @csrf
-                        <input type="hidden" name="calidad" value="buena">
-                        <button type="submit" class="btn btn-verde btn-compacto" aria-label="Aprobar leche de {{ $acopio->proveedor->nombre }}" data-i18n-aria="calidad.approve_aria">
-                          {!! $icoOk !!} <span data-i18n="m2.approve">Aprobar</span>
-                        </button>
-                      </form>
-                      <form method="POST" action="{{ route('panel.calidad', $acopio->id) }}"
-                        class="js-confirm-form"
-                        data-confirm-kind="calidad"
-                        data-nombre="{{ $acopio->proveedor->nombre }}"
-                        data-litros="{{ number_format($acopio->litros, 1) }}"
-                        data-estado-key="acida">
-                        @csrf
-                        <input type="hidden" name="calidad" value="acida">
-                        <button type="submit" class="btn btn-ember btn-compacto" aria-label="Desviar a quesillo la leche de {{ $acopio->proveedor->nombre }}" data-i18n-aria="calidad.divert_aria">
-                          {!! $icoAlerta !!} <span data-i18n="m2.divert">Desviar a quesillo</span>
-                        </button>
-                      </form>
-                    </div>
+                    @if($bloqueadoEnLote)
+                      <span class="chip chip-celeste" data-i18n="m2.used_in_batch">En proceso en tina</span>
+                    @else
+                      <div class="acciones-celda">
+                        <form method="POST" action="{{ route('panel.calidad', $acopio->id) }}"
+                          class="js-confirm-form"
+                          data-confirm-kind="calidad"
+                          data-nombre="{{ $acopio->proveedor->nombre }}"
+                          data-litros="{{ number_format($acopio->litros, 1) }}"
+                          data-estado-key="buena">
+                          @csrf
+                          <input type="hidden" name="calidad" value="buena">
+                          <button type="submit" class="btn btn-verde btn-compacto" aria-label="Aprobar leche de {{ $acopio->proveedor->nombre }}" data-i18n-aria="calidad.approve_aria">
+                            {!! $icoOk !!} <span data-i18n="m2.approve">Aprobar</span>
+                          </button>
+                        </form>
+                        <form method="POST" action="{{ route('panel.calidad', $acopio->id) }}"
+                          class="js-confirm-form"
+                          data-confirm-kind="calidad"
+                          data-nombre="{{ $acopio->proveedor->nombre }}"
+                          data-litros="{{ number_format($acopio->litros, 1) }}"
+                          data-estado-key="acida">
+                          @csrf
+                          <input type="hidden" name="calidad" value="acida">
+                          <button type="submit" class="btn btn-ember btn-compacto" aria-label="Desviar a quesillo la leche de {{ $acopio->proveedor->nombre }}" data-i18n-aria="calidad.divert_aria">
+                            {!! $icoAlerta !!} <span data-i18n="m2.divert">Desviar a quesillo</span>
+                          </button>
+                        </form>
+                        <form method="POST" action="{{ route('panel.calidad', $acopio->id) }}"
+                          class="js-confirm-form"
+                          data-confirm-kind="calidad"
+                          data-nombre="{{ $acopio->proveedor->nombre }}"
+                          data-litros="{{ number_format($acopio->litros, 1) }}"
+                          data-estado-key="descartada">
+                          @csrf
+                          <input type="hidden" name="calidad" value="descartada">
+                          <button type="submit" class="btn btn-rojo btn-compacto" aria-label="Descartar y eliminar leche de {{ $acopio->proveedor->nombre }}" data-i18n-aria="calidad.discard_aria">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                            <span data-i18n="m2.discard">Descartar</span>
+                          </button>
+                        </form>
+                      </div>
+                    @endif
                   </td>
                 @endif
               </tr>

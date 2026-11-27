@@ -129,7 +129,7 @@ class User extends Authenticatable
             'estadisticas.ver',
         ],
         'recolector_ruta' => [
-            'acopio.ver', 'acopio.crear', 'acopio.proveedores',
+            'acopio.ver', 'acopio.crear', 'acopio.editar', 'acopio.proveedores',
         ],
         'control_tina' => [
             'calidad.ver', 'calidad.evaluar',

@@ -58,6 +58,9 @@ Route::middleware('auth')->prefix('panel')->group(function (): void {
         ->name('panel.calidad');
 
     // Módulo 3: Múltiples Tinas y Lotes
+    Route::put('/tinas/recetas-base', [PanelController::class, 'actualizarRecetasBase'])
+        ->middleware('permiso:tinas.gestionar')
+        ->name('panel.tinas.recetas_base');
     Route::post('/tinas', [PanelController::class, 'crearTina'])
         ->middleware('permiso:tinas.gestionar')
         ->name('panel.tinas.store');
@@ -73,6 +76,12 @@ Route::middleware('auth')->prefix('panel')->group(function (): void {
     Route::post('/tina/{id}', [PanelController::class, 'actualizarTina'])
         ->middleware('permiso:tinas.operar')
         ->name('panel.tina');
+
+    // Notificaciones internas del panel
+    Route::get('/notificaciones/poll', [PanelController::class, 'consultarNotificaciones'])
+        ->name('panel.notificaciones.poll');
+    Route::post('/notificaciones/leer', [PanelController::class, 'marcarNotificacionesLeidas'])
+        ->name('panel.notificaciones.leer');
 
     // Módulo 4: Movimientos, Ventas y Proveedores
     Route::post('/movimiento', [PanelController::class, 'registrarMovimiento'])

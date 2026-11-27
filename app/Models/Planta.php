@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\TinaWorkflowService;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -26,12 +27,14 @@ class Planta extends Model
         'ubicacion',
         'precio_litro',
         'activa',
+        'recetas_base',
         'eliminado_por',
     ];
 
     protected $casts = [
         'precio_litro' => 'float',
         'activa' => 'boolean',
+        'recetas_base' => 'array',
         'deleted_at' => 'datetime',
     ];
 
@@ -78,6 +81,41 @@ class Planta extends Model
     public function qrAccesos(): HasMany
     {
         return $this->hasMany(QrAcceso::class);
+    }
+
+    public function notificacionesPanel(): HasMany
+    {
+        return $this->hasMany(NotificacionPanel::class);
+    }
+
+    /**
+     * Retorna las recetas base de la planta combinadas con los valores por defecto.
+     *
+     * @return array<string, array{cuajo_x_100l: float, sal_x_100l: float, cultivo_x_100l: float, litros_x_molde: float, temp_inicial: float, duracion_minutos: int}>
+     */
+    public function obtenerRecetasBase(): array
+    {
+        $defaults = TinaWorkflowService::recetasDefault();
+        $personalizadas = is_array($this->recetas_base) ? $this->recetas_base : [];
+        $resultado = [];
+
+        foreach ($defaults as $clave => $base) {
+            $override = isset($personalizadas[$clave]) && is_array($personalizadas[$clave])
+                ? $personalizadas[$clave]
+                : [];
+            $merged = array_merge($base, array_intersect_key($override, $base));
+
+            $resultado[$clave] = [
+                'cuajo_x_100l' => (float) $merged['cuajo_x_100l'],
+                'sal_x_100l' => (float) $merged['sal_x_100l'],
+                'cultivo_x_100l' => (float) $merged['cultivo_x_100l'],
+                'litros_x_molde' => max(0.5, (float) $merged['litros_x_molde']),
+                'temp_inicial' => (float) $merged['temp_inicial'],
+                'duracion_minutos' => max(1, (int) $merged['duracion_minutos']),
+            ];
+        }
+
+        return $resultado;
     }
 
     public function scopeActivas(Builder $query): Builder

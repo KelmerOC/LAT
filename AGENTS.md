@@ -156,3 +156,31 @@ This project has domain-specific skills available in `**/skills/**`. You MUST ac
 - Run `vendor/bin/phpunit` to call the test runner directly. It accepts the same file path and `--filter=testName` arguments.
 
 </laravel-boost-guidelines>
+
+---
+
+# LAT Compacto — Reglas Específicas del Proyecto
+
+## Arquitectura Frontend y Diseño (`DESIGN.md`)
+- **Activos estáticos en `public/`**: la aplicación carga directamente `public/css/lat-design-system.css`, `public/css/lat-dashboard.css`, `public/js/lat-i18n.js`, `public/js/lat-offline.js`, `public/js/lat-notificaciones.js`, `public/js/lat-qr.js` y `public/sw.js` (no usa `@vite` en las vistas activas).
+- **Sistema visual Swiss-Grid (`DESIGN.md`)**: mantener esquinas rectas (`border-radius: 0px` o `2px`), `box-shadow: none`, hairlines `1px solid var(--color-hairline)` y contraste accesible (`#c2410c` para botones primarios).
+- **Accesibilidad de formularios**: todo `<input>` (salvo `hidden`) y `<select>` visible DEBE tener un `<label for="...">` coincidente o envolvente (verificado por `tests/e2e/visual-standards.cjs`).
+- **Selector de idioma en Dashboard**: el selector `ES | QU | EN` vive únicamente en la barra lateral (`resources/views/panel/partials/sidebar.blade.php`, `.dash-lang-row`); no duplicarlo en la barra superior (`topbar.blade.php`).
+- **Paridad trilingüe (`es`, `qu`, `en`)**: toda etiqueta, aviso inline, mensaje de confirmación o flash debe existir simultáneamente en `public/js/lat-i18n.js` (`es`, `qu` Qusqu-Qullaw trivocálico, `en`) y en `lang/{es,qu,en}/lat.php`.
+
+## Reglas Operativas del Panel (`/panel`)
+- **Flujo obligatorio `1. Acopio → 2. Calidad Sanitaria → 3. Tinas`**:
+  - Todo acopio nuevo (`POST /panel/acopio` y `POST /panel/acopio/sync`) nace con `calidad = 'pendiente'` y `destino = 'pendiente'`.
+  - El rol `recolector_ruta` incluye `acopio.editar` para corregir o eliminar acopios con confirmación modal.
+  - Cuando Web Speech API reconoce productor y litros válidos (`1..5000`), `#form-acopio` se envía automáticamente (online con flash `acopio_voz_reciente`, offline vía `lat-offline.js`) mostrando `#aviso-acopio-voz`.
+  - Tanto editar (`#form-edit-acopio`, `data-confirm-kind="edit_acopio"`) como eliminar acopios requieren pasar por `#modal-confirmacion-lat` (`.modal-overlay-confirm` con `z-index: 1200`). Al pulsar `Escape` en modales apilados, primero se cierra únicamente el modal de confirmación.
+- **Control Sanitario (3 acciones con confirmación coloreada)**:
+  - `POST /panel/calidad/{id}` admite `buena` (aprobar), `acida` (desviar a quesillo) y `descartada` (eliminar por completo), guardando `evaluado_en` y emitiendo una notificación en `notificaciones_panel` hacia Tinas. Si `acopios.lote_id !== null`, se bloquea la reclasificación/descarte.
+  - En `#modal-confirmacion-lat`, `#confirm-modal-badge` muestra siempre un aviso en negrita coloreado (`.is-verde`, `.is-amarillo`, `.is-rojo`) antes de confirmar.
+- **Tinas trazables, recetas/cronómetro editables y notificaciones en vivo (`App\Services\TinaWorkflowService`)**:
+  - `#sec-tina` muestra `#aviso-calidad-tinas` (aviso inline permanente sobre leche disponible sin asignar) y un único modal reutilizable `#modal-iniciar-tina` (`data-confirm-kind="start_batch"`) con selección múltiple de `acopio_ids[]` clasificados (`lote_id IS NULL`), filtros por calidad/día/fecha/orden, recetas base configurables en `plantas.recetas_base` (`PUT /panel/tinas/recetas-base`), proporciones (`cuajo_ml`, `sal_kg`, `cultivo_g`) y cronómetro (`duracion_minutos`) editables al iniciar y durante el lote.
+  - `tinas.tipo` es `string(80)` (sugerencias en `<datalist>` + texto libre); el prefijo del código de tina sigue el idioma activo (`TINA-` en `es`/`qu`, `VAT-` en `en`) y el de plantas es siempre fijo `PLT-`.
+  - Al clasificar calidad, cumplirse el cronómetro (`alerta_fin_enviada`) o finalizar un lote, se registra en `notificaciones_panel`; `public/js/lat-notificaciones.js` actualiza la bandeja del topbar y despliega alertas en vivo vía polling (`GET /panel/notificaciones/poll`, `POST /panel/notificaciones/leer`).
+- **Service Worker (`public/sw.js`)**: nunca cachear endpoints dinámicos con efectos de sesión, descarga o polling (`exportar`, `reportes-excel`, `/acceso-qr`, `/idioma`, `/panel/notificaciones`). Al modificar assets estáticos o reglas de caché, incrementar `CACHE_VERSION`.
+- **Presupuesto de consultas y entorno local Windows**: mantener el techo N+1 de `GET /panel` en `<= 42` consultas (reutilizar colecciones ya cargadas como `$plantas`). En Windows donde `php.ini` no habilita SQLite por defecto, ejecutar PHPUnit con `php -d extension=pdo_sqlite -d extension=sqlite3 vendor/bin/phpunit`.
+

@@ -14,6 +14,7 @@ class Acopio extends Model
 {
     protected $fillable = [
         'planta_id',
+        'lote_id',
         'proveedor_id',
         'registrado_por',
         'uuid_offline',
@@ -25,17 +26,24 @@ class Acopio extends Model
         'frase_dictada',
         'calidad',
         'destino',
+        'evaluado_en',
     ];
 
     protected $casts = [
         'fecha' => 'date',
         'litros' => 'float',
         'precio_litro' => 'float',
+        'evaluado_en' => 'datetime',
     ];
 
     public function planta(): BelongsTo
     {
         return $this->belongsTo(Planta::class);
+    }
+
+    public function lote(): BelongsTo
+    {
+        return $this->belongsTo(Lote::class);
     }
 
     public function proveedor(): BelongsTo
@@ -81,5 +89,10 @@ class Acopio extends Model
     public function scopeDePlanta(Builder $query, int $plantaId): Builder
     {
         return $query->where('planta_id', $plantaId);
+    }
+
+    public function scopeDisponiblesParaTina(Builder $q): Builder
+    {
+        return $q->whereNull('lote_id')->whereIn('calidad', ['buena', 'acida']);
     }
 }

@@ -141,6 +141,8 @@
     const hora = `${String(ahora.getHours()).padStart(2, '0')}:${String(ahora.getMinutes()).padStart(2, '0')}:00`;
     const fechaDefault = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, '0')}-${String(ahora.getDate()).padStart(2, '0')}`;
     const provLabel = selectProv?.selectedOptions?.[0]?.textContent || 'Productor';
+    const esVoz = inputMetodo?.value === 'voz';
+    const frase = inputFrase?.value || '';
 
     const cola = leerCola();
     cola.push({
@@ -150,13 +152,36 @@
       litros: Number(litros.toFixed(2)),
       fecha: inputFecha?.value || fechaDefault,
       hora,
-      metodo: inputMetodo?.value === 'voz' ? 'voz' : 'manual',
-      frase_dictada: inputFrase?.value || null
+      metodo: esVoz ? 'voz' : 'manual',
+      frase_dictada: frase || null
     });
     guardarCola(cola);
 
     if (inputLitros) inputLitros.value = '';
     if (inputFrase) inputFrase.value = '';
+    if (inputMetodo) inputMetodo.value = 'manual';
+
+    if (esVoz) {
+      const aviso = document.getElementById('aviso-acopio-voz');
+      const avisoTitulo = document.getElementById('aviso-acopio-voz-titulo');
+      const avisoDetalle = document.getElementById('aviso-acopio-voz-detalle');
+      const avisoAcciones = document.getElementById('aviso-acopio-voz-acciones');
+      if (aviso) {
+        aviso.hidden = false;
+        if (avisoTitulo) {
+          avisoTitulo.setAttribute('data-i18n', 'm1.voice_auto_saved_offline');
+          avisoTitulo.textContent = window.LAT_I18N
+            ? window.LAT_I18N.t('m1.voice_auto_saved_offline')
+            : 'Acopio por voz guardado automáticamente (modo offline)';
+        }
+        if (avisoDetalle) {
+          avisoDetalle.textContent = `${provLabel} · ${Number(litros).toFixed(1)} L${frase ? ' — “' + frase + '”' : ''}`;
+        }
+        if (avisoAcciones) {
+          avisoAcciones.hidden = true;
+        }
+      }
+    }
 
     actualizarBadge();
     renderPendientesEnTabla();

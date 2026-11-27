@@ -188,11 +188,12 @@ class LacteoService
     /**
      * Estadísticas operativas agregadas directamente en SQL para evitar hidratación masiva.
      *
+     * @param  Collection<int, Planta>|null  $plantasPrecalculadas
      * @return array<string, mixed>
      */
-    public function obtenerEstadisticas(int $plantaActivaId, string $desde, string $hasta, bool $incluirRed = true): array
+    public function obtenerEstadisticas(int $plantaActivaId, string $desde, string $hasta, bool $incluirRed = true, ?Collection $plantasPrecalculadas = null): array
     {
-        $rankingData = $this->obtenerRankingPlantas($desde, $hasta, $incluirRed ? null : $plantaActivaId);
+        $rankingData = $this->obtenerRankingPlantas($desde, $hasta, $incluirRed ? null : $plantaActivaId, $plantasPrecalculadas);
         $rankingPlantas = $rankingData['ranking_plantas'];
         $moldesPorPlanta = $rankingData['moldes_por_planta'];
 
@@ -282,6 +283,7 @@ class LacteoService
      *
      * @param  array<string, mixed>|null  $statsPrecalculadas
      * @param  Collection<int, Tina>|null  $tinasPrecalculadas
+     * @param  Collection<int, Planta>|null  $plantasPrecalculadas
      * @return array<string, mixed>
      */
     public function obtenerDatosDashboard(
@@ -289,7 +291,8 @@ class LacteoService
         string $rango = '7d',
         bool $incluirRed = true,
         ?array $statsPrecalculadas = null,
-        ?Collection $tinasPrecalculadas = null
+        ?Collection $tinasPrecalculadas = null,
+        ?Collection $plantasPrecalculadas = null
     ): array {
         $hoy = Carbon::today();
         [$inicio, $fin, $etiquetaRango] = match ($rango) {
@@ -405,11 +408,16 @@ class LacteoService
             $metodoClave = 'lat.method_'.$ac->metodo;
             $metodoTrad = __($metodoClave);
             $metodoLabel = $metodoTrad !== $metodoClave ? $metodoTrad : $ac->metodo;
+            $detalle = match ($ac->calidad) {
+                'acida' => __('lat.quality_diverted'),
+                'pendiente' => __('lat.quality_pending'),
+                default => __('lat.quality_approved', ['method' => $metodoLabel]),
+            };
 
             $eventos->push((object) [
                 'tipo' => $ac->calidad === 'acida' ? 'alerta' : 'acopio',
                 'titulo' => ($ac->proveedor?->nombre ?? __('lat.producer_default')).' · '.number_format($ac->litros, 1).' L',
-                'detalle' => $ac->calidad === 'acida' ? __('lat.quality_diverted') : __('lat.quality_approved', ['method' => $metodoLabel]),
+                'detalle' => $detalle,
                 'timestamp' => $ac->created_at ?? Carbon::parse($ac->fecha),
                 'fecha_txt' => ($ac->fecha?->format('d/m') ?? '').' '.substr((string) $ac->hora, 0, 5),
             ]);
@@ -431,7 +439,7 @@ class LacteoService
             if ($statsPrecalculadas !== null && isset($statsPrecalculadas['ranking_plantas']) && $rango === 'quincena') {
                 $rankingPlantas = $statsPrecalculadas['ranking_plantas'];
             } else {
-                $rankingPlantas = $this->obtenerRankingPlantas($desde, $hasta)['ranking_plantas'];
+                $rankingPlantas = $this->obtenerRankingPlantas($desde, $hasta, null, $plantasPrecalculadas)['ranking_plantas'];
             }
         }
 
@@ -486,14 +494,23 @@ class LacteoService
     }
 
     /**
+     * @param  Collection<int, Planta>|null  $plantasPrecalculadas
      * @return array{ranking_plantas: Collection<int, object>, total_ventas_red: float, moldes_por_planta: Collection<int, int|string>}
      */
-    private function obtenerRankingPlantas(string $desde, string $hasta, ?int $soloPlantaId = null): array
-    {
-        $plantas = Planta::query()
-            ->when($soloPlantaId !== null, fn ($q) => $q->where('id', $soloPlantaId))
-            ->orderBy('nombre')
-            ->get(['id', 'codigo', 'nombre', 'ubicacion', 'precio_litro', 'activa']);
+    private function obtenerRankingPlantas(
+        string $desde,
+        string $hasta,
+        ?int $soloPlantaId = null,
+        ?Collection $plantasPrecalculadas = null
+    ): array {
+        $plantas = $plantasPrecalculadas !== null
+            ? ($soloPlantaId !== null
+                ? $plantasPrecalculadas->where('id', $soloPlantaId)->values()
+                : $plantasPrecalculadas->sortBy('nombre')->values())
+            : Planta::query()
+                ->when($soloPlantaId !== null, fn ($q) => $q->where('id', $soloPlantaId))
+                ->orderBy('nombre')
+                ->get(['id', 'codigo', 'nombre', 'ubicacion', 'precio_litro', 'activa']);
 
         $ventasQuery = Liquidacion::where('tipo', 'venta_producto')
             ->when($soloPlantaId !== null, fn ($q) => $q->where('planta_id', $soloPlantaId));

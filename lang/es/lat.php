@@ -30,19 +30,40 @@ return [
 
     // Acopio y calidad
     'intake_created' => 'Acopio registrado con éxito.',
+    'intake_voice_auto_created' => 'Acopio por voz registrado automáticamente: :producer (:liters L).',
     'intake_updated' => 'Registro de acopio actualizado correctamente.',
     'intake_deleted' => 'Registro de acopio eliminado.',
     'quality_classified_acid' => 'Leche ácida clasificada y derivada a quesillos frescos de 4 días.',
     'quality_classified_good' => 'Leche aprobada para pasteurización en tina principal.',
+    'quality_pending' => 'Leche marcada como pendiente de prueba sanitaria.',
+    'quality_classified_discarded' => 'Leche descartada por control sanitario. No ingresará a tina.',
+    'quality_locked_in_batch' => 'Esta entrega ya ingresó a un lote en tina y su clasificación está bloqueada.',
 
     // Tinas y lotes
     'vat_created' => 'Nueva tina agregada a la planta.',
     'vat_updated' => 'Tina actualizada correctamente.',
+    'vat_deleted' => 'Tina eliminada correctamente.',
+    'vat_delete_active_error' => 'No puedes eliminar una tina que tiene un lote en proceso.',
     'vat_inactive_error' => 'No se puede iniciar un lote en una tina inactiva.',
     'vat_already_active_error' => 'Esta tina ya tiene un lote en proceso. Finalízalo antes de iniciar otro.',
+    'vat_milk_invalid_error' => 'Seleccione entregas válidas (óptimas o con acidez) disponibles sin lote asignado.',
+    'vat_capacity_exceeded_error' => 'El volumen seleccionado supera la capacidad máxima de la tina.',
     'batch_started' => 'Lote iniciado en :vat con dosificación calculada.',
     'batch_finished_error' => 'Este lote ya se encuentra finalizado y no puede modificarse.',
     'batch_finished' => 'Lote finalizado y moldes registrados en la tina.',
+    'base_recipes_updated' => 'Recetas base de la planta actualizadas correctamente.',
+
+    // Notificaciones operativas
+    'notif_quality_good_title' => 'Leche óptima para tina',
+    'notif_quality_good_msg' => ':producer (:liters L) aprobada en recepción. Lista para cargar en tina.',
+    'notif_quality_acid_title' => 'Leche con acidez derivada',
+    'notif_quality_acid_msg' => ':producer (:liters L) con acidez 74°. Derivada a quesillo de 4 días.',
+    'notif_quality_discarded_title' => 'Leche descartada en recepción',
+    'notif_quality_discarded_msg' => ':producer (:liters L) descartada en control sanitario. No ingresa a tina.',
+    'notif_batch_finished_title' => 'Lote finalizado en :vat',
+    'notif_batch_finished_msg' => 'Lote en :vat finalizado con :molds moldes registrados.',
+    'notif_timer_done_title' => 'Tiempo cumplido en tina',
+    'notif_timer_done_msg' => 'El tiempo programado para :vat ha culminado. Revise la tina.',
 
     // Movimientos y ganaderos
     'movement_created' => 'Movimiento registrado correctamente.',

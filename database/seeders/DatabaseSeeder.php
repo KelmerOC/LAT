@@ -215,6 +215,8 @@ class DatabaseSeeder extends Seeder
         $p3_1 = Proveedor::create(['planta_id' => $planta3->id, 'codigo' => 'CAC-01', 'nombre' => 'Don Efraín Huamán', 'sector' => 'Cachimayo Centro', 'activo' => true]);
 
         // 5. Entregas de leche de hoy y ayer (Planta 1)
+        $evaluadoHoy = Carbon::today()->setTime(7, 55);
+
         Acopio::create([
             'planta_id' => $planta1->id,
             'proveedor_id' => $p1->id,
@@ -228,6 +230,7 @@ class DatabaseSeeder extends Seeder
             'frase_dictada' => 'Don Eloy Condori, 35 litros',
             'calidad' => 'buena',
             'destino' => 'queso_yogur',
+            'evaluado_en' => $evaluadoHoy,
         ]);
 
         Acopio::create([
@@ -243,6 +246,7 @@ class DatabaseSeeder extends Seeder
             'frase_dictada' => 'Señora María Huamán, 28 litros y medio',
             'calidad' => 'buena',
             'destino' => 'queso_yogur',
+            'evaluado_en' => $evaluadoHoy,
         ]);
 
         Acopio::create([
@@ -258,6 +262,7 @@ class DatabaseSeeder extends Seeder
             'frase_dictada' => null,
             'calidad' => 'acida',
             'destino' => 'quesillo_4_dias',
+            'evaluado_en' => $evaluadoHoy,
         ]);
 
         Acopio::create([
@@ -273,6 +278,7 @@ class DatabaseSeeder extends Seeder
             'frase_dictada' => 'Juana Ccori, 42 litros',
             'calidad' => 'buena',
             'destino' => 'queso_yogur',
+            'evaluado_en' => $evaluadoHoy,
         ]);
 
         Acopio::create([
@@ -288,6 +294,7 @@ class DatabaseSeeder extends Seeder
             'frase_dictada' => null,
             'calidad' => 'buena',
             'destino' => 'queso_yogur',
+            'evaluado_en' => $evaluadoHoy,
         ]);
 
         // Acopios en Planta 2 y Planta 3
@@ -304,6 +311,7 @@ class DatabaseSeeder extends Seeder
             'frase_dictada' => 'Hermelinda Quispe, 110 litros',
             'calidad' => 'buena',
             'destino' => 'queso_yogur',
+            'evaluado_en' => $evaluadoHoy,
         ]);
         Acopio::create([
             'planta_id' => $planta2->id,
@@ -317,6 +325,7 @@ class DatabaseSeeder extends Seeder
             'metodo' => 'manual',
             'calidad' => 'buena',
             'destino' => 'queso_yogur',
+            'evaluado_en' => $evaluadoHoy,
         ]);
         Acopio::create([
             'planta_id' => $planta3->id,
@@ -330,9 +339,12 @@ class DatabaseSeeder extends Seeder
             'metodo' => 'manual',
             'calidad' => 'buena',
             'destino' => 'queso_yogur',
+            'evaluado_en' => $evaluadoHoy,
         ]);
 
         // 6. Lotes en múltiples tinas (activos y terminados para estadísticas)
+        $inicioActivo = Carbon::now()->subMinutes(15);
+
         Lote::create([
             'planta_id' => $planta1->id,
             'tina_id' => $tina1A->id,
@@ -345,6 +357,8 @@ class DatabaseSeeder extends Seeder
             'cultivo_g' => 1.46,
             'moldes_producidos' => 0,
             'estado' => 'enfriando',
+            'duracion_minutos' => 45,
+            'iniciado_en' => $inicioActivo,
         ]);
 
         Lote::create([
@@ -359,6 +373,8 @@ class DatabaseSeeder extends Seeder
             'cultivo_g' => 0.36,
             'moldes_producidos' => 0,
             'estado' => 'lista_para_cuajo',
+            'duracion_minutos' => 45,
+            'iniciado_en' => $inicioActivo,
         ]);
 
         Lote::create([

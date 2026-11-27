@@ -138,12 +138,22 @@ async function checkVisibleFormLabels(page) {
         hasTitle: !!title && title.textContent.trim().length > 0,
         dashActive: !!activeNav && activeNav.classList.contains('activo'),
         rangePillsVisible: !!rangePills && !rangePills.hidden && window.getComputedStyle(rangePills).display !== 'none',
+        topbarLangCount: document.querySelectorAll('.dash-topbar .dash-topbar-lang').length,
+        anyTopbarLangCount: document.querySelectorAll('.dash-topbar-lang').length,
+        sidebarLangRowExists: !!document.querySelector('#dash-sidebar .dash-lang-row'),
+        sidebarLangBtnCount: document.querySelectorAll('#dash-sidebar .dash-lang-row .btn-lang-choice').length,
       };
     });
     check(`${nombre} /panel arquitectura sidebar/topbar presente`,
       dashStructure.hasSidebar && dashStructure.hasTopbar && dashStructure.hasTitle && dashStructure.dashActive,
       JSON.stringify(dashStructure));
     check(`${nombre} /panel #dash-range-pills visible en dashboard`, dashStructure.rangePillsVisible);
+    check(`${nombre} /panel sin selector .dash-topbar-lang duplicado en topbar`,
+      dashStructure.topbarLangCount === 0 && dashStructure.anyTopbarLangCount === 0,
+      JSON.stringify(dashStructure));
+    check(`${nombre} /panel conserva #dash-sidebar .dash-lang-row con 3 idiomas`,
+      dashStructure.sidebarLangRowExists && dashStructure.sidebarLangBtnCount === 3,
+      JSON.stringify(dashStructure));
 
     // Alineación DESIGN.md: borderRadius <= 2px, boxShadow === 'none', topbar backdropFilter === 'none'
     const designMetrics = await page.evaluate(() => {
@@ -182,18 +192,29 @@ async function checkVisibleFormLabels(page) {
     check(`${nombre} /panel (dashboard) campos visibles con label`, sinLabelDash.length === 0, sinLabelDash.join(', '));
 
     // Cambio de idioma es -> qu -> en -> es en /panel y verificación de dash.activity_sub != dash.c1_sub
-    const switchPanelLang = async (lang) => {
-      const visibleTopbarBtn = await page.$(`.dash-topbar-lang .btn-lang-choice[data-lang="${lang}"]`);
-      if (visibleTopbarBtn && await visibleTopbarBtn.isVisible()) {
-        await visibleTopbarBtn.click();
+    const switchPanelLangOn = async (targetPage, lang) => {
+      const selector = `.dash-lang-row .btn-lang-choice[data-lang="${lang}"]`;
+      const isSidebarBtnVisible = await targetPage.evaluate((sel) => {
+        const el = document.querySelector(sel);
+        if (!el) return false;
+        const cs = window.getComputedStyle(el);
+        if (cs.display === 'none' || cs.visibility === 'hidden') return false;
+        const r = el.getBoundingClientRect();
+        return r.width > 0 && r.height > 0 && r.right > 0 && r.left < window.innerWidth;
+      }, selector);
+
+      if (isSidebarBtnVisible) {
+        await targetPage.click(selector);
       } else {
-        await page.click('#btn-sidebar-open');
-        await page.waitForTimeout(150);
-        await page.click(`.dash-lang-row .btn-lang-choice[data-lang="${lang}"]`);
-        await page.keyboard.press('Escape');
+        await targetPage.click('#btn-sidebar-open');
+        await targetPage.waitForTimeout(260);
+        await targetPage.click(selector);
+        await targetPage.keyboard.press('Escape');
+        await targetPage.waitForTimeout(260);
       }
-      await page.waitForTimeout(150);
+      await targetPage.waitForTimeout(150);
     };
+    const switchPanelLang = (lang) => switchPanelLangOn(page, lang);
 
     for (const lang of ['qu', 'en', 'es']) {
       await switchPanelLang(lang);
@@ -214,6 +235,30 @@ async function checkVisibleFormLabels(page) {
 
     await page.screenshot({ path: path.join(OUT, `${nombre}_panel_dashboard.png`), fullPage: false });
 
+    // 4b. Bandeja de notificaciones #btn-notificaciones y #tray-notificaciones sin desborde horizontal
+    const btnNotif = await page.$('#btn-notificaciones');
+    check(`${nombre} /panel botón #btn-notificaciones presente`, !!btnNotif);
+    if (btnNotif) {
+      await btnNotif.click();
+      await page.waitForTimeout(150);
+      const trayOpenState = await page.evaluate(() => {
+        const tray = document.getElementById('tray-notificaciones');
+        const btn = document.getElementById('btn-notificaciones');
+        return {
+          open: !!tray && !tray.hidden && window.getComputedStyle(tray).display !== 'none',
+          expanded: btn?.getAttribute('aria-expanded') === 'true',
+          overflow: document.documentElement.scrollWidth > window.innerWidth + 1,
+        };
+      });
+      check(`${nombre} /panel #tray-notificaciones abre sin desborde horizontal`,
+        trayOpenState.open && trayOpenState.expanded && !trayOpenState.overflow,
+        JSON.stringify(trayOpenState));
+      await btnNotif.click();
+      await page.waitForTimeout(100);
+      const trayClosed = await page.$eval('#tray-notificaciones', el => el.hidden);
+      check(`${nombre} /panel #tray-notificaciones cierra al volver a pulsar`, trayClosed);
+    }
+
     // 5. Navegar a sec-acopio (en móvil abriendo primero el drawer con #btn-sidebar-open)
     if (nombre !== 'desktop') {
       const burgerVisible = await page.$eval('#btn-sidebar-open', el => window.getComputedStyle(el).display !== 'none');
@@ -232,36 +277,77 @@ async function checkVisibleFormLabels(page) {
       const secDash = document.querySelector('#sec-dashboard');
       const rangePills = document.querySelector('#dash-range-pills');
       const btnVoz = document.querySelector('#btn-voz');
-      const teclas = [...document.querySelectorAll('.botonera button')];
       return {
         acopioVisible: !!secAcopio && !secAcopio.hidden,
         dashHidden: !!secDash && secDash.hidden,
         rangePillsHidden: !!rangePills && rangePills.hidden && window.getComputedStyle(rangePills).display === 'none',
-        vozHeight: btnVoz ? btnVoz.getBoundingClientRect().height : 0,
-        teclaMinHeight: teclas.length ? Math.min(...teclas.map(b => b.getBoundingClientRect().height)) : 0,
-        teclaCount: teclas.length,
+        hasBtnVozAdmin: !!btnVoz,
         overflow: document.documentElement.scrollWidth > window.innerWidth + 1,
       };
     });
 
     check(`${nombre} /panel sec-acopio activa y dashboard oculto`, acopioState.acopioVisible && acopioState.dashHidden);
     check(`${nombre} /panel #dash-range-pills oculto fuera del dashboard`, acopioState.rangePillsHidden);
-    check(`${nombre} /panel #btn-voz altura >= 48px`, acopioState.vozHeight >= 48, `${acopioState.vozHeight}px`);
-    check(`${nombre} /panel .botonera button altura >= 48px`,
-      acopioState.teclaCount > 0 && acopioState.teclaMinHeight >= 48,
-      `${acopioState.teclaMinHeight}px`);
+    check(`${nombre} /panel [donjusto] sin #btn-voz (no tiene acopio.crear)`, !acopioState.hasBtnVozAdmin);
     check(`${nombre} /panel sec-acopio sin desborde horizontal`, !acopioState.overflow);
 
     const sinLabelAcopio = await checkVisibleFormLabels(page);
     check(`${nombre} /panel sec-acopio campos visibles con label`, sinLabelAcopio.length === 0, sinLabelAcopio.join(', '));
 
+    // Flujo de modales apilados: .js-edit-acopio -> #modal-edit-acopio -> submit -> #modal-confirmacion-lat -> Escape
+    const editAcopioBtn = await page.$('#sec-acopio .js-edit-acopio');
+    check(`${nombre} /panel sec-acopio tiene botón .js-edit-acopio`, !!editAcopioBtn);
+    if (editAcopioBtn) {
+      await editAcopioBtn.click();
+      await page.waitForTimeout(150);
+      const editOpen = await page.$eval('#modal-edit-acopio', el => !el.hidden);
+      check(`${nombre} /panel click .js-edit-acopio abre #modal-edit-acopio`, editOpen);
+
+      const sinLabelEditAcopio = await checkVisibleFormLabels(page);
+      check(`${nombre} /panel #modal-edit-acopio campos visibles con label`, sinLabelEditAcopio.length === 0, sinLabelEditAcopio.join(', '));
+
+      await page.click('#form-edit-acopio button[type="submit"]');
+      await page.waitForTimeout(150);
+      const stackedState = await page.evaluate(() => {
+        const editModal = document.getElementById('modal-edit-acopio');
+        const confirmModal = document.getElementById('modal-confirmacion-lat');
+        const zEdit = editModal ? parseInt(window.getComputedStyle(editModal).zIndex, 10) || 0 : 0;
+        const zConfirm = confirmModal ? parseInt(window.getComputedStyle(confirmModal).zIndex, 10) || 0 : 0;
+        const confirmMsg = document.getElementById('confirm-modal-message')?.textContent?.trim() || '';
+        return {
+          editOpen: !!editModal && !editModal.hidden,
+          confirmOpen: !!confirmModal && !confirmModal.hidden,
+          zConfirmGreater: zConfirm > zEdit,
+          confirmMsgLen: confirmMsg.length,
+        };
+      });
+      check(`${nombre} /panel enviar #form-edit-acopio apila #modal-confirmacion-lat encima`,
+        stackedState.editOpen && stackedState.confirmOpen && stackedState.zConfirmGreater && stackedState.confirmMsgLen > 0,
+        JSON.stringify(stackedState));
+
+      await page.keyboard.press('Escape');
+      await page.waitForTimeout(150);
+      const afterFirstEsc = await page.evaluate(() => ({
+        editStillOpen: !document.getElementById('modal-edit-acopio')?.hidden,
+        confirmClosed: !!document.getElementById('modal-confirmacion-lat')?.hidden,
+      }));
+      check(`${nombre} /panel Escape cierra solo #modal-confirmacion-lat y mantiene #modal-edit-acopio abierto`,
+        afterFirstEsc.confirmClosed && afterFirstEsc.editStillOpen,
+        JSON.stringify(afterFirstEsc));
+
+      await page.keyboard.press('Escape');
+      await page.waitForTimeout(150);
+      const editClosedAfterSecondEsc = await page.$eval('#modal-edit-acopio', el => el.hidden);
+      check(`${nombre} /panel segundo Escape cierra #modal-edit-acopio`, editClosedAfterSecondEsc);
+    }
+
     await page.screenshot({ path: path.join(OUT, `${nombre}_panel_acopio.png`), fullPage: false });
 
-    // Verificar también sec-tina y sec-quincena para etiquetas de formularios y desborde
+    // Verificar también sec-tina y sec-quincena para etiquetas de formularios, aviso sanitario, prefijos y desborde
     for (const sec of ['sec-tina', 'sec-quincena']) {
       if (nombre !== 'desktop') {
         await page.click('#btn-sidebar-open');
-        await page.waitForTimeout(150);
+        await page.waitForTimeout(260);
       }
       await page.click(`#dash-nav-list .dash-nav-btn[data-section="${sec}"]`);
       await page.waitForTimeout(150);
@@ -269,6 +355,105 @@ async function checkVisibleFormLabels(page) {
       check(`${nombre} /panel ${sec} sin desborde horizontal`, !secOverflow);
       const sinLabelSec = await checkVisibleFormLabels(page);
       check(`${nombre} /panel ${sec} campos visibles con label`, sinLabelSec.length === 0, sinLabelSec.join(', '));
+
+      if (sec === 'sec-tina') {
+        const avisoTinas = await page.evaluate(() => {
+          const el = document.getElementById('aviso-calidad-tinas');
+          if (!el || el.hidden) return { visible: false, textLen: 0 };
+          const cs = window.getComputedStyle(el);
+          const r = el.getBoundingClientRect();
+          return {
+            visible: cs.display !== 'none' && cs.visibility !== 'hidden' && r.width > 0 && r.height > 0,
+            textLen: el.textContent.trim().length,
+          };
+        });
+        check(`${nombre} /panel sec-tina #aviso-calidad-tinas visible`,
+          avisoTinas.visible && avisoTinas.textLen > 0,
+          JSON.stringify(avisoTinas));
+
+        const btnNuevaTina = await page.$('#sec-tina [data-open-modal="modal-nueva-tina"]');
+        if (btnNuevaTina) {
+          await btnNuevaTina.click();
+          await page.waitForTimeout(150);
+          const tinaModalCheck = await page.evaluate(() => {
+            const modal = document.getElementById('modal-nueva-tina');
+            const addon = modal?.querySelector('.js-tina-prefix-addon, .input-prefix-addon');
+            const sufijo = document.getElementById('nt-codigo-sufijo');
+            const lbl = document.querySelector('label[for="nt-codigo-sufijo"]');
+            const tipoEl = document.getElementById('nt-tipo');
+            return {
+              open: !!modal && !modal.hidden,
+              addonText: addon?.textContent?.trim() || '',
+              sufijoVisible: !!sufijo && sufijo.getBoundingClientRect().width > 0,
+              hasLabel: !!lbl && lbl.textContent.trim().length > 0,
+              tipoIsInputWithDatalist: !!tipoEl && tipoEl.tagName === 'INPUT' && tipoEl.getAttribute('list') === 'lista-tipos-tina',
+            };
+          });
+          const sinLabelModalTina = await checkVisibleFormLabels(page);
+          check(`${nombre} /panel #modal-nueva-tina prefijo TINA-, #nt-tipo texto libre y #nt-codigo-sufijo con label`,
+            tinaModalCheck.open && tinaModalCheck.addonText === 'TINA-' && tinaModalCheck.sufijoVisible && tinaModalCheck.hasLabel && tinaModalCheck.tipoIsInputWithDatalist && sinLabelModalTina.length === 0,
+            JSON.stringify({ ...tinaModalCheck, sinLabelModalTina }));
+          await page.click('#modal-nueva-tina [data-close-modal="modal-nueva-tina"]');
+          await page.waitForTimeout(100);
+        }
+
+        const btnRecetasBase = await page.$('#sec-tina #btn-recetas-base, #sec-tina [data-open-modal="modal-recetas-base"]');
+        check(`${nombre} /panel [donjusto] sec-tina tiene botón #modal-recetas-base`, !!btnRecetasBase);
+        if (btnRecetasBase) {
+          await btnRecetasBase.click();
+          await page.waitForTimeout(150);
+          const rbState = await page.evaluate(() => {
+            const modal = document.getElementById('modal-recetas-base');
+            return {
+              open: !!modal && !modal.hidden,
+              overflow: document.documentElement.scrollWidth > window.innerWidth + 1,
+            };
+          });
+          const sinLabelRb = await checkVisibleFormLabels(page);
+          check(`${nombre} /panel #modal-recetas-base abre con labels accesibles y 0 desborde`,
+            rbState.open && !rbState.overflow && sinLabelRb.length === 0,
+            JSON.stringify({ ...rbState, sinLabelRb }));
+          await page.click('#modal-recetas-base [data-close-modal="modal-recetas-base"]');
+          await page.waitForTimeout(100);
+        }
+      }
+    }
+
+    // Verificar #sec-admin (si visible para el perfil actual): #modal-nueva-planta con prefijo PLT- y #np-cod-sufijo con label
+    if (await page.$('#sec-admin')) {
+      if (nombre !== 'desktop') {
+        await page.click('#btn-sidebar-open');
+        await page.waitForTimeout(260);
+      }
+      await page.click('#dash-nav-list .dash-nav-btn[data-section="sec-admin"]');
+      await page.waitForTimeout(150);
+      const adminOverflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
+      check(`${nombre} /panel sec-admin sin desborde horizontal`, !adminOverflow);
+
+      const btnNuevaPlanta = await page.$('#sec-admin [data-open-modal="modal-nueva-planta"]');
+      check(`${nombre} /panel sec-admin botón abrir #modal-nueva-planta presente`, !!btnNuevaPlanta);
+      if (btnNuevaPlanta) {
+        await btnNuevaPlanta.click();
+        await page.waitForTimeout(150);
+        const plantaModalCheck = await page.evaluate(() => {
+          const modal = document.getElementById('modal-nueva-planta');
+          const addon = modal?.querySelector('.input-prefix-addon');
+          const sufijo = document.getElementById('np-cod-sufijo');
+          const lbl = document.querySelector('label[for="np-cod-sufijo"]');
+          return {
+            open: !!modal && !modal.hidden,
+            addonText: addon?.textContent?.trim() || '',
+            sufijoVisible: !!sufijo && sufijo.getBoundingClientRect().width > 0,
+            hasLabel: !!lbl && lbl.textContent.trim().length > 0,
+          };
+        });
+        const sinLabelModalPlanta = await checkVisibleFormLabels(page);
+        check(`${nombre} /panel #modal-nueva-planta prefijo PLT- y #np-cod-sufijo con label`,
+          plantaModalCheck.open && plantaModalCheck.addonText === 'PLT-' && plantaModalCheck.sufijoVisible && plantaModalCheck.hasLabel && sinLabelModalPlanta.length === 0,
+          JSON.stringify({ ...plantaModalCheck, sinLabelModalPlanta }));
+        await page.click('#modal-nueva-planta [data-close-modal="modal-nueva-planta"]');
+        await page.waitForTimeout(100);
+      }
     }
 
     // 6. Verificaciones completas en Quechua Cusqueño (qu): persistencia, título, 7 secciones, modal, calidad y voz
@@ -336,9 +521,145 @@ async function checkVisibleFormLabels(page) {
       check(`${nombre} /panel [qu] ${sec} sin desborde horizontal`, !secOverflow);
     }
 
-    // 6d. Verificar parser de voz en Quechua ("kimsa chunka pichqayuq litru" -> 35) en sec-acopio
-    await navToPanelSection('sec-acopio');
-    const vozQuResult = await page.evaluate(() => {
+    // 6d. Verificar modal de confirmación de Calidad (3 acciones: buena, acida, descartada) en sec-calidad con badge de color y sin español
+    await navToPanelSection('sec-calidad');
+    const calidadForms = await page.$$('#sec-calidad .js-confirm-form[data-confirm-kind="calidad"]');
+    check(`${nombre} /panel [qu] sec-calidad tiene 3 botones de evaluación`, calidadForms.length >= 3, `count=${calidadForms.length}`);
+
+    const calidadExpects = [
+      { key: 'buena', cls: 'is-verde', needle: 'Allin chaskisqa (Hatun tina)', forbid: 'Aprobada (Tina principal)' },
+      { key: 'acida', cls: 'is-amarillo', needle: "P'usqu (4 p'unchaw kisillu)", forbid: 'Ácida (Desviar' },
+      { key: 'descartada', cls: 'is-rojo', needle: "wikch'uy", forbid: '¿Está seguro' },
+    ];
+    for (const exp of calidadExpects) {
+      const btn = await page.$(`#sec-calidad .js-confirm-form[data-confirm-kind="calidad"][data-estado-key="${exp.key}"] button[type="submit"]`);
+      check(`${nombre} /panel [qu] sec-calidad tiene botón ${exp.key}`, !!btn);
+      if (btn) {
+        await btn.click();
+        await page.waitForTimeout(120);
+        const modalCal = await page.evaluate(() => {
+          const modal = document.getElementById('modal-confirmacion-lat');
+          const badge = document.getElementById('confirm-modal-badge');
+          const msg = document.getElementById('confirm-modal-message')?.textContent?.trim() || '';
+          const br = badge ? badge.getBoundingClientRect() : null;
+          return {
+            open: !!modal && !modal.hidden,
+            badgeVisible: !!badge && !badge.hidden && !!br && br.width > 0 && br.height > 0,
+            badgeClasses: badge ? Array.from(badge.classList) : [],
+            badgeText: badge?.textContent?.trim() || '',
+            msg,
+          };
+        });
+        check(`${nombre} /panel [qu] modal calidad (${exp.key}) muestra #confirm-modal-badge.${exp.cls} y sin español`,
+          modalCal.open
+            && modalCal.badgeVisible
+            && modalCal.badgeClasses.includes(exp.cls)
+            && modalCal.badgeText.length > 0
+            && modalCal.msg.includes(exp.needle)
+            && !modalCal.msg.includes(exp.forbid)
+            && !modalCal.msg.includes('¿Está seguro'),
+          JSON.stringify(modalCal));
+        await page.click('#modal-confirmacion-lat [data-close-modal="modal-confirmacion-lat"]');
+        await page.waitForTimeout(100);
+      }
+    }
+
+    // 6f. Abrir modal en qu (#modal-nueva-tina desde sec-tina) y verificar prefijo TINA-, traducción, 0 desborde, y VAT- en en
+    await navToPanelSection('sec-tina');
+    const btnOpenTinaModal = await page.$('[data-open-modal="modal-nueva-tina"]');
+    check(`${nombre} /panel [qu] botón abrir #modal-nueva-tina presente`, !!btnOpenTinaModal);
+    if (btnOpenTinaModal) {
+      await btnOpenTinaModal.click();
+      await page.waitForTimeout(150);
+      const modalQuState = await page.evaluate(() => {
+        const modal = document.getElementById('modal-nueva-tina');
+        const title = document.getElementById('title-nueva-tina')?.textContent?.trim() || '';
+        const btn = modal?.querySelector('button[type="submit"]')?.textContent?.trim() || '';
+        const addon = modal?.querySelector('.js-tina-prefix-addon')?.textContent?.trim() || '';
+        return {
+          open: !!modal && !modal.hidden,
+          title,
+          btn,
+          addon,
+          overflow: document.documentElement.scrollWidth > window.innerWidth + 1,
+        };
+      });
+      check(`${nombre} /panel [qu] modal #modal-nueva-tina traducido con prefijo TINA- y sin desborde`,
+        modalQuState.open && modalQuState.title === 'Musuq tinata yapay' && modalQuState.btn === 'Tinata kamariy' && modalQuState.addon === 'TINA-' && !modalQuState.overflow,
+        JSON.stringify(modalQuState));
+      await page.click('#modal-nueva-tina [data-close-modal="modal-nueva-tina"]');
+      await page.waitForTimeout(100);
+
+      await Promise.all([
+        page.waitForResponse(r => r.url().includes('/idioma/en') && r.ok()),
+        switchPanelLang('en'),
+      ]);
+      await btnOpenTinaModal.click();
+      await page.waitForTimeout(150);
+      const modalEnState = await page.evaluate(() => {
+        const modal = document.getElementById('modal-nueva-tina');
+        const addon = modal?.querySelector('.js-tina-prefix-addon')?.textContent?.trim() || '';
+        const tipoEl = document.getElementById('nt-tipo');
+        return {
+          open: !!modal && !modal.hidden,
+          addon,
+          tipoIsInputWithDatalist: !!tipoEl && tipoEl.tagName === 'INPUT' && tipoEl.getAttribute('list') === 'lista-tipos-tina',
+        };
+      });
+      check(`${nombre} /panel [en] #modal-nueva-tina usa prefijo VAT- y #nt-tipo con datalist`,
+        modalEnState.open && modalEnState.addon === 'VAT-' && modalEnState.tipoIsInputWithDatalist,
+        JSON.stringify(modalEnState));
+      await page.click('#modal-nueva-tina [data-close-modal="modal-nueva-tina"]');
+      await page.waitForTimeout(100);
+    }
+
+    check(`${nombre} sin errores JS ni de consola`, errores.length === 0, errores.join(' | '));
+    await ctx.close();
+
+    // 7. Verificar controles operativos de acopio.crear (#btn-voz, .botonera, dictado qu) y start_batch con carlos.anta (donjusto no tiene acopio.crear ni tinas.operar)
+    const ctxOp = await browser.newContext({ viewport: vp });
+    const pageOp = await ctxOp.newPage();
+    const erroresOp = [];
+    pageOp.on('pageerror', e => erroresOp.push('pageerror: ' + e.message));
+    pageOp.on('console', m => {
+      if (m.type() === 'error' && !m.text().includes('unsplash') && !m.text().includes('ERR_')) {
+        erroresOp.push('console: ' + m.text());
+      }
+    });
+    await pageOp.goto(BASE + '/login', { waitUntil: 'networkidle' });
+    await pageOp.click('.perfil-btn[data-usuario="carlos.anta"]');
+    await Promise.all([
+      pageOp.waitForURL('**/panel**'),
+      pageOp.click('button[type=submit].btn-ember'),
+    ]);
+    await pageOp.waitForLoadState('networkidle');
+
+    const navToOpSection = async (sec) => {
+      if (nombre !== 'desktop') {
+        await pageOp.click('#btn-sidebar-open');
+        await pageOp.waitForTimeout(260);
+      }
+      await pageOp.click(`#dash-nav-list .dash-nav-btn[data-section="${sec}"]`);
+      await pageOp.waitForTimeout(150);
+    };
+
+    await navToOpSection('sec-acopio');
+    const opAcopioHeights = await pageOp.evaluate(() => {
+      const btnVoz = document.querySelector('#btn-voz');
+      const teclas = [...document.querySelectorAll('.botonera button')];
+      return {
+        vozHeight: btnVoz ? btnVoz.getBoundingClientRect().height : 0,
+        teclaMinHeight: teclas.length ? Math.min(...teclas.map(b => b.getBoundingClientRect().height)) : 0,
+        teclaCount: teclas.length,
+      };
+    });
+    check(`${nombre} /panel [carlos.anta] #btn-voz altura >= 48px`, opAcopioHeights.vozHeight >= 48, `${opAcopioHeights.vozHeight}px`);
+    check(`${nombre} /panel [carlos.anta] .botonera button altura >= 48px`,
+      opAcopioHeights.teclaCount > 0 && opAcopioHeights.teclaMinHeight >= 48,
+      `${opAcopioHeights.teclaMinHeight}px`);
+
+    await switchPanelLangOn(pageOp, 'qu');
+    const vozQuResult = await pageOp.evaluate(() => {
       class MockSpeechRecognition {
         start() {
           if (typeof this.onresult === 'function') {
@@ -356,61 +677,86 @@ async function checkVisibleFormLabels(page) {
         transcripcion: document.getElementById('transcripcion-voz')?.textContent?.trim() || '',
       };
     });
-    check(`${nombre} /panel [qu] dictado "kimsa chunka pichqayuq litru" -> 35 L`,
+    check(`${nombre} /panel [carlos.anta][qu] dictado "kimsa chunka pichqayuq litru" -> 35 L`,
       vozQuResult.litros === '35' && vozQuResult.metodo === 'voz' && vozQuResult.transcripcion.includes('Uyarisqa'),
       JSON.stringify(vozQuResult));
 
-    // 6e. Verificar modal de confirmación de Calidad en sec-calidad sin mezcla en español
-    await navToPanelSection('sec-calidad');
-    const calidadButtons = await page.$$('#sec-calidad .js-confirm-form[data-confirm-kind="calidad"] button[type="submit"]');
-    check(`${nombre} /panel [qu] sec-calidad tiene botones de evaluación`, calidadButtons.length >= 2, `count=${calidadButtons.length}`);
-    if (calidadButtons.length >= 2) {
-      await calidadButtons[0].click();
-      await page.waitForTimeout(100);
-      const msgApprove = await page.$eval('#confirm-modal-message', el => el.textContent.trim());
-      check(`${nombre} /panel [qu] modal calidad (aprobar) sin español`,
-        msgApprove.includes('Allin chaskisqa (Hatun tina)') && !msgApprove.includes('Aprobada (Tina principal)') && !msgApprove.includes('¿Está seguro'),
-        msgApprove);
-      await page.click('#modal-confirmacion-lat [data-close-modal="modal-confirmacion-lat"]');
-      await page.waitForTimeout(100);
+    await navToOpSection('sec-tina');
 
-      await calidadButtons[1].click();
-      await page.waitForTimeout(100);
-      const msgDivert = await page.$eval('#confirm-modal-message', el => el.textContent.trim());
-      check(`${nombre} /panel [qu] modal calidad (desviar) sin español`,
-        msgDivert.includes("P'usqu (4 p'unchaw kisillu)") && !msgDivert.includes('Ácida (Desviar') && !msgDivert.includes('¿Está seguro'),
-        msgDivert);
-      await page.click('#modal-confirmacion-lat [data-close-modal="modal-confirmacion-lat"]');
-      await page.waitForTimeout(100);
-    }
+    const openIniciarBtn = await pageOp.$('#sec-tina .js-open-iniciar-tina');
+    check(`${nombre} /panel [carlos.anta] tina libre tiene botón .js-open-iniciar-tina`, !!openIniciarBtn);
+    if (openIniciarBtn) {
+      await openIniciarBtn.click();
+      await pageOp.waitForTimeout(150);
 
-    // 6f. Abrir modal en qu (#modal-nueva-tina desde sec-tina) y verificar traducción y 0 desborde
-    await navToPanelSection('sec-tina');
-    const btnOpenTinaModal = await page.$('[data-open-modal="modal-nueva-tina"]');
-    check(`${nombre} /panel [qu] botón abrir #modal-nueva-tina presente`, !!btnOpenTinaModal);
-    if (btnOpenTinaModal) {
-      await btnOpenTinaModal.click();
-      await page.waitForTimeout(150);
-      const modalQuState = await page.evaluate(() => {
-        const modal = document.getElementById('modal-nueva-tina');
-        const title = document.getElementById('title-nueva-tina')?.textContent?.trim() || '';
-        const btn = modal?.querySelector('button[type="submit"]')?.textContent?.trim() || '';
+      const iniciarOpen = await pageOp.$eval('#modal-iniciar-tina', el => !el.hidden);
+      check(`${nombre} /panel [carlos.anta] click .js-open-iniciar-tina abre #modal-iniciar-tina`, iniciarOpen);
+
+      const sinLabelIniciar = await checkVisibleFormLabels(pageOp);
+      check(`${nombre} /panel [carlos.anta] #modal-iniciar-tina campos visibles con label accesible`,
+        sinLabelIniciar.length === 0,
+        sinLabelIniciar.join(', '));
+
+      // Seleccionar múltiples checkboxes .js-it-acopio-cb sin exceder capacidad y verificar actualización en vivo de #it-litros-total
+      const seleccion = await pageOp.evaluate(() => {
+        const cap = parseFloat(document.getElementById('it-tina-capacidad')?.value || '150') || 150;
+        const items = Array.from(document.querySelectorAll('#modal-iniciar-tina .it-acopio-item:not([hidden])'));
+        const elegidos = [];
+        let suma = 0;
+        for (const item of items) {
+          const cb = item.querySelector('.js-it-acopio-cb');
+          const lit = parseFloat(item.dataset.litros || '0') || 0;
+          if (cb && lit > 0 && (suma + lit) <= cap) {
+            cb.click();
+            suma += lit;
+            elegidos.push(lit);
+            if (elegidos.length >= 2) break;
+          }
+        }
         return {
-          open: !!modal && !modal.hidden,
-          title,
-          btn,
-          overflow: document.documentElement.scrollWidth > window.innerWidth + 1,
+          count: elegidos.length,
+          expectedSum: Number(suma.toFixed(1)),
+          litrosTotalVal: parseFloat(document.getElementById('it-litros-total')?.value || '0') || 0,
+          resumenTxt: document.getElementById('it-litros-resumen')?.textContent?.trim() || '',
         };
       });
-      check(`${nombre} /panel [qu] modal #modal-nueva-tina traducido y sin desborde`,
-        modalQuState.open && modalQuState.title === 'Musuq tinata yapay' && modalQuState.btn === 'Tinata kamariy' && !modalQuState.overflow,
-        JSON.stringify(modalQuState));
-      await page.click('#modal-nueva-tina [data-close-modal="modal-nueva-tina"]');
-      await page.waitForTimeout(100);
-    }
+      check(`${nombre} /panel [carlos.anta] seleccionar múltiples .js-it-acopio-cb actualiza #it-litros-total en vivo`,
+        seleccion.count >= 2
+          && Math.abs(seleccion.litrosTotalVal - seleccion.expectedSum) < 0.05
+          && seleccion.resumenTxt.includes(seleccion.expectedSum.toFixed(1)),
+        JSON.stringify(seleccion));
 
-    check(`${nombre} sin errores JS ni de consola`, errores.length === 0, errores.join(' | '));
-    await ctx.close();
+      await pageOp.fill('#it-duracion', '60');
+      await pageOp.fill('#it-cuajo', '4.25');
+      await pageOp.click('#form-iniciar-tina button[type="submit"]');
+      await pageOp.waitForTimeout(150);
+
+      const startBatchModal = await pageOp.evaluate(() => ({
+        iniciarStillOpen: !document.getElementById('modal-iniciar-tina')?.hidden,
+        confirmOpen: !document.getElementById('modal-confirmacion-lat')?.hidden,
+        msg: document.getElementById('confirm-modal-message')?.textContent?.trim() || '',
+      }));
+      check(`${nombre} /panel [carlos.anta] enviar #form-iniciar-tina abre #modal-confirmacion-lat con código de tina`,
+        startBatchModal.iniciarStillOpen && startBatchModal.confirmOpen && startBatchModal.msg.includes('TINA-') && startBatchModal.msg.includes('60 min'),
+        JSON.stringify(startBatchModal));
+
+      await pageOp.keyboard.press('Escape');
+      await pageOp.waitForTimeout(150);
+      const afterFirstEsc = await pageOp.evaluate(() => ({
+        confirmClosed: !!document.getElementById('modal-confirmacion-lat')?.hidden,
+        iniciarStillOpen: !document.getElementById('modal-iniciar-tina')?.hidden,
+      }));
+      check(`${nombre} /panel [carlos.anta] primer Escape cierra solo #modal-confirmacion-lat`,
+        afterFirstEsc.confirmClosed && afterFirstEsc.iniciarStillOpen,
+        JSON.stringify(afterFirstEsc));
+
+      await pageOp.keyboard.press('Escape');
+      await pageOp.waitForTimeout(150);
+      const iniciarClosedAfterSecondEsc = await pageOp.$eval('#modal-iniciar-tina', el => el.hidden);
+      check(`${nombre} /panel [carlos.anta] segundo Escape cierra #modal-iniciar-tina`, iniciarClosedAfterSecondEsc);
+    }
+    check(`${nombre} [carlos.anta] sin errores JS ni de consola`, erroresOp.length === 0, erroresOp.join(' | '));
+    await ctxOp.close();
   }
 
   await browser.close();

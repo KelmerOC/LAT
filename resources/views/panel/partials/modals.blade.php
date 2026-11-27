@@ -1,11 +1,12 @@
 <!-- MODAL GLOBAL DE CONFIRMACIÓN JS -->
-<div class="modal-overlay" id="modal-confirmacion-lat" hidden role="dialog" aria-modal="true" aria-labelledby="confirm-modal-title">
+<div class="modal-overlay modal-overlay-confirm" id="modal-confirmacion-lat" hidden role="dialog" aria-modal="true" aria-labelledby="confirm-modal-title">
   <div class="modal-swiss modal-sm">
     <div class="modal-head">
       <h2 id="confirm-modal-title" data-i18n="confirm.title">Confirmar cambio</h2>
       <button type="button" class="modal-close" data-close-modal="modal-confirmacion-lat" aria-label="Cerrar" data-i18n-aria="modal.close_aria">&times;</button>
     </div>
     <div class="modal-body">
+      <p id="confirm-modal-badge" class="confirm-status-notice" hidden></p>
       <p id="confirm-modal-message" style="font-size: 1rem; color: var(--color-ink); margin: 0;"></p>
     </div>
     <div class="modal-foot">
@@ -63,8 +64,9 @@
                       data-calidad="{{ $a->calidad }}"
                       data-metodo="{{ $a->metodo }}"
                       data-fecha="{{ $a->fecha?->format('Y-m-d') }}"
-                      data-hora="{{ substr($a->hora, 0, 5) }}" data-i18n="common.edit">Editar</button>
-                    <form method="POST" action="{{ route('panel.acopio.delete', $a->id) }}" class="js-confirm-form" data-confirm-kind="delete" data-detalle-tipo="acopio" data-detalle-nombre="{{ $a->proveedor->nombre ?? '' }}" data-detalle="acopio de {{ $a->proveedor->nombre }}">
+                      data-hora="{{ substr($a->hora, 0, 5) }}"
+                      data-frase="{{ $a->frase_dictada ?? '' }}" data-i18n="common.edit">Editar</button>
+                    <form method="POST" action="{{ route('panel.acopio.delete', $a->id) }}" class="js-confirm-form" data-confirm-kind="delete" data-detalle-tipo="acopio" data-detalle-nombre="{{ $a->proveedor->nombre ?? '' }}" data-litros="{{ number_format($a->litros, 1) }}" data-detalle="acopio de {{ $a->proveedor->nombre }}">
                       @csrf @method('DELETE')
                       <button type="submit" class="btn-micro btn-micro-danger" data-i18n="common.erase">Borrar</button>
                     </form>
@@ -207,7 +209,7 @@
       <h2 id="title-edit-acopio" data-i18n="modal.edit_acopio_title">Corregir entrega de leche</h2>
       <button type="button" class="modal-close" data-close-modal="modal-edit-acopio" aria-label="Cerrar" data-i18n-aria="modal.close_aria">&times;</button>
     </div>
-    <form method="POST" id="form-edit-acopio" action="">
+    <form method="POST" id="form-edit-acopio" action="" class="js-confirm-form" data-confirm-kind="edit_acopio">
       @csrf @method('PUT')
       <div class="modal-body">
         <div class="form-grupo">
@@ -248,6 +250,10 @@
               <option value="voz" data-i18n="common.voice">Voz</option>
             </select>
           </div>
+        </div>
+        <div class="form-grupo">
+          <label class="form-label" for="edit-ac-frase" data-i18n="modal.lbl_voice_phrase">Frase dictada (opcional)</label>
+          <input type="text" name="frase_dictada" id="edit-ac-frase" class="input-lat" maxlength="255" placeholder="Ej: Don Eloy Condori, 35 litros">
         </div>
       </div>
       <div class="modal-foot">
@@ -325,9 +331,17 @@
       @csrf
       <div class="modal-body">
         <div class="grid-form-2-code">
+          @php
+            $sufTina = $siguienteSufijoTina ?? '04';
+            $prefTina = $prefijoTinaIdioma ?? 'TINA-';
+          @endphp
           <div class="form-grupo">
-            <label class="form-label" for="nt-codigo" data-i18n="modal.tina_code">Código</label>
-            <input type="text" name="codigo" id="nt-codigo" class="input-lat" required placeholder="TINA-04" data-i18n-placeholder="modal.ph_tina_code">
+            <label class="form-label" for="nt-codigo-sufijo" data-i18n="modal.tina_code">Código</label>
+            <div class="input-prefix-group">
+              <span class="input-prefix-addon js-tina-prefix-addon" aria-hidden="true">{{ $prefTina }}</span>
+              <input type="text" id="nt-codigo-sufijo" class="input-lat" required maxlength="25" value="{{ $sufTina }}" placeholder="{{ $sufTina }}" autocomplete="off">
+            </div>
+            <input type="hidden" name="codigo" id="nt-codigo" value="{{ $prefTina }}{{ $sufTina }}">
           </div>
           <div class="form-grupo">
             <label class="form-label" for="nt-nombre" data-i18n="modal.tina_name">Nombre de la tina</label>
@@ -341,12 +355,7 @@
           </div>
           <div class="form-grupo">
             <label class="form-label" for="nt-tipo" data-i18n="modal.tina_type">Tipo de uso</label>
-            <select name="tipo" id="nt-tipo" class="select-lat">
-              <option value="principal_queso" data-i18n="tina.type_principal_queso">Queso principal</option>
-              <option value="quesillo" data-i18n="tina.type_quesillo">Quesillo 4 días</option>
-              <option value="yogur" data-i18n="tina.type_yogur">Yogur</option>
-              <option value="multiproposito" data-i18n="tina.type_multiproposito">Multipropósito</option>
-            </select>
+            <input type="text" name="tipo" id="nt-tipo" class="input-lat" list="lista-tipos-tina" maxlength="80" required placeholder="Queso principal o escriba otro…" data-i18n-placeholder="modal.ph_tina_type" autocomplete="off">
           </div>
         </div>
       </div>
@@ -369,8 +378,12 @@
       <div class="modal-body">
         <div class="grid-form-2-code">
           <div class="form-grupo">
-            <label class="form-label" for="et-codigo" data-i18n="modal.tina_code">Código</label>
-            <input type="text" name="codigo" id="et-codigo" class="input-lat" required>
+            <label class="form-label" for="et-codigo-sufijo" data-i18n="modal.tina_code">Código</label>
+            <div class="input-prefix-group">
+              <span class="input-prefix-addon js-tina-prefix-addon" aria-hidden="true">{{ $prefijoTinaIdioma ?? 'TINA-' }}</span>
+              <input type="text" id="et-codigo-sufijo" class="input-lat" required maxlength="25" autocomplete="off">
+            </div>
+            <input type="hidden" name="codigo" id="et-codigo" value="">
           </div>
           <div class="form-grupo">
             <label class="form-label" for="et-nombre" data-i18n="modal.tina_name">Nombre</label>
@@ -384,12 +397,7 @@
           </div>
           <div class="form-grupo">
             <label class="form-label" for="et-tipo" data-i18n="modal.tina_type">Tipo</label>
-            <select name="tipo" id="et-tipo" class="select-lat">
-              <option value="principal_queso" data-i18n="tina.type_principal_queso">Queso principal</option>
-              <option value="quesillo" data-i18n="tina.type_quesillo">Quesillo 4 días</option>
-              <option value="yogur" data-i18n="tina.type_yogur">Yogur</option>
-              <option value="multiproposito" data-i18n="tina.type_multiproposito">Multipropósito</option>
-            </select>
+            <input type="text" name="tipo" id="et-tipo" class="input-lat" list="lista-tipos-tina" maxlength="80" required placeholder="Queso principal o escriba otro…" data-i18n-placeholder="modal.ph_tina_type" autocomplete="off">
           </div>
         </div>
         <div class="form-grupo">
@@ -403,6 +411,204 @@
       <div class="modal-foot">
         <button type="button" class="btn btn-outline" data-close-modal="modal-edit-tina" data-i18n="common.cancel">Cancelar</button>
         <button type="submit" class="btn btn-ember" data-i18n="common.save">Guardar cambios</button>
+      </div>
+    </form>
+  </div>
+</div>
+<datalist id="lista-tipos-tina">
+  <option value="Queso principal">
+  <option value="Quesillo 4 días">
+  <option value="Yogur">
+  <option value="Multipropósito">
+</datalist>
+@endif
+
+<!-- MODAL: INICIAR LOTE EN TINA (SELECCIÓN MÚLTIPLE DE LECHE Y RECETA) -->
+@if($usuario->tienePermiso('tinas.operar'))
+<div class="modal-overlay" id="modal-iniciar-tina" hidden role="dialog" aria-modal="true" aria-labelledby="title-iniciar-tina">
+  <div class="modal-swiss modal-lg">
+    <div class="modal-head">
+      <h2 id="title-iniciar-tina" data-i18n="m3.start_modal_title">Iniciar lote en tina</h2>
+      <button type="button" class="modal-close" data-close-modal="modal-iniciar-tina" aria-label="Cerrar" data-i18n-aria="modal.close_aria">&times;</button>
+    </div>
+    <form method="POST" id="form-iniciar-tina" action="" class="js-confirm-form" data-confirm-kind="start_batch">
+      @csrf
+      <input type="hidden" id="it-litros-total" name="litros" value="0">
+      <input type="hidden" id="it-tina-capacidad" value="0">
+      <div class="modal-body">
+        <div id="it-tina-resumen" class="perm-summary-bar">
+          <strong data-i18n="m3.start_modal_vat">Tina seleccionada</strong>
+        </div>
+
+        <h3 style="font-size: 1rem; margin-bottom: 0.6rem;" data-i18n="m3.start_sec_milk">1. Leche clasificada disponible (selección múltiple)</h3>
+        <div class="it-filtros-bar">
+          <div>
+            <label class="form-label" for="it-filtro-calidad" data-i18n="m3.filter_quality">Calidad</label>
+            <select id="it-filtro-calidad" class="select-lat">
+              <option value="todas" data-i18n="m3.filter_all_qualities">Todas las calidades</option>
+              <option value="buena" data-i18n="m2.status_good">Óptima</option>
+              <option value="acida" data-i18n="m2.status_acid">Con acidez</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label" for="it-filtro-dia" data-i18n="m3.filter_day">Día</label>
+            <select id="it-filtro-dia" class="select-lat">
+              <option value="todos" data-i18n="m3.filter_all_days">Todos los días</option>
+              <option value="hoy" data-i18n="dash.range_hoy">Hoy</option>
+              <option value="fecha" data-i18n="m3.filter_by_date">Fecha exacta</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label" for="it-filtro-fecha" data-i18n="m3.filter_date">Fecha</label>
+            <input type="date" id="it-filtro-fecha" class="input-lat">
+          </div>
+          <div>
+            <label class="form-label" for="it-filtro-orden" data-i18n="m3.filter_sort">Ordenar</label>
+            <select id="it-filtro-orden" class="select-lat">
+              <option value="reciente" data-i18n="m3.sort_recent">Más reciente</option>
+              <option value="antiguo" data-i18n="m3.sort_oldest">Más antiguo</option>
+              <option value="litros" data-i18n="m3.sort_liters">Mayor volumen (L)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="it-actions-bar">
+          <div style="display: flex; gap: 0.45rem; flex-wrap: wrap;">
+            <button type="button" id="it-btn-sel-visibles" class="btn-micro" data-i18n="m3.select_visible">Seleccionar visibles</button>
+            <button type="button" id="it-btn-limpiar" class="btn-micro" data-i18n="m3.clear_selection">Limpiar</button>
+          </div>
+          <div id="it-litros-resumen" class="it-litros-meter num-tabular">0.0 L</div>
+        </div>
+
+        @php $acopiosDisp = $acopiosDisponiblesTinas ?? collect(); @endphp
+        <div id="it-lista-acopios" class="it-acopios-list">
+          @foreach($acopiosDisp as $ac)
+            <label class="it-acopio-item"
+              data-calidad="{{ $ac->calidad }}"
+              data-fecha="{{ $ac->fecha?->format('Y-m-d') }}"
+              data-eval-ts="{{ ($ac->evaluado_en ?? $ac->created_at)?->timestamp ?? 0 }}"
+              data-litros="{{ (float) $ac->litros }}">
+              <input type="checkbox" name="acopio_ids[]" value="{{ $ac->id }}" class="js-it-acopio-cb">
+              <span class="chip {{ $ac->calidad === 'buena' ? 'chip-verde' : 'chip-amarillo' }}" data-i18n="{{ $ac->calidad === 'buena' ? 'm2.status_good' : 'm3.diverted_quesillo' }}">
+                {{ $ac->calidad === 'buena' ? 'Óptima' : 'Desviada a quesillo' }}
+              </span>
+              <span class="it-acopio-prov"><strong>{{ $ac->proveedor->nombre }}</strong></span>
+              <strong class="num-tabular it-acopio-litros">{{ number_format($ac->litros, 1) }} L</strong>
+              <small class="num-tabular it-acopio-fecha">{{ ($ac->evaluado_en ?? $ac->created_at)?->format('d/m/Y H:i') }}</small>
+            </label>
+          @endforeach
+          <p id="it-acopios-empty" class="it-acopios-empty" data-i18n="m3.no_milk_available" @if($acopiosDisp->isNotEmpty()) hidden @endif>
+            No hay leche clasificada disponible con estos filtros.
+          </p>
+        </div>
+
+        <h3 style="font-size: 1rem; margin: 1.15rem 0 0.6rem;" data-i18n="m3.start_sec_recipe">2. Receta base y cronómetro editables</h3>
+        <div class="grid-form-2" style="margin-bottom: 0.75rem;">
+          <div class="form-grupo" style="margin: 0;">
+            <label class="form-label" for="it-receta-preset" data-i18n="m3.recipe_preset">Receta base</label>
+            <select id="it-receta-preset" name="receta_base" class="select-lat">
+              <option value="principal_queso" data-i18n="tina.type_principal_queso">Queso principal</option>
+              <option value="quesillo" data-i18n="tina.type_quesillo">Quesillo 4 días</option>
+              <option value="yogur" data-i18n="tina.type_yogur">Yogur</option>
+              <option value="multiproposito" data-i18n="tina.type_multiproposito">Multipropósito</option>
+              <option value="personalizada" data-i18n="m3.recipe_custom">Personalizada</option>
+            </select>
+          </div>
+          <div class="form-grupo" style="margin: 0;">
+            <label class="form-label" for="it-receta-nombre" data-i18n="m3.recipe_name">Nombre de receta</label>
+            <input type="text" id="it-receta-nombre" name="receta_nombre" class="input-lat" maxlength="120" placeholder="Queso andino estándar" data-i18n-placeholder="m3.ph_recipe_name">
+          </div>
+        </div>
+
+        <div class="grid-form-2" style="margin-bottom: 0.75rem;">
+          <div class="form-grupo" style="margin: 0;">
+            <label class="form-label" for="it-temp" data-i18n="m3.lbl_temp_init">Temp. inicial (°C)</label>
+            <input type="number" id="it-temp" name="temperatura_actual" class="input-lat" step="0.5" min="4" max="95" value="72.0" required>
+          </div>
+          <div class="form-grupo" style="margin: 0;">
+            <label class="form-label" for="it-duracion" data-i18n="m3.lbl_timer_min">Tiempo (min)</label>
+            <input type="number" id="it-duracion" name="duracion_minutos" class="input-lat" step="1" min="1" max="1440" value="45" required>
+          </div>
+        </div>
+
+        <div class="grid-form-3" style="margin-bottom: 0.75rem;">
+          <div class="form-grupo" style="margin: 0;">
+            <label class="form-label" for="it-cuajo" data-i18n="m3.rennet_ml">Cuajo (ml)</label>
+            <input type="number" id="it-cuajo" name="cuajo_ml" class="input-lat" step="0.01" min="0" max="10000" value="0.00" required>
+          </div>
+          <div class="form-grupo" style="margin: 0;">
+            <label class="form-label" for="it-sal" data-i18n="m3.salt_kg">Sal (kg)</label>
+            <input type="number" id="it-sal" name="sal_kg" class="input-lat" step="0.01" min="0" max="10000" value="0.00" required>
+          </div>
+          <div class="form-grupo" style="margin: 0;">
+            <label class="form-label" for="it-cultivo" data-i18n="m3.culture_g">Cultivo (g)</label>
+            <input type="number" id="it-cultivo" name="cultivo_g" class="input-lat" step="0.01" min="0" max="10000" value="0.00" required>
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end;">
+          <button type="button" id="it-btn-recalcular" class="btn btn-outline btn-compacto" data-i18n="m3.recalc_recipe">Recalcular según litros</button>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-outline" data-close-modal="modal-iniciar-tina" data-i18n="common.cancel">Cancelar</button>
+        <button type="submit" id="btn-submit-iniciar-tina" class="btn btn-ember" data-i18n="m3.start_batch">Iniciar lote en tina</button>
+      </div>
+    </form>
+  </div>
+</div>
+@endif
+
+<!-- MODAL: CONFIGURAR RECETAS BASE POR TIPO DE TINA -->
+@if($usuario->tienePermiso('tinas.gestionar'))
+<div class="modal-overlay" id="modal-recetas-base" hidden role="dialog" aria-modal="true" aria-labelledby="title-recetas-base">
+  <div class="modal-swiss modal-lg">
+    <div class="modal-head">
+      <h2 id="title-recetas-base" data-i18n="m3.base_recipes_title">Recetas base de planta (por cada 100 L)</h2>
+      <button type="button" class="modal-close" data-close-modal="modal-recetas-base" aria-label="Cerrar" data-i18n-aria="modal.close_aria">&times;</button>
+    </div>
+    <form method="POST" id="form-recetas-base" action="{{ route('panel.tinas.recetas_base') }}">
+      @csrf @method('PUT')
+      <div class="modal-body">
+        <p style="margin-bottom: 1rem; color: var(--color-graphite);" data-i18n="m3.base_recipes_sub">Defina las proporciones estándar por cada 100 litros, temperatura inicial y tiempo base para cada tipo de producción.</p>
+        <div class="rb-grid">
+          @foreach(($recetasBase ?? []) as $clave => $rec)
+            <div class="rb-card">
+              <div class="rb-card-head">
+                <strong data-i18n="tina.type_{{ $clave }}">{{ $rec['nombre'] ?? ($tiposTinaLabels[$clave] ?? $clave) }}</strong>
+                <span class="chip chip-celeste">{{ $clave }}</span>
+              </div>
+              <div class="grid-form-3" style="margin-bottom: 0.65rem;">
+                <div>
+                  <label class="form-label" style="font-size: 0.76rem;" for="rb-{{ $clave }}-cuajo" data-i18n="m3.rennet_100l">Cuajo ml / 100 L</label>
+                  <input type="number" step="0.01" min="0" max="10000" id="rb-{{ $clave }}-cuajo" name="recetas[{{ $clave }}][cuajo_x_100l]" class="input-lat" value="{{ $rec['cuajo_x_100l'] ?? 0 }}" required style="min-height: 40px; padding: 0.4rem 0.6rem;">
+                </div>
+                <div>
+                  <label class="form-label" style="font-size: 0.76rem;" for="rb-{{ $clave }}-sal" data-i18n="m3.salt_100l">Sal kg / 100 L</label>
+                  <input type="number" step="0.01" min="0" max="10000" id="rb-{{ $clave }}-sal" name="recetas[{{ $clave }}][sal_x_100l]" class="input-lat" value="{{ $rec['sal_x_100l'] ?? 0 }}" required style="min-height: 40px; padding: 0.4rem 0.6rem;">
+                </div>
+                <div>
+                  <label class="form-label" style="font-size: 0.76rem;" for="rb-{{ $clave }}-cultivo" data-i18n="m3.culture_100l">Cultivo g / 100 L</label>
+                  <input type="number" step="0.01" min="0" max="10000" id="rb-{{ $clave }}-cultivo" name="recetas[{{ $clave }}][cultivo_x_100l]" class="input-lat" value="{{ $rec['cultivo_x_100l'] ?? 0 }}" required style="min-height: 40px; padding: 0.4rem 0.6rem;">
+                </div>
+              </div>
+              <div class="grid-form-2">
+                <div>
+                  <label class="form-label" style="font-size: 0.76rem;" for="rb-{{ $clave }}-temp" data-i18n="m3.lbl_temp_init">Temp. inicial (°C)</label>
+                  <input type="number" step="0.5" min="4" max="95" id="rb-{{ $clave }}-temp" name="recetas[{{ $clave }}][temp_inicial]" class="input-lat" value="{{ $rec['temp_inicial'] ?? 72 }}" required style="min-height: 40px; padding: 0.4rem 0.6rem;">
+                </div>
+                <div>
+                  <label class="form-label" style="font-size: 0.76rem;" for="rb-{{ $clave }}-duracion" data-i18n="m3.lbl_timer_min">Tiempo (min)</label>
+                  <input type="number" step="1" min="1" max="1440" id="rb-{{ $clave }}-duracion" name="recetas[{{ $clave }}][duracion_minutos]" class="input-lat" value="{{ $rec['duracion_minutos'] ?? 45 }}" required style="min-height: 40px; padding: 0.4rem 0.6rem;">
+                </div>
+              </div>
+            </div>
+          @endforeach
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-outline" data-close-modal="modal-recetas-base" data-i18n="common.cancel">Cancelar</button>
+        <button type="submit" class="btn btn-ember" data-i18n="common.save">Guardar recetas base</button>
       </div>
     </form>
   </div>
@@ -421,9 +627,14 @@
       @csrf
       <div class="modal-body">
         <div class="grid-form-2-code">
+          @php $sufPlt = $siguienteSufijoPlanta ?? '04'; @endphp
           <div class="form-grupo">
-            <label class="form-label" for="np-cod" data-i18n="m6.col_code">Código</label>
-            <input type="text" name="codigo" id="np-cod" class="input-lat" required placeholder="PLT-04" data-i18n-placeholder="modal.ph_plant_code">
+            <label class="form-label" for="np-cod-sufijo" data-i18n="m6.col_code">Código</label>
+            <div class="input-prefix-group">
+              <span class="input-prefix-addon" aria-hidden="true">PLT-</span>
+              <input type="text" id="np-cod-sufijo" class="input-lat" required maxlength="16" value="{{ $sufPlt }}" placeholder="{{ $sufPlt }}" autocomplete="off">
+            </div>
+            <input type="hidden" name="codigo" id="np-cod" value="PLT-{{ $sufPlt }}">
           </div>
           <div class="form-grupo">
             <label class="form-label" for="np-nom" data-i18n="m6.col_plant_name">Nombre de planta</label>
@@ -460,8 +671,12 @@
       <div class="modal-body">
         <div class="grid-form-2-code">
           <div class="form-grupo">
-            <label class="form-label" for="ep-cod" data-i18n="m6.col_code">Código</label>
-            <input type="text" name="codigo" id="ep-cod" class="input-lat" required>
+            <label class="form-label" for="ep-cod-sufijo" data-i18n="m6.col_code">Código</label>
+            <div class="input-prefix-group">
+              <span class="input-prefix-addon" aria-hidden="true">PLT-</span>
+              <input type="text" id="ep-cod-sufijo" class="input-lat" required maxlength="16" autocomplete="off">
+            </div>
+            <input type="hidden" name="codigo" id="ep-cod" value="">
           </div>
           <div class="form-grupo">
             <label class="form-label" for="ep-nom" data-i18n="m6.col_name">Nombre</label>

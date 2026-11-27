@@ -131,7 +131,19 @@
 @push('scripts')
 <script src="{{ asset('js/chart.umd.min.js') }}"></script>
 <script src="{{ asset('js/lat-qr.js') }}"></script>
+<script src="{{ asset('js/lat-notificaciones.js') }}" defer></script>
 <script>
+  const recetasBasePlanta = @json($recetasBase ?? []);
+  const tiposTinaPreset = new Set(['principal_queso', 'quesillo', 'yogur', 'multiproposito']);
+
+  function traducirTipoTina(tipo) {
+    const clave = String(tipo || '');
+    if (tiposTinaPreset.has(clave) && window.LAT_I18N) {
+      return window.LAT_I18N.t('tina.type_' + clave);
+    }
+    return clave;
+  }
+
   // Registro compartido de gráficas Chart.js para redimensionar al cambiar de sección
   window.__latCharts = {
     dashboard: [],
@@ -437,8 +449,31 @@
     let pendingForm = null;
     const modalTriggers = new Map();
     const modalConfirm = document.getElementById('modal-confirmacion-lat');
+    const confirmBadgeEl = document.getElementById('confirm-modal-badge');
     const confirmMsgEl = document.getElementById('confirm-modal-message');
     const btnConfirmar = document.getElementById('btn-confirmar-accion-js');
+
+    const tr = (key, fallback, vars) => {
+      if (window.LAT_I18N) return window.LAT_I18N.t(key, vars);
+      let out = fallback;
+      if (vars) {
+        Object.keys(vars).forEach(k => {
+          out = out.replace(new RegExp('\\{' + k + '\\}', 'g'), vars[k]);
+        });
+      }
+      return out;
+    };
+
+    function resetConfirmModalVisuals() {
+      if (confirmBadgeEl) {
+        confirmBadgeEl.hidden = true;
+        confirmBadgeEl.className = 'confirm-status-notice';
+        confirmBadgeEl.textContent = '';
+      }
+      if (btnConfirmar) {
+        btnConfirmar.className = 'btn btn-ember';
+      }
+    }
 
     function abrirModal(id, triggerEl) {
       const el = document.getElementById(id);
@@ -452,7 +487,13 @@
     function cerrarModal(id) {
       const el = document.getElementById(id);
       if (el) el.hidden = true;
-      if (id === 'modal-confirmacion-lat') pendingForm = null;
+      if (id === 'modal-confirmacion-lat') {
+        if (pendingForm) {
+          pendingForm.dataset.confirmed = '';
+        }
+        pendingForm = null;
+        resetConfirmModalVisuals();
+      }
       const trigger = modalTriggers.get(id);
       modalTriggers.delete(id);
       if (trigger && typeof trigger.focus === 'function' && trigger.offsetParent !== null) {
@@ -473,6 +514,10 @@
     });
     document.addEventListener('keydown', e => {
       if (e.key === 'Escape') {
+        if (modalConfirm && !modalConfirm.hidden) {
+          cerrarModal('modal-confirmacion-lat');
+          return;
+        }
         document.querySelectorAll('.modal-overlay:not([hidden])').forEach(ov => cerrarModal(ov.id));
       }
     });
@@ -484,10 +529,10 @@
       if (form.dataset.confirmed === 'true') return;
 
       e.preventDefault();
-      pendingForm = form;
+      resetConfirmModalVisuals();
 
       const kind = form.dataset.confirmKind;
-      let msg = window.LAT_I18N ? window.LAT_I18N.t('confirm.default_msg') : '¿Está seguro de que desea aplicar este cambio?';
+      let msg = tr('confirm.default_msg', '¿Está seguro de que desea aplicar este cambio?');
       if (kind === 'trash_plant') {
         const nombrePl = form.dataset.nombre || '';
         const impacto = form.dataset.impacto || '';
@@ -496,40 +541,147 @@
         msg = `¿Restaurar la planta "${form.dataset.nombre || ''}" desde el tacho y reactivar todos sus registros?`;
       } else if (kind === 'force_delete_plant') {
         msg = `ATENCIÓN: ¿Eliminar DEFINITIVAMENTE la planta "${form.dataset.nombre || ''}" y todos sus registros históricos? Esta acción no se puede deshacer.`;
-      } else if (window.LAT_I18N) {
-        if (kind === 'calidad') {
-          const estadoKey = form.dataset.estadoKey || (e.submitter && e.submitter.dataset.estadoKey) || 'buena';
-          const estadoLabel = window.LAT_I18N.t(estadoKey === 'acida' ? 'calidad.state_acida' : 'calidad.state_buena');
-          msg = window.LAT_I18N.t('confirm.quality_msg', {
-            nombre: form.dataset.nombre || '',
-            litros: form.dataset.litros || '0',
-            estado: estadoLabel
-          });
-        } else if (kind === 'finish_batch') {
-          msg = window.LAT_I18N.t('confirm.finish_batch_msg', {
-            codigo: form.dataset.codigo || ''
-          });
-        } else if (kind === 'delete') {
-          const detalleTipo = form.dataset.detalleTipo || (e.submitter && e.submitter.dataset.detalleTipo) || '';
-          const detalleNombre = form.dataset.detalleNombre || (e.submitter && e.submitter.dataset.detalleNombre) || '';
-          const detalle = detalleTipo
-            ? window.LAT_I18N.t(detalleTipo === 'acopio' ? 'confirm.detail_acopio' : 'confirm.detail_mov', { nombre: detalleNombre })
-            : (form.dataset.detalle || detalleNombre);
-          msg = window.LAT_I18N.t('confirm.delete_msg', { detalle });
+      } else if (kind === 'edit_acopio') {
+        const provEl = document.getElementById('edit-ac-prov');
+        const litrosEl = document.getElementById('edit-ac-litros');
+        const calEl = document.getElementById('edit-ac-calidad');
+        const nombre = provEl?.selectedOptions?.[0]?.textContent?.trim() || '';
+        const litros = litrosEl?.value || '0';
+        const calidad = calEl?.selectedOptions?.[0]?.textContent?.trim() || '';
+        msg = tr(
+          'confirm.edit_acopio_msg',
+          '¿Está seguro de que quieres guardar la corrección de {nombre} ({litros} L · {calidad})?',
+          { nombre, litros, calidad }
+        );
+      } else if (kind === 'start_batch') {
+        const cbs = Array.from(form.querySelectorAll('.js-it-acopio-cb'));
+        const checkedCount = cbs.filter(cb => cb.checked).length;
+        const litrosNum = parseFloat(form.querySelector('input[name="litros"]')?.value || '0') || 0;
+        const capVal = parseFloat(document.getElementById('it-tina-capacidad')?.value || form.dataset.tinaCapacidad || '0') || 0;
+        const resumenEl = document.getElementById('it-litros-resumen');
+
+        if ((form.id === 'form-iniciar-tina' || cbs.length > 0) && (checkedCount < 1 || litrosNum <= 0)) {
+          if (resumenEl) {
+            resumenEl.classList.add('is-over');
+            resumenEl.textContent = tr('modal.milk_need_one', 'Selecciona al menos una entrega de leche para iniciar el lote.');
+          }
+          return;
         }
+        if (capVal > 0 && litrosNum > capVal) {
+          if (resumenEl) {
+            resumenEl.classList.add('is-over');
+            resumenEl.textContent = tr(
+              'modal.milk_over_cap',
+              'El volumen seleccionado ({litros} L) supera la capacidad de la tina ({cap} L).',
+              { litros: litrosNum.toFixed(1), cap: capVal }
+            );
+          }
+          return;
+        }
+
+        const litros = form.querySelector('input[name="litros"]')?.value || '0';
+        const temp = form.querySelector('input[name="temperatura_actual"]')?.value || '72.0';
+        const duracion = form.querySelector('#it-duracion, input[name="duracion_minutos"], input[name="tiempo_minutos"]')?.value || '';
+        const codigo = form.dataset.tinaCodigo || '';
+        const nombre = form.dataset.tinaNombre || '';
+        const tipoKey = form.dataset.tinaTipo || 'principal_queso';
+        const uso = traducirTipoTina(tipoKey);
+        msg = tr(
+          'confirm.start_batch_msg',
+          '¿Está seguro de que quieres iniciar un lote en {codigo} ({nombre} · {uso}) con {litros} L a {temp} °C?',
+          { codigo, nombre, uso, litros, temp }
+        );
+        if (checkedCount > 0 && duracion) {
+          msg += tr('confirm.start_batch_extra', ' ({entregas} entregas · {duracion} min)', {
+            entregas: checkedCount,
+            duracion
+          });
+        }
+      } else if (kind === 'calidad') {
+        const estadoKey = (e.submitter && e.submitter.dataset.estadoKey) || form.dataset.estadoKey || 'buena';
+        const nombre = form.dataset.nombre || '';
+        const litros = form.dataset.litros || '0';
+
+        if (estadoKey === 'descartada') {
+          if (confirmBadgeEl) {
+            confirmBadgeEl.className = 'confirm-status-notice is-rojo';
+            confirmBadgeEl.textContent = tr('confirm.quality_warn_descartada', 'ATENCIÓN: DESCARTAR LECHE (NO INGRESA A PRODUCCIÓN)');
+            confirmBadgeEl.hidden = false;
+          }
+          if (btnConfirmar) btnConfirmar.className = 'btn btn-rojo';
+          msg = tr(
+            'confirm.quality_discard_msg',
+            '¿Está seguro de que quieres descartar la entrega de {nombre} ({litros} L)? Esta leche no podrá usarse en ninguna tina.',
+            { nombre, litros }
+          );
+        } else {
+          const esAcida = estadoKey === 'acida';
+          if (confirmBadgeEl) {
+            confirmBadgeEl.className = esAcida ? 'confirm-status-notice is-amarillo' : 'confirm-status-notice is-verde';
+            confirmBadgeEl.textContent = esAcida
+              ? tr('confirm.quality_warn_acida', 'DERIVAR A QUESILLO FRESCO (4 DÍAS · CERO DESPERDICIO)')
+              : tr('confirm.quality_warn_buena', 'APROBAR PARA TINA PRINCIPAL (QUESO / YOGUR)');
+            confirmBadgeEl.hidden = false;
+          }
+          if (btnConfirmar) btnConfirmar.className = esAcida ? 'btn btn-ember' : 'btn btn-verde';
+          const estadoLabel = tr(
+            esAcida ? 'calidad.state_acida' : 'calidad.state_buena',
+            esAcida ? 'Ácida (Quesillo 4 días)' : 'Aprobada (Tina principal)'
+          );
+          msg = tr(
+            'confirm.quality_msg',
+            '¿Está seguro de que quieres cambiar el estado sanitario de {nombre} ({litros} L) a «{estado}»?',
+            { nombre, litros, estado: estadoLabel }
+          );
+        }
+      } else if (kind === 'finish_batch') {
+        msg = tr(
+          'confirm.finish_batch_msg',
+          '¿Está seguro de que quieres finalizar el lote {codigo} y cerrar su registro térmico?',
+          { codigo: form.dataset.codigo || '' }
+        );
+      } else if (kind === 'delete') {
+        if (btnConfirmar) btnConfirmar.className = 'btn btn-rojo';
+        const detalleTipo = form.dataset.detalleTipo || (e.submitter && e.submitter.dataset.detalleTipo) || '';
+        const detalleNombre = form.dataset.detalleNombre || (e.submitter && e.submitter.dataset.detalleNombre) || '';
+        const detalleLitros = form.dataset.litros || (e.submitter && e.submitter.dataset.litros) || '';
+        let detalle = form.dataset.detalle || detalleNombre;
+        if (detalleTipo === 'tina') {
+          detalle = tr('confirm.detail_tina', 'tina «{nombre}»', { nombre: detalleNombre });
+        } else if (detalleTipo === 'acopio') {
+          if (detalleLitros && detalleNombre) {
+            detalle = tr(
+              'confirm.detail_acopio_full',
+              'entrega de leche de {nombre} ({litros} L)',
+              { nombre: detalleNombre, litros: detalleLitros }
+            );
+          } else {
+            detalle = tr('confirm.detail_acopio', 'entrega de leche', { nombre: detalleNombre });
+          }
+        } else if (detalleTipo) {
+          detalle = tr('confirm.detail_mov', 'movimiento financiero', { nombre: detalleNombre });
+        }
+        msg = tr(
+          'confirm.delete_msg',
+          '¿Está seguro de que quieres eliminar este registro de {detalle}? Esta acción no se puede deshacer.',
+          { detalle }
+        );
       }
 
+      pendingForm = form;
       if (confirmMsgEl) confirmMsgEl.textContent = msg;
-      abrirModal('modal-confirmacion-lat', form.querySelector('button[type="submit"]'));
+      abrirModal('modal-confirmacion-lat', e.submitter || form.querySelector('button[type="submit"]'));
     });
 
     if (btnConfirmar) {
       btnConfirmar.addEventListener('click', function () {
         if (!pendingForm) return;
         const target = pendingForm;
-        target.dataset.confirmed = 'true';
+        pendingForm = null;
         cerrarModal('modal-confirmacion-lat');
+        target.dataset.confirmed = 'true';
         target.submit();
+        target.dataset.confirmed = '';
       });
     }
 
@@ -628,12 +780,111 @@
       });
     }
 
+    function vincularPrefijoFijo(sufijoId, hiddenId, prefijo) {
+      const sufEl = document.getElementById(sufijoId);
+      const hidEl = document.getElementById(hiddenId);
+      if (!sufEl || !hidEl) return null;
+      const prefBase = prefijo.replace(/-$/, '');
+      const rePref = new RegExp('^' + prefBase + '[\\s-]*', 'i');
+      const sync = () => {
+        const limpio = (sufEl.value || '').trim().replace(rePref, '').toUpperCase();
+        if (sufEl.value !== limpio && document.activeElement !== sufEl) {
+          sufEl.value = limpio;
+        }
+        hidEl.value = limpio ? (prefijo + limpio) : '';
+      };
+      sufEl.addEventListener('input', () => {
+        const limpio = (sufEl.value || '').replace(rePref, '').toUpperCase();
+        if (sufEl.value !== limpio) sufEl.value = limpio;
+        hidEl.value = limpio.trim() ? (prefijo + limpio.trim()) : '';
+      });
+      const form = sufEl.closest('form');
+      if (form) form.addEventListener('submit', sync);
+      sync();
+      return {
+        setFromFullCode(fullCode) {
+          const limpio = String(fullCode || '').trim().replace(rePref, '').toUpperCase();
+          sufEl.value = limpio;
+          hidEl.value = limpio ? (prefijo + limpio) : '';
+        },
+        sync
+      };
+    }
+
+    function vincularPrefijoTina(sufijoId, hiddenId, modalId, initialPrefix) {
+      const sufEl = document.getElementById(sufijoId);
+      const hidEl = document.getElementById(hiddenId);
+      if (!sufEl || !hidEl) return null;
+      const modalEl = document.getElementById(modalId);
+      const addonEl = modalEl ? modalEl.querySelector('.js-tina-prefix-addon, .input-prefix-addon') : null;
+      const reTina = /^(?:TINA|VAT)[\s-]*/i;
+      let prefActual = initialPrefix === 'VAT-' ? 'VAT-' : 'TINA-';
+
+      const sync = () => {
+        const limpio = (sufEl.value || '').trim().replace(reTina, '').toUpperCase();
+        if (sufEl.value !== limpio && document.activeElement !== sufEl) {
+          sufEl.value = limpio;
+        }
+        hidEl.value = limpio ? (prefActual + limpio) : '';
+      };
+      const setPrefix = (nuevo) => {
+        prefActual = nuevo === 'VAT-' ? 'VAT-' : 'TINA-';
+        if (addonEl) addonEl.textContent = prefActual;
+        sync();
+      };
+      sufEl.addEventListener('input', () => {
+        const limpio = (sufEl.value || '').replace(reTina, '').toUpperCase();
+        if (sufEl.value !== limpio) sufEl.value = limpio;
+        hidEl.value = limpio.trim() ? (prefActual + limpio.trim()) : '';
+      });
+      const form = sufEl.closest('form');
+      if (form) form.addEventListener('submit', sync);
+      setPrefix(prefActual);
+      return {
+        setPrefix,
+        setFromFullCode(fullCode) {
+          const raw = String(fullCode || '').trim();
+          const activePrefix = (window.LAT_I18N && window.LAT_I18N.getLang() === 'en') ? 'VAT-' : 'TINA-';
+          if (/^VAT[\s-]*/i.test(raw)) {
+            prefActual = 'VAT-';
+          } else if (/^TINA[\s-]*/i.test(raw)) {
+            prefActual = 'TINA-';
+          } else {
+            prefActual = activePrefix;
+          }
+          if (addonEl) addonEl.textContent = prefActual;
+          const limpio = raw.replace(reTina, '').toUpperCase();
+          sufEl.value = limpio;
+          hidEl.value = limpio ? (prefActual + limpio) : '';
+        },
+        sync
+      };
+    }
+
+    const nuevaTinaCodigo = vincularPrefijoTina('nt-codigo-sufijo', 'nt-codigo', 'modal-nueva-tina', 'TINA-');
+    const editTinaCodigo = vincularPrefijoTina('et-codigo-sufijo', 'et-codigo', 'modal-edit-tina', 'TINA-');
+    if (nuevaTinaCodigo) {
+      const actualizarPrefijoNuevaTina = (lang) => {
+        nuevaTinaCodigo.setPrefix(lang === 'en' ? 'VAT-' : 'TINA-');
+      };
+      actualizarPrefijoNuevaTina(window.LAT_I18N ? window.LAT_I18N.getLang() : 'es');
+      if (window.LAT_I18N && window.LAT_I18N.onChange) {
+        window.LAT_I18N.onChange(actualizarPrefijoNuevaTina);
+      }
+    }
+    vincularPrefijoFijo('np-cod-sufijo', 'np-cod', 'PLT-');
+    const editPlantaCodigo = vincularPrefijoFijo('ep-cod-sufijo', 'ep-cod', 'PLT-');
+
     // Disparadores para editar registros individuales (solo si tiene el control asignado)
     @if($usuario->tienePermiso('acopio.editar'))
     const baseAcopioUrl = @json(url('/panel/acopio'));
     document.querySelectorAll('.js-edit-acopio').forEach(btn => {
       btn.addEventListener('click', () => {
-        document.getElementById('form-edit-acopio').action = baseAcopioUrl + '/' + btn.dataset.id;
+        const formEditAcopio = document.getElementById('form-edit-acopio');
+        if (formEditAcopio) {
+          formEditAcopio.action = baseAcopioUrl + '/' + btn.dataset.id;
+          formEditAcopio.dataset.confirmed = '';
+        }
         document.getElementById('edit-ac-prov').value = btn.dataset.proveedor;
         document.getElementById('edit-ac-litros').value = btn.dataset.litros;
         document.getElementById('edit-ac-calidad').value = btn.dataset.calidad;
@@ -641,6 +892,8 @@
         const fechaEl = document.getElementById('edit-ac-fecha');
         if (fechaEl) fechaEl.value = btn.dataset.fecha || '';
         document.getElementById('edit-ac-hora').value = btn.dataset.hora;
+        const fraseEl = document.getElementById('edit-ac-frase');
+        if (fraseEl) fraseEl.value = btn.dataset.frase || '';
         const fallbackTrigger = btn.closest('#modal-editar-datos') ? document.getElementById('btn-abrir-editar-datos') : btn;
         cerrarModal('modal-editar-datos');
         abrirModal('modal-edit-acopio', fallbackTrigger || btn);
@@ -684,22 +937,344 @@
     document.querySelectorAll('.js-edit-tina').forEach(btn => {
       btn.addEventListener('click', () => {
         document.getElementById('form-edit-tina').action = baseTinaUrl + '/' + btn.dataset.id;
-        document.getElementById('et-codigo').value = btn.dataset.codigo;
+        if (editTinaCodigo) {
+          editTinaCodigo.setFromFullCode(btn.dataset.codigo);
+        } else {
+          document.getElementById('et-codigo').value = btn.dataset.codigo;
+        }
         document.getElementById('et-nombre').value = btn.dataset.nombre;
         document.getElementById('et-cap').value = btn.dataset.capacidad;
-        document.getElementById('et-tipo').value = btn.dataset.tipo;
+        const etTipoEl = document.getElementById('et-tipo');
+        if (etTipoEl) {
+          const rawTipo = btn.dataset.tipo || '';
+          etTipoEl.value = etTipoEl.tagName === 'SELECT' ? rawTipo : traducirTipoTina(rawTipo);
+        }
         document.getElementById('et-activa').value = btn.dataset.activa;
         abrirModal('modal-edit-tina', btn);
       });
     });
     @endif
 
+    // Controlador interactivo de #modal-iniciar-tina (filtros de acopio, dosificación y receta)
+    (function () {
+      const formIniciar = document.getElementById('form-iniciar-tina');
+      if (!formIniciar) return;
+
+      const capInput = document.getElementById('it-tina-capacidad');
+      const tinaResumenEl = document.getElementById('it-tina-resumen');
+      const presetSelect = document.getElementById('it-receta-preset');
+      const recetaNombreInput = document.getElementById('it-receta-nombre');
+      const tempInput = document.getElementById('it-temp') || formIniciar.querySelector('input[name="temperatura_actual"]');
+      const duracionInput = document.getElementById('it-duracion') || formIniciar.querySelector('input[name="duracion_minutos"], input[name="tiempo_minutos"]');
+      const cuajoInput = document.getElementById('it-cuajo') || formIniciar.querySelector('input[name="cuajo_ml"]');
+      const salInput = document.getElementById('it-sal') || formIniciar.querySelector('input[name="sal_kg"]');
+      const cultivoInput = document.getElementById('it-cultivo') || formIniciar.querySelector('input[name="cultivo_g"]');
+      const litrosTotalInput = document.getElementById('it-litros-total') || formIniciar.querySelector('input[name="litros"]');
+      const litrosResumenEl = document.getElementById('it-litros-resumen');
+      const filtroCalidad = document.getElementById('it-filtro-calidad');
+      const filtroDia = document.getElementById('it-filtro-dia');
+      const filtroFecha = document.getElementById('it-filtro-fecha');
+      const filtroOrden = document.getElementById('it-filtro-orden') || document.getElementById('it-orden');
+      const emptyEl = document.getElementById('it-acopios-empty');
+      const btnSelVisibles = document.getElementById('it-btn-sel-visibles');
+      const btnLimpiar = document.getElementById('it-btn-limpiar');
+      const btnRecalcular = document.getElementById('it-btn-recalcular');
+
+      let cuajoManual = false;
+      let salManual = false;
+      let cultivoManual = false;
+      let duracionManual = false;
+
+      function obtenerRecetaPreset(key) {
+        if (recetasBasePlanta && !Array.isArray(recetasBasePlanta) && recetasBasePlanta[key]) {
+          return recetasBasePlanta[key];
+        }
+        if (Array.isArray(recetasBasePlanta)) {
+          const found = recetasBasePlanta.find(r => r && (r.clave === key || r.key === key || r.tipo === key));
+          if (found) return found;
+        }
+        return {};
+      }
+
+      function extraerTasasReceta(r, presetKey) {
+        const pickNum = (keys, fallback) => {
+          for (const k of keys) {
+            if (r && r[k] !== undefined && r[k] !== null && r[k] !== '') {
+              const num = Number(r[k]);
+              if (!Number.isNaN(num)) return num;
+            }
+          }
+          return fallback;
+        };
+
+        let cuajoPerL = pickNum(['cuajo_ml_litro', 'cuajo_ml_x_litro', 'cuajo_por_litro', 'cuajo_ml_por_litro', 'cuajo_litro'], null);
+        if (cuajoPerL === null) {
+          const c100 = pickNum(['cuajo_x_100l', 'cuajo_ml_100l', 'cuajo_100l'], null);
+          if (c100 !== null) cuajoPerL = c100 / 100;
+          else {
+            const cRaw = pickNum(['cuajo_ml'], null);
+            cuajoPerL = cRaw !== null ? (cRaw >= 0.5 ? cRaw / 100 : cRaw) : 0.025;
+          }
+        }
+
+        let salPerL = pickNum(['sal_kg_litro', 'sal_kg_x_litro', 'sal_por_litro', 'sal_kg_por_litro', 'sal_litro'], null);
+        if (salPerL === null) {
+          const s100 = pickNum(['sal_x_100l', 'sal_kg_100l', 'sal_100l'], null);
+          if (s100 !== null) salPerL = s100 / 100;
+          else {
+            const sRaw = pickNum(['sal_kg'], null);
+            salPerL = sRaw !== null ? (sRaw >= 0.2 ? sRaw / 100 : sRaw) : 0.018;
+          }
+        }
+
+        let cultivoPerL = pickNum(['cultivo_g_litro', 'cultivo_g_x_litro', 'cultivo_por_litro', 'cultivo_g_por_litro', 'cultivo_litro'], null);
+        if (cultivoPerL === null) {
+          const u100 = pickNum(['cultivo_x_100l', 'cultivo_g_100l', 'cultivo_100l'], null);
+          if (u100 !== null) cultivoPerL = u100 / 100;
+          else {
+            const uRaw = pickNum(['cultivo_g'], null);
+            cultivoPerL = uRaw !== null ? (uRaw >= 0.2 ? uRaw / 100 : uRaw) : 0.010;
+          }
+        }
+
+        const temp = pickNum(['temperatura_inicial', 'temperatura', 'temp_inicial', 'temp', 'temperatura_objetivo'], 72.0);
+        const duracion = pickNum(['duracion_minutos', 'tiempo_minutos', 'duracion', 'minutos'], 45);
+        const esPersonalizada = presetKey === 'personalizada' || presetKey === 'personalizado' || presetKey === 'custom';
+        const nombre = (r && (r.nombre || r.titulo || r.label || r.nombre_receta))
+          || (esPersonalizada
+            ? tr('modal.recipe_custom', 'Receta personalizada')
+            : traducirTipoTina(presetKey));
+
+        return { cuajoPerL, salPerL, cultivoPerL, temp, duracion, nombre };
+      }
+
+      function aplicarFiltrosAcopios() {
+        const items = Array.from(formIniciar.querySelectorAll('.it-acopio-item'));
+        const calVal = filtroCalidad ? filtroCalidad.value : 'todas';
+        const diaVal = filtroDia ? filtroDia.value : 'todos';
+        const fechaVal = filtroFecha ? filtroFecha.value : '';
+        const ordenVal = filtroOrden ? filtroOrden.value : 'reciente';
+
+        if (filtroFecha) {
+          const fechaWrap = document.getElementById('it-filtro-fecha-wrap') || filtroFecha.closest('.js-it-fecha-wrap');
+          if (fechaWrap) {
+            fechaWrap.hidden = diaVal !== 'fecha';
+          } else {
+            filtroFecha.disabled = diaVal !== 'fecha';
+          }
+        }
+
+        const now = new Date();
+        const hoyStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+        const listContainer = items[0]?.parentElement || document.getElementById('it-lista-acopios') || document.getElementById('it-acopios-list');
+        if (listContainer && items.length > 1) {
+          items.sort((a, b) => {
+            if (ordenVal === 'antiguo') {
+              return (Number(a.dataset.evalTs || 0) - Number(b.dataset.evalTs || 0));
+            }
+            if (ordenVal === 'litros') {
+              return (Number(b.dataset.litros || 0) - Number(a.dataset.litros || 0));
+            }
+            return (Number(b.dataset.evalTs || 0) - Number(a.dataset.evalTs || 0));
+          });
+          items.forEach(item => listContainer.appendChild(item));
+          if (emptyEl && emptyEl.parentElement === listContainer) {
+            listContainer.appendChild(emptyEl);
+          }
+        }
+
+        let visibles = 0;
+        items.forEach(item => {
+          const itemCal = item.dataset.calidad || item.querySelector('.js-it-acopio-cb')?.dataset.calidad || '';
+          const itemFecha = item.dataset.fecha || '';
+          const esHoy = item.dataset.esHoy === '1' || itemFecha === hoyStr;
+
+          const okCal = calVal === 'todas' || itemCal === calVal;
+          let okDia = true;
+          if (diaVal === 'hoy') {
+            okDia = esHoy;
+          } else if (diaVal === 'fecha' && fechaVal) {
+            okDia = itemFecha === fechaVal;
+          }
+
+          const mostrar = okCal && okDia;
+          item.hidden = !mostrar;
+          if (mostrar) visibles++;
+        });
+
+        if (emptyEl) {
+          emptyEl.hidden = visibles > 0;
+        }
+      }
+
+      function recalcularLoteDesdeSeleccion(forzar) {
+        const cbs = Array.from(formIniciar.querySelectorAll('.js-it-acopio-cb'));
+        let totalLitros = 0;
+        let count = 0;
+
+        if (cbs.length > 0) {
+          cbs.forEach(cb => {
+            if (cb.checked) {
+              const l = parseFloat(cb.dataset.litros || cb.closest('.it-acopio-item')?.dataset.litros || '0') || 0;
+              totalLitros += l;
+              count++;
+            }
+          });
+          if (litrosTotalInput) {
+            litrosTotalInput.value = totalLitros > 0 ? totalLitros.toFixed(1) : '0';
+          }
+        } else if (litrosTotalInput) {
+          totalLitros = parseFloat(litrosTotalInput.value || '0') || 0;
+        }
+
+        const capacidad = parseFloat(capInput?.value || formIniciar.dataset.tinaCapacidad || '0') || 0;
+        if (litrosResumenEl) {
+          const over = capacidad > 0 && totalLitros > capacidad;
+          litrosResumenEl.classList.toggle('is-over', over);
+          if (over) {
+            litrosResumenEl.textContent = tr(
+              'modal.milk_over_cap',
+              'El volumen seleccionado ({litros} L) supera la capacidad de la tina ({cap} L).',
+              { litros: totalLitros.toFixed(1), cap: capacidad }
+            );
+          } else {
+            const unitLbl = tr('m3.deliveries_count', 'entregas');
+            litrosResumenEl.textContent = `${totalLitros.toFixed(1)} / ${capacidad} L (${count} ${unitLbl})`;
+          }
+        }
+
+        const presetKey = presetSelect?.value || 'principal_queso';
+        const rates = extraerTasasReceta(obtenerRecetaPreset(presetKey), presetKey);
+
+        if (cuajoInput && (forzar || !cuajoManual)) {
+          cuajoInput.value = (totalLitros * rates.cuajoPerL).toFixed(2);
+        }
+        if (salInput && (forzar || !salManual)) {
+          salInput.value = (totalLitros * rates.salPerL).toFixed(2);
+        }
+        if (cultivoInput && (forzar || !cultivoManual)) {
+          cultivoInput.value = (totalLitros * rates.cultivoPerL).toFixed(2);
+        }
+        if (duracionInput && (forzar || !duracionManual)) {
+          duracionInput.value = String(rates.duracion);
+        }
+      }
+
+      function aplicarPresetEnModal(presetKey, forzarCampos) {
+        const rates = extraerTasasReceta(obtenerRecetaPreset(presetKey), presetKey);
+        if (recetaNombreInput) {
+          recetaNombreInput.value = rates.nombre || '';
+        }
+        if (tempInput) {
+          tempInput.value = Number(rates.temp).toFixed(1);
+        }
+        if (duracionInput && (forzarCampos || !duracionManual)) {
+          duracionInput.value = String(rates.duracion);
+        }
+        recalcularLoteDesdeSeleccion(Boolean(forzarCampos));
+      }
+
+      document.querySelectorAll('.js-open-iniciar-tina').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const tinaCodigo = btn.dataset.tinaCodigo || '';
+          const tinaNombre = btn.dataset.tinaNombre || '';
+          const tinaTipo = btn.dataset.tinaTipo || 'principal_queso';
+          const tinaCap = btn.dataset.tinaCapacidad || '0';
+
+          formIniciar.action = btn.dataset.actionUrl || '';
+          formIniciar.dataset.tinaCodigo = tinaCodigo;
+          formIniciar.dataset.tinaNombre = tinaNombre;
+          formIniciar.dataset.tinaTipo = tinaTipo;
+          formIniciar.dataset.tinaCapacidad = tinaCap;
+          formIniciar.dataset.confirmed = '';
+
+          if (capInput) capInput.value = tinaCap;
+          if (tinaResumenEl) {
+            tinaResumenEl.textContent = `${tinaCodigo} · ${tinaNombre} (${traducirTipoTina(tinaTipo)}) · ${tinaCap} L`;
+          }
+
+          formIniciar.querySelectorAll('.js-it-acopio-cb').forEach(cb => { cb.checked = false; });
+          cuajoManual = false;
+          salManual = false;
+          cultivoManual = false;
+          duracionManual = false;
+
+          const hasPreset = Boolean(
+            recetasBasePlanta && !Array.isArray(recetasBasePlanta)
+              ? recetasBasePlanta[tinaTipo]
+              : (Array.isArray(recetasBasePlanta) && recetasBasePlanta.some(r => r && (r.clave === tinaTipo || r.key === tinaTipo || r.tipo === tinaTipo)))
+          );
+          const initialPreset = hasPreset ? tinaTipo : 'principal_queso';
+          if (presetSelect) presetSelect.value = initialPreset;
+
+          if (filtroCalidad) {
+            filtroCalidad.value = String(tinaTipo).toLowerCase().includes('quesillo') ? 'acida' : 'todas';
+          }
+          if (filtroDia) filtroDia.value = 'todos';
+
+          aplicarFiltrosAcopios();
+          aplicarPresetEnModal(initialPreset, true);
+          abrirModal('modal-iniciar-tina', btn);
+        });
+      });
+
+      [filtroCalidad, filtroDia, filtroFecha, filtroOrden].forEach(el => {
+        if (el) el.addEventListener('change', aplicarFiltrosAcopios);
+      });
+
+      if (btnSelVisibles) {
+        btnSelVisibles.addEventListener('click', () => {
+          formIniciar.querySelectorAll('.it-acopio-item:not([hidden]) .js-it-acopio-cb').forEach(cb => {
+            cb.checked = true;
+          });
+          recalcularLoteDesdeSeleccion(false);
+        });
+      }
+
+      if (btnLimpiar) {
+        btnLimpiar.addEventListener('click', () => {
+          formIniciar.querySelectorAll('.js-it-acopio-cb').forEach(cb => { cb.checked = false; });
+          recalcularLoteDesdeSeleccion(false);
+        });
+      }
+
+      formIniciar.addEventListener('change', (e) => {
+        if (e.target && e.target.classList && e.target.classList.contains('js-it-acopio-cb')) {
+          recalcularLoteDesdeSeleccion(false);
+        }
+      });
+
+      if (presetSelect) {
+        presetSelect.addEventListener('change', () => aplicarPresetEnModal(presetSelect.value, false));
+      }
+
+      if (cuajoInput) cuajoInput.addEventListener('input', () => { cuajoManual = true; });
+      if (salInput) salInput.addEventListener('input', () => { salManual = true; });
+      if (cultivoInput) cultivoInput.addEventListener('input', () => { cultivoManual = true; });
+      if (duracionInput) duracionInput.addEventListener('input', () => { duracionManual = true; });
+
+      if (btnRecalcular) {
+        btnRecalcular.addEventListener('click', () => {
+          cuajoManual = false;
+          salManual = false;
+          cultivoManual = false;
+          duracionManual = false;
+          recalcularLoteDesdeSeleccion(true);
+        });
+      }
+    })();
+
     @if($usuario->tienePermiso('admin.plantas'))
     const basePlantaUrl = @json(url('/panel/admin/plantas'));
     document.querySelectorAll('.js-edit-planta').forEach(btn => {
       btn.addEventListener('click', () => {
         document.getElementById('form-edit-planta').action = basePlantaUrl + '/' + btn.dataset.id;
-        document.getElementById('ep-cod').value = btn.dataset.codigo;
+        if (editPlantaCodigo) {
+          editPlantaCodigo.setFromFullCode(btn.dataset.codigo);
+        } else {
+          document.getElementById('ep-cod').value = btn.dataset.codigo;
+        }
         document.getElementById('ep-nom').value = btn.dataset.nombre;
         document.getElementById('ep-ubi').value = btn.dataset.ubicacion;
         document.getElementById('ep-pre').value = btn.dataset.precio;
@@ -760,6 +1335,7 @@
     const txtBtn = document.getElementById('txt-btn-voz');
     const transcripcion = document.getElementById('transcripcion-voz');
     const selectProv = document.getElementById('select-proveedor');
+    const formAcopio = document.getElementById('form-acopio');
     if (!btnVoz) return;
 
     let escuchando = false;
@@ -901,9 +1477,9 @@
     }
 
     function emparejarProveedor(frase) {
-      if (!selectProv) return;
+      if (!selectProv) return false;
       const normFrase = normalizarTexto(frase);
-      if (!normFrase) return;
+      if (!normFrase) return false;
 
       let mejorVal = null;
       let mejorPuntaje = 0;
@@ -924,7 +1500,9 @@
 
       if (mejorVal && mejorPuntaje > 0) {
         selectProv.value = mejorVal;
+        return true;
       }
+      return false;
     }
 
     function reposo() {
@@ -957,20 +1535,41 @@
 
       rec.onresult = e => {
         const frase = e.results[0][0].transcript;
-        document.getElementById('input-frase').value = frase;
-        document.getElementById('input-metodo').value = 'voz';
+        const inputFrase = document.getElementById('input-frase');
+        const inputMetodo = document.getElementById('input-metodo');
+        const inputLitros = document.getElementById('input-litros');
+        if (inputFrase) inputFrase.value = frase;
+        if (inputMetodo) inputMetodo.value = 'voz';
         const litros = extraerLitrosDeTexto(frase);
-        if (litros !== null && !Number.isNaN(litros)) {
-          document.getElementById('input-litros').value = Math.max(1, litros);
+        if (litros !== null && !Number.isNaN(litros) && inputLitros) {
+          inputLitros.value = Math.max(1, litros);
         }
         emparejarProveedor(frase);
+
+        const completo = Boolean(
+          selectProv && selectProv.value !== ''
+          && litros !== null && !Number.isNaN(litros) && litros >= 1 && litros <= 5000
+        );
         const textoConfirmacion = tr('m1.voice_spoken_ok', 'Acopio capturado correctamente');
-        const hablo = hablarConfirmacion(langActual, speechLang, textoConfirmacion);
+        hablarConfirmacion(langActual, speechLang, textoConfirmacion);
         transcripcion.removeAttribute('data-i18n');
-        transcripcion.textContent = hablo
-          ? tr('m1.voice_heard', 'Escuchado: “{frase}”', { frase })
-          : tr('m1.voice_heard', 'Escuchado: “{frase}”', { frase }) + ' · ' + textoConfirmacion;
-        reposo();
+
+        if (completo && formAcopio) {
+          transcripcion.textContent = tr('m1.voice_auto_saving', 'Escuchado: “{frase}” · Registrando acopio automáticamente…', { frase });
+          reposo();
+          setTimeout(() => {
+            if (formAcopio.requestSubmit) {
+              formAcopio.requestSubmit();
+            } else {
+              formAcopio.submit();
+            }
+          }, 300);
+        } else {
+          transcripcion.textContent = tr('m1.voice_heard', 'Escuchado: “{frase}”', { frase })
+            + ' · '
+            + tr('m1.voice_missing_fields', 'Complete el productor o litros y guarde manualmente.');
+          reposo();
+        }
       };
       rec.onerror = () => {
         transcripcion.removeAttribute('data-i18n');

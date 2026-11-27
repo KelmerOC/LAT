@@ -128,7 +128,7 @@ class AuthController extends Controller
 
             Tina::create([
                 'planta_id' => $planta->id,
-                'codigo' => 'TINA-01',
+                'codigo' => app()->getLocale() === 'en' ? 'VAT-01' : 'TINA-01',
                 'nombre' => __('lat.default_main_vat'),
                 'capacidad_litros' => 500,
                 'tipo' => 'principal_queso',

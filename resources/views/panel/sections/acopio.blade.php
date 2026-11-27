@@ -11,6 +11,43 @@
         </button>
         <div id="transcripcion-voz" class="transcripcion" role="status" aria-live="polite" data-i18n="m1.voice_sample">Ejemplo: “Don Eloy Condori, 35 litros”</div>
 
+        @php $vozReciente = session('acopio_voz_reciente'); @endphp
+        <div id="aviso-acopio-voz" class="alerta alerta-verde acopio-voz-aviso" role="status" aria-live="polite" @if(! $vozReciente) hidden @endif>
+          <div class="acopio-voz-aviso-body">
+            <strong id="aviso-acopio-voz-titulo" data-i18n="m1.voice_auto_saved_title">Acopio por voz realizado automáticamente</strong>
+            <p id="aviso-acopio-voz-detalle" style="margin: 0.25rem 0 0;">
+              @if($vozReciente)
+                {{ $vozReciente['proveedor_nombre'] }} · {{ number_format((float) $vozReciente['litros'], 1) }} L ({{ $vozReciente['hora'] }})@if(! empty($vozReciente['frase_dictada'])) — “{{ $vozReciente['frase_dictada'] }}”@endif
+              @endif
+            </p>
+          </div>
+          @if($vozReciente && $usuario->tienePermiso('acopio.editar'))
+            <div id="aviso-acopio-voz-acciones" class="acopio-voz-aviso-actions">
+              <button type="button" class="btn-micro js-edit-acopio"
+                data-id="{{ $vozReciente['id'] }}"
+                data-proveedor="{{ $vozReciente['proveedor_id'] }}"
+                data-litros="{{ $vozReciente['litros'] }}"
+                data-calidad="{{ $vozReciente['calidad'] }}"
+                data-metodo="{{ $vozReciente['metodo'] }}"
+                data-fecha="{{ $vozReciente['fecha'] }}"
+                data-hora="{{ $vozReciente['hora'] }}"
+                data-frase="{{ $vozReciente['frase_dictada'] ?? '' }}">
+                {!! $icoEditar !!} <span data-i18n="common.edit">Editar</span>
+              </button>
+              <form method="POST" action="{{ route('panel.acopio.delete', $vozReciente['id']) }}"
+                class="js-confirm-form"
+                data-confirm-kind="delete"
+                data-detalle-tipo="acopio"
+                data-detalle-nombre="{{ $vozReciente['proveedor_nombre'] }}"
+                data-litros="{{ number_format((float) $vozReciente['litros'], 1) }}"
+                data-detalle="acopio de {{ $vozReciente['proveedor_nombre'] }}">
+                @csrf @method('DELETE')
+                <button type="submit" class="btn-micro btn-micro-danger" data-i18n="common.delete">Eliminar</button>
+              </form>
+            </div>
+          @endif
+        </div>
+
         <form method="POST" action="{{ route('panel.acopio') }}" id="form-acopio" data-sync-url="{{ route('panel.acopio.sync') }}">
           @csrf
           <input type="hidden" name="metodo" id="input-metodo" value="manual">
@@ -128,7 +165,7 @@
                 <tr>
                   <td class="num-tabular">{{ $acopio->fecha?->format('d/m/Y') }}</td>
                   <td class="num-tabular">{{ substr($acopio->hora, 0, 5) }}</td>
-                  <td><strong>{{ $acopio->proveedor->nombre }}</strong><small>{{ $acopio->proveedor->sector }}</small></td>
+                  <td><strong>{{ $acopio->proveedor->nombre }}</strong><small>{{ $acopio->proveedor->sector }}</small>@if($acopio->metodo === 'voz' && !empty($acopio->frase_dictada))<small class="acopio-frase-mini">“{{ $acopio->frase_dictada }}”</small>@endif</td>
                   <td class="num" style="font-size: 1.1rem;">{{ number_format($acopio->litros, 1) }}</td>
                   <td>
                     @if($acopio->metodo === 'voz')
@@ -156,7 +193,8 @@
                           data-calidad="{{ $acopio->calidad }}"
                           data-metodo="{{ $acopio->metodo }}"
                           data-fecha="{{ $acopio->fecha?->format('Y-m-d') }}"
-                          data-hora="{{ substr($acopio->hora, 0, 5) }}">
+                          data-hora="{{ substr($acopio->hora, 0, 5) }}"
+                          data-frase="{{ $acopio->frase_dictada ?? '' }}">
                           {!! $icoEditar !!} <span data-i18n="common.edit">Editar</span>
                         </button>
                         <form method="POST" action="{{ route('panel.acopio.delete', $acopio->id) }}"
@@ -164,6 +202,7 @@
                           data-confirm-kind="delete"
                           data-detalle-tipo="acopio"
                           data-detalle-nombre="{{ $acopio->proveedor->nombre }}"
+                          data-litros="{{ number_format($acopio->litros, 1) }}"
                           data-detalle="acopio de {{ $acopio->proveedor->nombre }}">
                           @csrf @method('DELETE')
                           <button type="submit" class="btn-micro btn-micro-danger" data-i18n="common.delete">Eliminar</button>

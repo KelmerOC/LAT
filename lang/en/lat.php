@@ -30,19 +30,40 @@ return [
 
     // Intake & quality
     'intake_created' => 'Milk intake recorded successfully.',
+    'intake_voice_auto_created' => 'Voice intake saved automatically: :producer (:liters L).',
     'intake_updated' => 'Intake record updated successfully.',
     'intake_deleted' => 'Intake record deleted.',
     'quality_classified_acid' => 'Acid milk classified and diverted to 4-day fresh quesillo.',
     'quality_classified_good' => 'Milk approved for pasteurization in the main vat.',
+    'quality_pending' => 'Milk marked as pending sanitary test.',
+    'quality_classified_discarded' => 'Milk discarded by sanitary control. It will not enter any vat.',
+    'quality_locked_in_batch' => 'This delivery is already assigned to a vat batch and its classification is locked.',
 
     // Vats & batches
     'vat_created' => 'New vat added to the plant.',
     'vat_updated' => 'Vat updated successfully.',
+    'vat_deleted' => 'Vat deleted successfully.',
+    'vat_delete_active_error' => 'You cannot delete a vat that has an active batch in progress.',
     'vat_inactive_error' => 'Cannot start a batch in an inactive vat.',
     'vat_already_active_error' => 'This vat already has an active batch. Finish it before starting another.',
+    'vat_milk_invalid_error' => 'Select valid available deliveries (optimal or acidic) not yet assigned to a batch.',
+    'vat_capacity_exceeded_error' => 'The selected volume exceeds the vat maximum capacity.',
     'batch_started' => 'Batch started in :vat with calculated dosage.',
     'batch_finished_error' => 'This batch is already finished and cannot be modified.',
     'batch_finished' => 'Batch finished and molds recorded in the vat.',
+    'base_recipes_updated' => 'Plant base dosing recipes updated successfully.',
+
+    // Live notifications
+    'notif_quality_good_title' => 'Optimal milk for vat',
+    'notif_quality_good_msg' => ':producer (:liters L) approved at reception. Ready to load into vat.',
+    'notif_quality_acid_title' => 'Acidic milk diverted',
+    'notif_quality_acid_msg' => ':producer (:liters L) failed 74° test. Diverted to 4-day quesillo.',
+    'notif_quality_discarded_title' => 'Milk discarded at reception',
+    'notif_quality_discarded_msg' => ':producer (:liters L) discarded by sanitary control. Excluded from vats.',
+    'notif_batch_finished_title' => 'Vat batch finished (:vat)',
+    'notif_batch_finished_msg' => 'Batch in :vat finished with :molds molds recorded.',
+    'notif_timer_done_title' => 'Vat process time reached',
+    'notif_timer_done_msg' => 'Scheduled process time for :vat is complete. Check the vat.',
 
     // Movements & producers
     'movement_created' => 'Movement recorded successfully.',

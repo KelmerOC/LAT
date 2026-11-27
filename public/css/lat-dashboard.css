@@ -347,21 +347,6 @@ body.dash-body {
   display: none;
 }
 
-.dash-topbar-lang {
-  display: inline-flex;
-  background: #ffffff;
-  border: 1px solid var(--color-hairline);
-  border-radius: var(--radius-sharp);
-  padding: 3px;
-  gap: 2px;
-}
-
-.dash-topbar-lang .dash-lang-pill {
-  border: none;
-  min-width: 34px;
-  padding-inline: 0.45rem;
-}
-
 .dash-range-pill {
   display: inline-flex;
   align-items: center;
@@ -1042,5 +1027,557 @@ body.dash-body .subtabs-edit {
   .dash-lang-pill,
   .btn-micro {
     min-height: 44px;
+  }
+}
+
+/* ==============================================================================
+   AVISO INLINE DE ACOPIO POR VOZ, CALIDAD EN TINAS Y ESTADOS DESHABILITADOS
+   ============================================================================== */
+.acopio-voz-aviso {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.85rem;
+  margin-bottom: 1.25rem;
+  border-radius: var(--radius-sharp);
+  box-shadow: none;
+}
+
+.acopio-voz-aviso[hidden] {
+  display: none;
+}
+
+.acopio-voz-aviso-body {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+.acopio-voz-aviso-body p {
+  color: inherit;
+}
+
+.acopio-voz-aviso-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.acopio-frase-mini {
+  font-style: italic;
+  color: var(--color-graphite);
+  margin-top: 0.15rem;
+}
+
+.tina-calidad-aviso {
+  border: 1px solid var(--color-hairline);
+  border-left: 3px solid var(--color-celeste-action);
+  border-radius: var(--radius-sharp);
+  box-shadow: none;
+}
+
+.tina-calidad-aviso > p.tina-calidad-aviso-sub {
+  margin: 0;
+  font-size: 0.9375rem;
+  color: var(--color-graphite);
+}
+
+.tina-calidad-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.85rem;
+  margin-top: 0.85rem;
+}
+
+.tina-calidad-item {
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-sharp);
+  box-shadow: none;
+}
+
+.tina-calidad-item.is-optima {
+  background: var(--verde-fill);
+}
+
+.tina-calidad-item.is-acida {
+  background: var(--amarillo-fill);
+}
+
+.tina-calidad-item.is-pendiente {
+  background: var(--color-fog);
+}
+
+.tina-calidad-valor {
+  font-size: 1.55rem;
+  font-weight: 300;
+  font-variant-numeric: tabular-nums;
+  margin: 0.4rem 0 0.2rem;
+  color: var(--color-ink);
+  line-height: 1.15;
+}
+
+.tina-calidad-valor small {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--color-graphite);
+}
+
+.tina-calidad-uso {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--color-ink);
+}
+
+.tina-calidad-aviso > p.tina-calidad-empty {
+  margin: 0.75rem 0 0;
+  font-size: 0.9rem;
+  color: var(--color-graphite);
+}
+
+.tina-idle-milk-hint {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 0.82rem;
+  color: var(--color-graphite);
+}
+
+.tina-idle-milk-hint strong {
+  color: var(--color-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.btn-micro:disabled,
+.btn-micro[aria-disabled="true"] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-micro:disabled:hover,
+.btn-micro[aria-disabled="true"]:hover {
+  background: var(--color-paper);
+}
+
+/* ==============================================================================
+   BANDEJA DE NOTIFICACIONES Y ALERTAS EN VIVO (TOPBAR & STACK)
+   ============================================================================== */
+.lat-notif-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.lat-notif-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 42px;
+  padding: 0.45rem 0.8rem;
+  background: #ffffff;
+  border: 1px solid var(--color-hairline-strong);
+  border-radius: var(--radius-sharp);
+  box-shadow: none;
+}
+
+.lat-notif-count {
+  min-width: 22px;
+  justify-content: center;
+  padding: 1px 6px;
+  font-variant-numeric: tabular-nums;
+}
+
+.lat-notif-count[hidden] {
+  display: none;
+}
+
+.lat-notif-tray {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  width: min(370px, calc(100vw - 24px));
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  border: 1px solid var(--color-ink);
+  border-radius: var(--radius-sharp);
+  box-shadow: none;
+  z-index: 950;
+}
+
+.lat-notif-tray[hidden] {
+  display: none;
+}
+
+.lat-notif-tray-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.7rem 0.9rem;
+  background: var(--color-sky-wash);
+  border-bottom: 1px solid var(--color-hairline);
+}
+
+.lat-notif-tray-head strong {
+  font-size: 0.85rem;
+  color: var(--color-slate-deep);
+}
+
+.lat-notif-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  max-height: 360px;
+}
+
+.lat-notif-item {
+  padding: 0.75rem 0.9rem;
+  border-bottom: 1px solid var(--color-hairline);
+  border-left: 3px solid var(--color-celeste-action);
+  background: #ffffff;
+  cursor: pointer;
+}
+
+.lat-notif-item:last-child {
+  border-bottom: none;
+}
+
+.lat-notif-item.is-unread {
+  background: var(--color-cotton);
+}
+
+.lat-notif-item.is-read {
+  opacity: 0.78;
+}
+
+.lat-notif-item.is-calidad_aprobada { border-left-color: var(--verde-text); }
+.lat-notif-item.is-calidad_acida { border-left-color: #b45309; }
+.lat-notif-item.is-calidad_descartada { border-left-color: var(--rojo-text); }
+.lat-notif-item.is-tina_finalizada { border-left-color: var(--color-celeste-action); }
+.lat-notif-item.is-tina_tiempo_cumplido { border-left-color: var(--color-ember-action); }
+
+.lat-notif-item-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.2rem;
+}
+
+.lat-notif-item-head strong {
+  font-size: 0.84rem;
+  color: var(--color-ink);
+}
+
+.lat-notif-item-head small {
+  font-size: 0.74rem;
+  color: var(--color-graphite);
+  flex-shrink: 0;
+}
+
+.lat-notif-item p {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: var(--color-graphite);
+}
+
+.lat-notif-empty {
+  padding: 1.15rem 0.9rem;
+  text-align: center;
+  font-size: 0.84rem;
+  color: var(--color-graphite);
+}
+
+.lat-live-alert-stack {
+  position: fixed;
+  top: 76px;
+  right: 12px;
+  z-index: 1050;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: min(420px, calc(100vw - 24px));
+  max-width: min(420px, calc(100vw - 24px));
+  pointer-events: none;
+}
+
+.lat-live-alert {
+  pointer-events: auto;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.65rem;
+  padding: 0.8rem 0.95rem;
+  background: #ffffff;
+  border: 1px solid var(--color-hairline-strong);
+  border-left: 4px solid var(--color-celeste-action);
+  border-radius: var(--radius-sharp);
+  box-shadow: none;
+}
+
+.lat-live-alert.is-verde,
+.lat-live-alert.is-calidad_aprobada {
+  border-left-color: var(--verde-text);
+  background: #f5fdf7;
+}
+
+.lat-live-alert.is-amarillo,
+.lat-live-alert.is-calidad_acida,
+.lat-live-alert.is-tina_tiempo_cumplido {
+  border-left-color: var(--color-ember-action);
+  background: #fff9f2;
+}
+
+.lat-live-alert.is-rojo,
+.lat-live-alert.is-calidad_descartada {
+  border-left-color: var(--rojo-text);
+  background: #fef6f6;
+}
+
+.lat-live-alert-body {
+  min-width: 0;
+  flex: 1;
+}
+
+.lat-live-alert-body strong {
+  display: block;
+  font-size: 0.86rem;
+  color: var(--color-ink);
+}
+
+.lat-live-alert-body p {
+  margin: 0.15rem 0 0;
+  font-size: 0.8rem;
+  color: var(--color-graphite);
+  overflow-wrap: anywhere;
+}
+
+/* ==============================================================================
+   TINAS: CRONÓMETRO, RECETA EDITABLE, MODAL INICIAR LOTE Y RECETAS BASE
+   ============================================================================== */
+.tinas-calidad-alertas {
+  margin-top: 0.9rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--color-hairline);
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.tinas-calidad-alertas[hidden] {
+  display: none;
+}
+
+.tina-receta-tag {
+  display: inline-block;
+  margin-top: 0.35rem;
+  padding: 2px 7px;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: var(--radius-sm);
+  color: #e1f0fa;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.tina-timer-box {
+  margin-top: 0.75rem;
+  padding: 0.45rem 0.65rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  background: rgba(10, 47, 77, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--radius-sharp);
+  font-size: 0.82rem;
+  color: #e1f0fa;
+}
+
+.tina-timer-box strong {
+  font-size: 1rem;
+  color: #ffffff;
+}
+
+.tina-timer-box.is-expired {
+  background: var(--color-ember-action);
+  border-color: #ffffff;
+  color: #ffffff;
+}
+
+body.dash-body .grid-form-tina-sensor {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: end;
+}
+
+.tina-receta-edit-details {
+  grid-column: 1 / -1;
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-sharp);
+  background: var(--color-fog);
+  padding: 0.55rem 0.75rem;
+}
+
+.tina-receta-edit-details summary {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-celeste-action);
+  cursor: pointer;
+}
+
+.it-filtros-bar {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.6rem;
+  padding: 0.75rem;
+  background: var(--color-fog);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-sharp);
+  margin-bottom: 0.65rem;
+}
+
+.it-filtros-bar .form-label {
+  font-size: 0.75rem;
+  margin-bottom: 0.2rem;
+}
+
+.it-filtros-bar .input-lat,
+.it-filtros-bar .select-lat {
+  min-height: 40px;
+  padding: 0.4rem 0.6rem;
+  font-size: 0.85rem;
+}
+
+.it-actions-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.55rem;
+}
+
+.it-litros-meter {
+  padding: 0.3rem 0.7rem;
+  background: var(--color-sky-wash);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-sharp);
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--color-ink);
+}
+
+.it-litros-meter.is-over {
+  background: var(--rojo-fill);
+  color: var(--rojo-text);
+  border-color: rgba(185, 28, 28, 0.35);
+}
+
+.it-acopios-list {
+  max-height: 230px;
+  overflow-y: auto;
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-sharp);
+  background: #ffffff;
+}
+
+.it-acopio-item {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  padding: 0.6rem 0.75rem;
+  border-bottom: 1px solid var(--color-hairline);
+  cursor: pointer;
+  font-size: 0.86rem;
+}
+
+.it-acopio-item:last-child {
+  border-bottom: none;
+}
+
+.it-acopio-item:hover {
+  background: var(--color-fog);
+}
+
+.it-acopio-item input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--color-ember-action);
+  flex-shrink: 0;
+}
+
+.it-acopio-prov {
+  flex: 1 1 140px;
+  min-width: 0;
+}
+
+.it-acopio-litros {
+  color: var(--color-slate-deep);
+}
+
+.it-acopio-fecha {
+  color: var(--color-graphite);
+  font-size: 0.78rem;
+}
+
+.it-acopios-empty {
+  margin: 0;
+  padding: 1.15rem;
+  text-align: center;
+  font-size: 0.86rem;
+  color: var(--color-graphite);
+}
+
+.it-acopios-empty[hidden] {
+  display: none;
+}
+
+.rb-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+.rb-card {
+  padding: 0.9rem;
+  background: var(--color-cotton);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-sharp);
+}
+
+.rb-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding-bottom: 0.55rem;
+  margin-bottom: 0.65rem;
+  border-bottom: 1px solid var(--color-hairline);
+}
+
+@media (max-width: 680px) {
+  .lat-notif-tray {
+    position: fixed;
+    top: 66px;
+    left: 12px;
+    right: 12px;
+    width: auto;
+  }
+
+  .rb-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 420px) {
+  body.dash-body .grid-form-tina-sensor {
+    grid-template-columns: 1fr;
   }
 }

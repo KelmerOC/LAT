@@ -100,11 +100,16 @@ class AdminController extends Controller
 
     private function normalizarCodigoPlantaInput(Request $request): void
     {
-        if ($request->has('codigo')) {
-            $request->merge([
-                'codigo' => strtoupper(trim((string) $request->input('codigo'))),
-            ]);
+        if (! $request->has('codigo')) {
+            return;
         }
+
+        $valor = strtoupper(trim((string) $request->input('codigo')));
+        $sufijo = trim((string) preg_replace('/^PLT[\s-]*/i', '', $valor));
+
+        $request->merge([
+            'codigo' => $sufijo !== '' ? 'PLT-'.$sufijo : '',
+        ]);
     }
 
     public function crearUsuario(Request $request): RedirectResponse
@@ -245,7 +250,7 @@ class AdminController extends Controller
         $this->normalizarCodigoPlantaInput($request);
 
         $datos = $request->validate([
-            'codigo' => ['required', 'string', 'max:20', 'unique:plantas,codigo'],
+            'codigo' => ['required', 'string', 'max:20', 'regex:/^PLT-[A-Z0-9][A-Z0-9-]*$/', 'unique:plantas,codigo'],
             'nombre' => ['required', 'string', 'max:140'],
             'ubicacion' => ['required', 'string', 'max:140'],
             'precio_litro' => ['required', 'numeric', 'min:0.5', 'max:20'],
@@ -262,7 +267,7 @@ class AdminController extends Controller
 
             Tina::create([
                 'planta_id' => $p->id,
-                'codigo' => 'TINA-01',
+                'codigo' => app()->getLocale() === 'en' ? 'VAT-01' : 'TINA-01',
                 'nombre' => __('lat.default_main_vat'),
                 'capacidad_litros' => 500,
                 'tipo' => 'principal_queso',
@@ -284,7 +289,7 @@ class AdminController extends Controller
         $this->normalizarCodigoPlantaInput($request);
 
         $datos = $request->validate([
-            'codigo' => ['required', 'string', 'max:20', Rule::unique('plantas', 'codigo')->ignore($planta->id)],
+            'codigo' => ['required', 'string', 'max:20', 'regex:/^PLT-[A-Z0-9][A-Z0-9-]*$/', Rule::unique('plantas', 'codigo')->ignore($planta->id)],
             'nombre' => ['required', 'string', 'max:140'],
             'ubicacion' => ['required', 'string', 'max:140'],
             'precio_litro' => ['required', 'numeric', 'min:0.5', 'max:20'],

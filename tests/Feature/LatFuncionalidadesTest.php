@@ -331,14 +331,46 @@ class LatFuncionalidadesTest extends TestCase
 
         // Iniciar, actualizar y finalizar lote con usuario operativo de tina (admin no opera en campo)
         $operadorTina = User::where('usuario', 'carlos.anta')->firstOrFail();
+        $prov = Proveedor::where('planta_id', $tina->planta_id)->firstOrFail();
+        $acopio1 = Acopio::create([
+            'planta_id' => $tina->planta_id,
+            'proveedor_id' => $prov->id,
+            'registrado_por' => $operadorTina->id,
+            'uuid_offline' => (string) Str::uuid(),
+            'fecha' => Carbon::today()->toDateString(),
+            'hora' => '06:30:00',
+            'litros' => 100.0,
+            'precio_litro' => 1.65,
+            'metodo' => 'manual',
+            'calidad' => 'buena',
+            'destino' => 'queso_yogur',
+            'evaluado_en' => Carbon::now(),
+        ]);
+        $acopio2 = Acopio::create([
+            'planta_id' => $tina->planta_id,
+            'proveedor_id' => $prov->id,
+            'registrado_por' => $operadorTina->id,
+            'uuid_offline' => (string) Str::uuid(),
+            'fecha' => Carbon::today()->toDateString(),
+            'hora' => '06:45:00',
+            'litros' => 80.0,
+            'precio_litro' => 1.65,
+            'metodo' => 'manual',
+            'calidad' => 'buena',
+            'destino' => 'queso_yogur',
+            'evaluado_en' => Carbon::now(),
+        ]);
 
         $this->actingAs($operadorTina)->post("/panel/tinas/{$tina->id}/lote", [
-            'litros' => 180,
+            'acopio_ids' => [$acopio1->id, $acopio2->id],
             'temperatura_actual' => 72.0,
         ])->assertRedirect();
 
         $lote = Lote::where('tina_id', $tina->id)->firstOrFail();
         $this->assertSame('pasteurizando', $lote->estado);
+        $this->assertSame(180.0, $lote->litros);
+        $this->assertSame($lote->id, $acopio1->fresh()->lote_id);
+        $this->assertSame($lote->id, $acopio2->fresh()->lote_id);
 
         // Ajustar temperatura y finalizar lote
         $this->actingAs($operadorTina)->post("/panel/tina/{$lote->id}", [

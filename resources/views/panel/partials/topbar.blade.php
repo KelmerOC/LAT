@@ -18,10 +18,38 @@
       <button type="button" id="btn-sync-offline" class="btn-micro" hidden>Sincronizar ahora</button>
     </div>
 
-    <div class="dash-topbar-lang" role="group" aria-label="Idioma de la plataforma" data-i18n-aria="topbar.lang_aria">
-      <button type="button" class="dash-lang-pill btn-lang-choice" data-lang="es" title="Español">ES</button>
-      <button type="button" class="dash-lang-pill btn-lang-choice" data-lang="qu" title="Runasimi (Quechua)">QU</button>
-      <button type="button" class="dash-lang-pill btn-lang-choice" data-lang="en" title="English">EN</button>
+    @php
+      $notifData = $notificacionesPanel ?? ['items' => [], 'no_leidas' => 0, 'ultimo_id' => 0];
+      $notifNoLeidas = (int) ($notifData['no_leidas'] ?? 0);
+    @endphp
+    <div class="lat-notif-wrap">
+      <button type="button" id="btn-notificaciones" class="btn btn-outline lat-notif-btn" aria-expanded="false" aria-controls="tray-notificaciones" aria-label="Bandeja de notificaciones" data-i18n-aria="notif.tray_aria">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <span class="lat-notif-label" data-i18n="notif.tray_btn">Bandeja</span>
+        <span id="notif-badge-count" class="chip chip-ember lat-notif-count" @if($notifNoLeidas === 0) hidden @endif>{{ $notifNoLeidas }}</span>
+      </button>
+      <div id="tray-notificaciones" class="lat-notif-tray" hidden
+        data-poll-url="{{ route('panel.notificaciones.poll') }}"
+        data-read-url="{{ route('panel.notificaciones.leer') }}"
+        data-last-id="{{ (int) ($notifData['ultimo_id'] ?? 0) }}">
+        <div class="lat-notif-tray-head">
+          <strong data-i18n="notif.tray_title">Alertas y bandeja operativa</strong>
+          <button type="button" id="btn-notif-marcar-todas" class="btn-micro" data-i18n="notif.mark_all_read">Marcar leídas</button>
+        </div>
+        <ul id="notif-tray-list" class="lat-notif-list">
+          @forelse(($notifData['items'] ?? []) as $nf)
+            <li class="lat-notif-item {{ !empty($nf['leida']) ? 'is-read' : 'is-unread' }} is-{{ $nf['tipo'] ?? 'info' }}" data-notif-id="{{ $nf['id'] }}" data-modulo="{{ $nf['modulo_destino'] ?? 'general' }}">
+              <div class="lat-notif-item-head">
+                <strong>{{ $nf['titulo'] }}</strong>
+                <small class="num-tabular">{{ $nf['creada_en'] ?? '' }}</small>
+              </div>
+              <p>{{ $nf['mensaje'] }}</p>
+            </li>
+          @empty
+            <li class="lat-notif-empty" data-i18n="notif.empty">Sin alertas nuevas en esta planta.</li>
+          @endforelse
+        </ul>
+      </div>
     </div>
 
     @if($usuario->puedeVerSeccion('dashboard'))
@@ -61,3 +89,4 @@
     @endif
   </div>
 </header>
+<div id="lat-live-alert-stack" class="lat-live-alert-stack" aria-live="polite"></div>

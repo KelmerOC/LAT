@@ -13,6 +13,9 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  */
 class Tina extends Model
 {
+    /** @var list<string> */
+    public const TIPOS_PREESTABLECIDOS = ['principal_queso', 'quesillo', 'yogur', 'multiproposito'];
+
     protected $table = 'tinas';
 
     protected $fillable = [
@@ -54,5 +57,10 @@ class Tina extends Model
     public function scopeDePlanta(Builder $query, int $plantaId): Builder
     {
         return $query->where('planta_id', $plantaId);
+    }
+
+    public function esTipoPreestablecido(): bool
+    {
+        return in_array($this->tipo, self::TIPOS_PREESTABLECIDOS, true);
     }
 }

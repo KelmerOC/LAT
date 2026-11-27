@@ -30,19 +30,40 @@ return [
 
     // Acopio y calidad
     'intake_created' => 'Lichi huñuyqa allinta qillqasqañam.',
+    'intake_voice_auto_created' => 'Rimaywan lichi huñuyqa kikillanmanta qillqasqañam: :producer (:liters L).',
     'intake_updated' => 'Lichi huñuy qillqaqa allinta musuqyachisqañam.',
     'intake_deleted' => 'Lichi huñuy qillqaqa wikch\'usqañam.',
     'quality_classified_acid' => 'P\'usqu lichiqa akllasqa hinaspa tawa p\'unchaw kisillupaq t\'ikrasqañam.',
     'quality_classified_good' => 'Allin lichiqa hatun tinapi q\'uñichinapaq ari nisqañam.',
+    'quality_pending' => 'Lichiqa ch\'uya kaynin qhawanapaq suyachkaqman churasqañam.',
+    'quality_classified_discarded' => 'Mana allin lichiqa wikch\'usqañam, manam tinaman yaykunqachu.',
+    'quality_locked_in_batch' => 'Kay chaskiyqa tinapi lutiman yaykunñam, manam allin kayninqa t\'ikrayta atikunñachu.',
 
     // Tinas y lotes
     'vat_created' => 'Musuq tinaqa kisu ruwana wasiman yapasqañam.',
     'vat_updated' => 'Tinaqa allinta musuqyachisqañam.',
+    'vat_deleted' => 'Tinaqa allinta wikch\'usqañam.',
+    'vat_delete_active_error' => 'Manam atinkichu llank\'achkaq lutiyuq tinata wikch\'uyta.',
     'vat_inactive_error' => 'Manam atikunchu musuq lutita qallariyta mana llank\'aq tinapi.',
     'vat_already_active_error' => 'Kay tinapiqa huk luti llank\'achkanñam. Tukuyraq hukta qallarinaykipaq.',
+    'vat_milk_invalid_error' => 'Allin utaq p\'usquyuq mana lutiyuq lichi chaskiykunallata akllay.',
+    'vat_capacity_exceeded_error' => 'Akllasqa litrukunaqa tinap aswan hatun tupuy hap\'iyninmanta llallinmi.',
     'batch_started' => ':vat tinapi luti qallarisqañam tupuynin yupasqantin.',
     'batch_finished_error' => 'Kay lutiqa tukusqañam kachkan, manam t\'ikrayta atikunñachu.',
     'batch_finished' => 'Lutiqa tukusqañam hinaspa muldikunaqa tinapi qillqasqañam.',
+    'base_recipes_updated' => 'Plantap qallariy tupuy qillqankunaqa allinta musuqyachisqañam.',
+
+    // Llank'ay willakuykuna
+    'notif_quality_good_title' => 'Allin lichi tinapaq',
+    'notif_quality_good_msg' => ':producer (:liters L) chaskiypi allin nisqa. Tinaman hich\'anapaq wakichisqañam.',
+    'notif_quality_acid_title' => 'P\'usqu lichi kisilluman kachasqa',
+    'notif_quality_acid_msg' => ':producer (:liters L) 74° p\'usquyuq. 4 p\'unchaw kisilluman t\'ikrasqa.',
+    'notif_quality_discarded_title' => 'Chaskiypi lichi wikch\'usqa',
+    'notif_quality_discarded_msg' => ':producer (:liters L) ch\'uya kay qhawaypi wikch\'usqa. Manam tinaman yaykunchu.',
+    'notif_batch_finished_title' => ':vat tinapi luti tukusqa',
+    'notif_batch_finished_msg' => ':vat tinapi luti tukusqañam :molds muldikuna qillqasqawan.',
+    'notif_timer_done_title' => 'Tinapi pacha hunt\'asqa',
+    'notif_timer_done_msg' => ':vat tinapaq churasqa pachaqa hunt\'akunñam. Tinata qhaway.',
 
     // Movimientos y ganaderos
     'movement_created' => 'Qullqi kuyuyqa allinta qillqasqañam.',
