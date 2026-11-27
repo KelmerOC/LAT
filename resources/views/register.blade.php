@@ -44,8 +44,8 @@
               <input type="text" id="reg-ubicacion" name="planta_ubicacion" class="input-lat" value="{{ old('planta_ubicacion', 'Cusco Provincia') }}" required>
             </div>
             <div class="form-grupo">
-              <label for="reg-precio" class="form-label" data-i18n="register.price">Precio por litro (S/)</label>
-              <input type="number" step="0.05" min="0.5" max="20" id="reg-precio" name="precio_litro" class="input-lat" value="{{ old('precio_litro', '1.65') }}">
+              <label for="reg-precio" class="form-label" data-i18n="register.price">Precio por litro (S/) (opcional)</label>
+              <input type="number" step="0.05" min="0.5" max="20" id="reg-precio" name="precio_litro" class="input-lat" value="{{ old('precio_litro', '1.65') }}" placeholder="1.65">
             </div>
           </div>
 

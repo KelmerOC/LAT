@@ -57,7 +57,7 @@ class DatabaseSeeder extends Seeder
         // 2. Usuarios con Roles Operativos y Personalizados (Contraseña general: secreto123)
         $admin = User::create([
             'planta_id' => $planta1->id,
-            'name' => 'Don Justo Quispe',
+            'name' => 'Ing. Rodrigo Quispe',
             'usuario' => 'donjusto',
             'email' => 'donjusto@sanborreal.pe',
             'password' => $password,
@@ -69,7 +69,7 @@ class DatabaseSeeder extends Seeder
 
         $encargado = User::create([
             'planta_id' => $planta1->id,
-            'name' => 'Carlos Quispe (Hijo Encargado)',
+            'name' => 'Ing. Andrés Huamán',
             'usuario' => 'carlos.anta',
             'email' => 'carlos@sanborreal.pe',
             'password' => $password,
@@ -82,7 +82,7 @@ class DatabaseSeeder extends Seeder
 
         $recolector = User::create([
             'planta_id' => $planta1->id,
-            'name' => 'Mateo Triveño',
+            'name' => 'Téc. Javier Condori',
             'usuario' => 'mateo.ruta',
             'email' => 'mateo@sanborreal.pe',
             'password' => $password,
@@ -95,7 +95,7 @@ class DatabaseSeeder extends Seeder
 
         User::create([
             'planta_id' => $planta1->id,
-            'name' => 'Sabina Huillca',
+            'name' => 'Téc. Valeria Cárdenas',
             'usuario' => 'sabina.tina',
             'email' => 'sabina@sanborreal.pe',
             'password' => $password,
@@ -108,26 +108,13 @@ class DatabaseSeeder extends Seeder
 
         User::create([
             'planta_id' => $planta1->id,
-            'name' => 'Marco Antonio (Contador)',
+            'name' => 'CPC Ricardo Paredes',
             'usuario' => 'contador.marco',
             'email' => 'contador@sanborreal.pe',
             'password' => $password,
             'cargo' => 'contador_externo',
             'rango' => 'operador',
             'permisos' => User::PLANTILLAS_CARGO['contador_externo'],
-            'activo' => true,
-            'creado_por' => $admin->id,
-        ]);
-
-        User::create([
-            'planta_id' => $planta1->id,
-            'name' => 'Lucía Condori (Acceso Personalizado)',
-            'usuario' => 'lucia.personal',
-            'email' => null,
-            'password' => $password,
-            'cargo' => 'personalizado',
-            'rango' => 'personalizado',
-            'permisos' => ['calidad.ver', 'calidad.evaluar', 'tinas.ver', 'tinas.operar'],
             'activo' => true,
             'creado_por' => $admin->id,
         ]);

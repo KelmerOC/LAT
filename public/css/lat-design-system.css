@@ -1039,6 +1039,7 @@ main > .contenedor,
 .perfil-btn[aria-pressed="true"] { background: var(--color-slate-deep); color: var(--color-white); }
 .perfil-btn strong { display: block; }
 .perfil-btn span { font-size: 0.8125rem; color: var(--color-graphite); }
+.perfil-btn:last-child:nth-child(odd) { grid-column: 1 / -1; }
 .perfil-btn[aria-pressed="true"] span { color: #bae6fd; }
 @media (max-width: 480px) { .perfiles-grid { grid-template-columns: 1fr; } .login-card { padding: 2rem 1.25rem; } }
 

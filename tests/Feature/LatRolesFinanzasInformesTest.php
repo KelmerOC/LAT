@@ -607,4 +607,93 @@ class LatRolesFinanzasInformesTest extends TestCase
         $this->assertStringContainsString('manual_admin_planta', $txtBody);
         $this->assertStringContainsString('BITÁCORA CRONOLÓGICA DE ACTIVIDADES', $txtBody);
     }
+
+    public function test_finanzas_oculta_formulas_excel_y_actualiza_litros_manual_o_desde_acopios(): void
+    {
+        $admin = User::where('usuario', 'donjusto')->firstOrFail();
+        $recolector = User::where('usuario', 'mateo.ruta')->firstOrFail();
+        $prov = Proveedor::where('planta_id', $admin->planta_id)->where('codigo', 'PRV-01')->firstOrFail();
+
+        $hoy = Carbon::today();
+        $desde = $hoy->day <= 15
+            ? $hoy->copy()->startOfMonth()->toDateString()
+            : $hoy->copy()->startOfMonth()->addDays(15)->toDateString();
+        $hasta = $hoy->day <= 15
+            ? $hoy->copy()->startOfMonth()->addDays(14)->toDateString()
+            : $hoy->copy()->endOfMonth()->toDateString();
+
+        // Registro público muestra que Precio por litro es opcional y funciona con valor vacío
+        $this->get('/registrarse')
+            ->assertOk()
+            ->assertSee('Precio por litro (S/) (opcional)', false);
+
+        $this->post('/registrarse', [
+            'name' => 'Ing. Carmen Vega',
+            'usuario' => 'carmen.vega',
+            'planta_nombre' => 'Quesería Alto Cusco',
+            'planta_ubicacion' => 'Anta',
+            'precio_litro' => '',
+            'password' => 'ClaveSegura123',
+            'password_confirmation' => 'ClaveSegura123',
+        ])->assertRedirect('/panel');
+        $this->post('/logout')->assertRedirect('/');
+
+        // La UI de Finanzas no incluye barras fx ni fórmulas visibles en encabezados
+        $panelRes = $this->actingAs($admin)->get('/panel');
+        $panelRes->assertOk();
+        $panelRes->assertDontSee('excel-formula-bar', false);
+        $panelRes->assertDontSee('=MAX(0,', false);
+        $panelRes->assertDontSee('(=D×E)', false);
+        $panelRes->assertDontSee('(=Cant×P.Unit)', false);
+        $panelRes->assertDontSee('(=Días×Tarifa)', false);
+
+        // Edición manual de litros en liquidación (PRV-01 mantiene su adelanto abierto de S/ 30.00)
+        $this->actingAs($admin)->put('/panel/finanzas/liquidacion-grid', [
+            'fecha_desde' => $desde,
+            'fecha_hasta' => $hasta,
+            'filas' => [[
+                'proveedor_id' => $prov->id,
+                'litros' => 95.5,
+                'precio_litro' => 2.00,
+                'adelantos' => 30.00,
+                'estado_pago' => 'parcial',
+            ]],
+        ])->assertRedirect();
+
+        $datosManual = $this->actingAs($admin)
+            ->getJson('/panel/finanzas/liquidacion-datos?'.http_build_query([
+                'liq_desde' => $desde,
+                'liq_hasta' => $hasta,
+                'liq_proveedor_id' => $prov->id,
+            ]))
+            ->assertOk()
+            ->json();
+
+        $this->assertSame(95.5, (float) $datosManual['filas'][0]['litros']);
+        $this->assertSame(191.0, (float) $datosManual['filas'][0]['bruto']);
+        $this->assertSame(161.0, (float) $datosManual['filas'][0]['neto']);
+
+        // Usuario sin permisos financieros no puede consultar ni sincronizar
+        $this->actingAs($recolector)
+            ->postJson('/panel/finanzas/liquidacion-sincronizar')
+            ->assertForbidden();
+
+        // Sincronizar desde acopios limpia el ajuste manual y recalcula con los acopios reales
+        $acopiosReales = (float) Acopio::dePlanta($admin->planta_id)
+            ->where('proveedor_id', $prov->id)
+            ->delPeriodo($desde, $hasta)
+            ->liquidables()
+            ->sum('litros');
+
+        $datosSync = $this->actingAs($admin)
+            ->postJson('/panel/finanzas/liquidacion-sincronizar', [
+                'liq_desde' => $desde,
+                'liq_hasta' => $hasta,
+                'liq_proveedor_id' => $prov->id,
+            ])
+            ->assertOk()
+            ->json();
+
+        $this->assertEqualsWithDelta($acopiosReales, (float) $datosSync['filas'][0]['litros'], 0.01);
+    }
 }

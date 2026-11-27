@@ -201,6 +201,7 @@
 
       toggleSidebar(false);
       try { sessionStorage.setItem(storageKey, sectionId); } catch (_) {}
+      window.dispatchEvent(new CustomEvent('lat:section-shown', { detail: { sectionId } }));
 
       if (sectionId === 'sec-dashboard' || sectionId === 'sec-estadisticas') {
         requestAnimationFrame(() => {

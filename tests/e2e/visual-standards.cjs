@@ -206,6 +206,31 @@ async function checkVisibleFormLabels(page) {
       dashStructure.sidebarLangRowExists && dashStructure.sidebarLangBtnCount === 3,
       JSON.stringify(dashStructure));
 
+    // Verificar que #tray-notificaciones al abrirse no quede oculta por #dash-sidebar ni recortada fuera del viewport
+    await page.click('#btn-notificaciones');
+    const trayRect = await page.evaluate(() => {
+      const tray = document.getElementById('tray-notificaciones');
+      const sidebar = document.getElementById('dash-sidebar');
+      if (!tray || tray.hidden) return { open: false };
+      const tr = tray.getBoundingClientRect();
+      const sr = sidebar ? sidebar.getBoundingClientRect() : null;
+      const sidebarVisible = sr && sr.width > 0 && sr.right > 0 && window.innerWidth > 992;
+      return {
+        open: true,
+        left: Math.round(tr.left),
+        right: Math.round(tr.right),
+        top: Math.round(tr.top),
+        vw: window.innerWidth,
+        sidebarRight: sidebarVisible ? Math.round(sr.right) : 0,
+        noOverlapSidebar: !sidebarVisible || tr.left >= sr.right - 1,
+        inViewport: tr.left >= 0 && tr.right <= window.innerWidth + 1,
+      };
+    });
+    check(`${nombre} /panel #tray-notificaciones visible sin quedar oculto por barra lateral`,
+      trayRect.open && trayRect.noOverlapSidebar && trayRect.inViewport,
+      JSON.stringify(trayRect));
+    await page.keyboard.press('Escape');
+
     // Alineación DESIGN.md: borderRadius <= 2px, boxShadow === 'none', topbar backdropFilter === 'none'
     const designMetrics = await page.evaluate(() => {
       const checkGroup = (sel) => [...document.querySelectorAll(sel)].map(el => {

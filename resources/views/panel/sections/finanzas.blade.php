@@ -79,6 +79,9 @@
       </div>
       <div style="display: flex; flex-wrap: wrap; gap: 0.65rem;">
         @if($usuario->tienePermiso('finanzas.editar'))
+          <button type="button" id="btn-sync-liq-acopios" class="btn btn-outline" data-sync-url="{{ route('panel.finanzas.liquidacion_sync') }}">
+            <span data-i18n="m4.btn_sync_liq">Actualizar desde acopios</span>
+          </button>
           <button type="button" id="btn-toggle-edit-liq" class="btn btn-outline" aria-pressed="false">
             {!! $icoEditar !!} <span data-i18n="m4.btn_edit_liq">Editar tabla</span>
           </button>
@@ -134,11 +137,7 @@
     </form>
 
     @if($usuario->tienePermiso('finanzas.ver'))
-      <div id="liq-excel-wrap" class="excel-sheet-wrap">
-        <div class="excel-formula-bar">
-          <span>fx</span>
-          <code id="liq-formula-bar">=MAX(0, F2 - G2 - H2)</code>
-        </div>
+      <div id="liq-excel-wrap" class="excel-sheet-wrap" data-datos-url="{{ route('panel.finanzas.liquidacion_datos') }}" data-can-edit="{{ $usuario->tienePermiso('finanzas.editar') ? '1' : '0' }}">
         <form id="form-liq-grid" method="POST" action="{{ route('panel.finanzas.liquidacion_grid') }}" class="js-confirm-form" data-confirm-kind="save_liq_grid">
           @csrf
           @method('PUT')
@@ -149,16 +148,16 @@
             <table id="tabla-excel-liquidacion" class="tabla-plana excel-sheet-table" style="min-width: 920px;">
               <thead>
                 <tr>
-                  <th scope="col" data-i18n="m4.xcol_a">A · Código</th>
-                  <th scope="col" data-i18n="m4.xcol_b">B · Ganadero</th>
-                  <th scope="col" data-i18n="m4.xcol_c">C · Sector</th>
-                  <th scope="col" class="num" data-i18n="m4.xcol_d">D · Litros</th>
-                  <th scope="col" class="num" data-i18n="m4.xcol_e">E · Precio/L (S/)</th>
-                  <th scope="col" class="num" data-i18n="m4.xcol_f">F · Bruto (=D×E)</th>
-                  <th scope="col" class="num" data-i18n="m4.xcol_g">G · Adelantos (S/)</th>
-                  <th scope="col" class="num" data-i18n="m4.xcol_h">H · Comisión (S/)</th>
-                  <th scope="col" class="num" style="background: var(--color-sky-wash);" data-i18n="m4.xcol_i">I · Neto (=MAX(0,F-G-H))</th>
-                  <th scope="col" data-i18n="m4.xcol_j">J · Estado</th>
+                  <th scope="col" data-i18n="m4.xcol_a">Código</th>
+                  <th scope="col" data-i18n="m4.xcol_b">Ganadero</th>
+                  <th scope="col" data-i18n="m4.xcol_c">Sector</th>
+                  <th scope="col" class="num" data-i18n="m4.xcol_d">Litros</th>
+                  <th scope="col" class="num" data-i18n="m4.xcol_e">Precio/L (S/)</th>
+                  <th scope="col" class="num" data-i18n="m4.xcol_f">Bruto (S/)</th>
+                  <th scope="col" class="num" data-i18n="m4.xcol_g">Adelantos (S/)</th>
+                  <th scope="col" class="num" data-i18n="m4.xcol_h">Comisión (S/)</th>
+                  <th scope="col" class="num" style="background: var(--color-sky-wash);" data-i18n="m4.xcol_i">Neto (S/)</th>
+                  <th scope="col" data-i18n="m4.xcol_j">Estado</th>
                 </tr>
               </thead>
               <tbody>
@@ -170,7 +169,10 @@
                     </td>
                     <td><strong>{{ $liq->nombre }}</strong></td>
                     <td>{{ $liq->sector }}</td>
-                    <td class="num num-tabular js-liq-litros" data-litros="{{ number_format($liq->litros, 2, '.', '') }}">{{ number_format($liq->litros, 1) }} L</td>
+                    <td class="num num-tabular">
+                      <label class="sr-only" for="liq-litros-{{ $idx }}">Litros {{ $liq->nombre }}</label>
+                      <input type="number" step="0.1" min="0" max="100000" id="liq-litros-{{ $idx }}" name="filas[{{ $idx }}][litros]" value="{{ number_format($liq->litros, 1, '.', '') }}" class="excel-cell-input js-liq-litros" disabled>
+                    </td>
                     <td class="num">
                       <label class="sr-only" for="liq-precio-{{ $idx }}">Precio/L {{ $liq->nombre }}</label>
                       <input type="number" step="0.01" min="0.5" max="20" id="liq-precio-{{ $idx }}" name="filas[{{ $idx }}][precio_litro]" value="{{ number_format($liq->precio_litro, 2, '.', '') }}" class="excel-cell-input js-liq-precio" list="lista-precios-litro" disabled>
@@ -292,11 +294,6 @@
     </form>
 
     <div class="excel-sheet-wrap">
-      <div class="excel-formula-bar">
-        <span>fx</span>
-        <code id="ventas-formula-bar">=E2*F2 · Total = Cant × P.Unit</code>
-      </div>
-
       @if($usuario->tienePermiso('finanzas.registrar'))
         <form id="form-nueva-venta" method="POST" action="{{ route('panel.movimiento') }}" class="excel-inline-create-form">
           @csrf
@@ -363,7 +360,7 @@
                 <th scope="col" data-i18n="m4.col_concept">Concepto</th>
                 <th scope="col" class="num" data-i18n="m4.col_qty">Cant.</th>
                 <th scope="col" class="num" data-i18n="m4.col_unit_price">P. Unit. (S/)</th>
-                <th scope="col" class="num" style="background: var(--color-sky-wash);" data-i18n="m4.col_total_formula">Total (=Cant×P.Unit)</th>
+                <th scope="col" class="num" style="background: var(--color-sky-wash);" data-i18n="m4.col_total_formula">Total (S/)</th>
                 @if($usuario->tienePermiso('finanzas.editar'))
                   <th scope="col" data-i18n="m1.col_actions">Acciones</th>
                 @endif
@@ -493,11 +490,6 @@
     </form>
 
     <div class="excel-sheet-wrap">
-      <div class="excel-formula-bar">
-        <span>fx</span>
-        <code id="sueldos-formula-bar">=E2*F2 · Total = Días/Cant × Tarifa</code>
-      </div>
-
       @if($usuario->tienePermiso('finanzas.registrar'))
         <form id="form-nuevo-sueldo" method="POST" action="{{ route('panel.movimiento') }}" class="excel-inline-create-form">
           @csrf
@@ -555,7 +547,7 @@
                 <th scope="col" data-i18n="m4.col_concept_task">Concepto / Faena</th>
                 <th scope="col" class="num" data-i18n="m4.col_days_qty">Días/Cant.</th>
                 <th scope="col" class="num" data-i18n="m4.col_rate">Tarifa (S/)</th>
-                <th scope="col" class="num" style="background: var(--color-sky-wash);" data-i18n="m4.col_total_pay_formula">Total (=Días×Tarifa)</th>
+                <th scope="col" class="num" style="background: var(--color-sky-wash);" data-i18n="m4.col_total_pay_formula">Total (S/)</th>
                 @if($usuario->tienePermiso('finanzas.editar'))
                   <th scope="col" data-i18n="m1.col_actions">Acciones</th>
                 @endif

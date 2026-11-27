@@ -280,9 +280,12 @@
       actualizarBadge(avisoError);
       renderPendientesEnTabla();
 
-      if (totalSincronizados > 0 && (recarregarSiExito || leerColaPlantaActual().length === 0)) {
-        window.location.hash = '#sec-acopio';
-        window.location.reload();
+      if (totalSincronizados > 0) {
+        window.dispatchEvent(new CustomEvent('lat:acopios-updated'));
+        if (recarregarSiExito || leerColaPlantaActual().length === 0) {
+          window.location.hash = '#sec-acopio';
+          window.location.reload();
+        }
       }
     } catch (_) {
       // Sigue sin conectividad real; se reintentará al recuperar red

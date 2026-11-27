@@ -77,6 +77,12 @@ Route::middleware('auth')->prefix('panel')->group(function (): void {
         ->name('panel.notificaciones.contable');
 
     // Módulo 4: Movimientos, Ventas, Liquidación editable y Proveedores
+    Route::get('/finanzas/liquidacion-datos', [PanelController::class, 'obtenerDatosLiquidacion'])
+        ->middleware('permiso:finanzas.ver')
+        ->name('panel.finanzas.liquidacion_datos');
+    Route::post('/finanzas/liquidacion-sincronizar', [PanelController::class, 'sincronizarLiquidacionAcopios'])
+        ->middleware('permiso:finanzas.editar')
+        ->name('panel.finanzas.liquidacion_sync');
     Route::put('/finanzas/liquidacion-grid', [PanelController::class, 'guardarLiquidacionGrid'])
         ->middleware('permiso:finanzas.editar')
         ->name('panel.finanzas.liquidacion_grid');

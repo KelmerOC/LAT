@@ -174,8 +174,15 @@ class LacteoService
             ->where('liquidaciones.tipo', 'quincena')
             ->when($plantaId !== null, fn ($q) => $q->where('liquidaciones.planta_id', $plantaId))
             ->leftJoin('adelanto_aplicaciones as aa', 'aa.quincena_liquidacion_id', '=', 'liquidaciones.id')
-            ->groupBy('liquidaciones.id', 'liquidaciones.proveedor_id', 'liquidaciones.estado_pago')
-            ->selectRaw('liquidaciones.id, liquidaciones.proveedor_id, liquidaciones.estado_pago, COALESCE(SUM(aa.monto_aplicado), 0) as total_aplicado');
+            ->groupBy(
+                'liquidaciones.id',
+                'liquidaciones.proveedor_id',
+                'liquidaciones.estado_pago',
+                'liquidaciones.litros',
+                'liquidaciones.precio_unitario',
+                'liquidaciones.canal_referencia'
+            )
+            ->selectRaw('liquidaciones.id, liquidaciones.proveedor_id, liquidaciones.estado_pago, liquidaciones.litros, liquidaciones.precio_unitario, liquidaciones.canal_referencia, COALESCE(SUM(aa.monto_aplicado), 0) as total_aplicado');
         $this->aplicarRangoFecha($quincenasQuery, $desde, $hasta, 'liquidaciones.fecha');
 
         $quincenasMap = $quincenasQuery
@@ -206,10 +213,24 @@ class LacteoService
 
         $filas = $proveedores->map(function (Proveedor $p) use ($acopiosPorProveedor, $saldosPendientesMap, $quincenasMap, $precioLitro): object {
             $acopio = $acopiosPorProveedor->get($p->id);
-            $litros = (float) ($acopio->total_litros ?? 0);
+            $acopioLitros = (float) ($acopio->total_litros ?? 0);
             $rawBruto = (float) ($acopio->total_bruto ?? 0);
-            $bruto = round($rawBruto, 2);
             $quincena = $quincenasMap->get($p->id);
+
+            $esManualLitros = $quincena !== null && $quincena->canal_referencia === 'manual_litros';
+            $precioUnit = $acopioLitros > 0 ? round($rawBruto / $acopioLitros, 2) : $precioLitro;
+
+            if ($esManualLitros) {
+                $litros = round((float) $quincena->litros, 2);
+                if ($quincena->precio_unitario !== null) {
+                    $precioUnit = round((float) $quincena->precio_unitario, 2);
+                }
+                $bruto = round($litros * $precioUnit, 2);
+            } else {
+                $litros = $acopioLitros;
+                $bruto = round($rawBruto, 2);
+            }
+
             $aplicadoEnQuincena = $quincena !== null
                 ? round((float) ($quincena->total_aplicado ?? 0.0), 2)
                 : 0.0;
@@ -240,7 +261,7 @@ class LacteoService
                 'nombre' => $p->nombre,
                 'sector' => $p->sector,
                 'litros' => $litros,
-                'precio_litro' => $litros > 0 ? round($rawBruto / $litros, 2) : $precioLitro,
+                'precio_litro' => $precioUnit,
                 'bruto' => $bruto,
                 'adelantos' => $adelanto,
                 'comision' => $comision,

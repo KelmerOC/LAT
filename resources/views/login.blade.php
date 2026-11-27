@@ -38,12 +38,11 @@
             <h3 data-i18n="login.profiles_title">Accesos rápidos por cargo</h3>
             <p class="ayuda" data-i18n="login.profiles_help">Seleccione un perfil para ingresar al panel.</p>
             <div class="perfiles-grid" role="group" aria-label="Accesos rápidos por cargo" data-i18n-aria="login.profiles_aria">
-              <button type="button" class="perfil-btn" data-usuario="donjusto@sanborreal.pe" aria-pressed="true"><strong data-i18n="login.profile_justo">Don Justo</strong><span data-i18n="login.role_admin">Administración total</span></button>
-              <button type="button" class="perfil-btn" data-usuario="carlos.anta" aria-pressed="false"><strong>Carlos</strong><span data-i18n="login.role_manager">Encargado de planta</span></button>
-              <button type="button" class="perfil-btn" data-usuario="sabina.tina" aria-pressed="false"><strong>Sabina</strong><span data-i18n="login.role_vat">Tina / Calidad</span></button>
-              <button type="button" class="perfil-btn" data-usuario="contador.marco" aria-pressed="false"><strong>Marco</strong><span data-i18n="login.role_accountant">Contador externo</span></button>
-              <button type="button" class="perfil-btn" data-usuario="mateo.ruta" aria-pressed="false"><strong>Mateo</strong><span data-i18n="login.role_collector">Solo Acopio en ruta</span></button>
-              <button type="button" class="perfil-btn" data-usuario="lucia.personal" aria-pressed="false"><strong>Lucía</strong><span data-i18n="login.role_custom">Personalizado (Calidad + Tinas)</span></button>
+              <button type="button" class="perfil-btn" data-usuario="donjusto@sanborreal.pe" aria-pressed="true"><strong data-i18n="login.profile_justo">Ing. Rodrigo</strong><span data-i18n="login.role_admin">Administración total</span></button>
+              <button type="button" class="perfil-btn" data-usuario="carlos.anta" aria-pressed="false"><strong>Ing. Andrés</strong><span data-i18n="login.role_manager">Encargado de planta</span></button>
+              <button type="button" class="perfil-btn" data-usuario="sabina.tina" aria-pressed="false"><strong>Téc. Valeria</strong><span data-i18n="login.role_vat">Tina / Calidad</span></button>
+              <button type="button" class="perfil-btn" data-usuario="contador.marco" aria-pressed="false"><strong>CPC Ricardo</strong><span data-i18n="login.role_accountant">Contador externo</span></button>
+              <button type="button" class="perfil-btn" data-usuario="mateo.ruta" aria-pressed="false"><strong>Téc. Javier</strong><span data-i18n="login.role_collector">Solo Acopio en ruta</span></button>
             </div>
           </div>
         @endif

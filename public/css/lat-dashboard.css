@@ -286,6 +286,10 @@ body.dash-body {
   flex-wrap: wrap;
 }
 
+.dash-topbar.has-notif-open {
+  z-index: 950;
+}
+
 .dash-topbar-left {
   display: flex;
   align-items: center;
@@ -853,8 +857,13 @@ body.dash-body .subtabs-edit {
     bottom: 0;
     width: 280px;
     max-width: 86vw;
+    z-index: 980;
     transform: translateX(-105%);
     transition: transform 220ms var(--ease-out);
+  }
+
+  .dash-sidebar-backdrop {
+    z-index: 970;
   }
 
   .dash-sidebar.abierto {
@@ -1197,18 +1206,18 @@ body.dash-body .subtabs-edit {
 }
 
 .lat-notif-tray {
-  position: absolute;
-  top: calc(100% + 6px);
-  right: 0;
+  position: fixed;
+  top: 66px;
+  left: 12px;
   width: min(370px, calc(100vw - 24px));
-  max-height: 70vh;
+  max-height: calc(100vh - 84px);
   display: flex;
   flex-direction: column;
   background: #ffffff;
   border: 1px solid var(--color-ink);
   border-radius: var(--radius-sharp);
   box-shadow: none;
-  z-index: 950;
+  z-index: 960;
 }
 
 .lat-notif-tray[hidden] {

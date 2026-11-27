@@ -1688,6 +1688,7 @@ class PanelController extends Controller
             'fecha_hasta' => ['nullable', 'date'],
             'filas' => ['required', 'array', 'min:1'],
             'filas.*.proveedor_id' => ['required', 'integer', Rule::exists('proveedores', 'id')->where('planta_id', $planta->id)],
+            'filas.*.litros' => ['nullable', 'numeric', 'min:0', 'max:100000'],
             'filas.*.precio_litro' => ['required', 'numeric', 'min:0.5', 'max:20'],
             'filas.*.adelantos' => ['required', 'numeric', 'min:0', 'max:100000'],
             'filas.*.estado_pago' => ['required', Rule::in(Liquidacion::ESTADOS_PAGO)],
@@ -1719,10 +1720,16 @@ class PanelController extends Controller
                     ->selectRaw('COUNT(*) as total, COALESCE(SUM(litros), 0) as sum_litros, COALESCE(SUM(litros * COALESCE(precio_litro, ?)), 0) as sum_bruto', [(float) $planta->precio_litro])
                     ->first();
 
-                $totalLitrosProv = (float) ($acopioResumen->sum_litros ?? 0);
+                $totalLitrosAcopio = round((float) ($acopioResumen->sum_litros ?? 0), 2);
+                $litrosSolicitados = isset($fila['litros']) && $fila['litros'] !== ''
+                    ? round((float) $fila['litros'], 2)
+                    : $totalLitrosAcopio;
+                $esManualLitros = abs($litrosSolicitados - $totalLitrosAcopio) >= 0.01;
+                $totalLitrosProv = $esManualLitros ? $litrosSolicitados : $totalLitrosAcopio;
+
                 $precioSolicitado = round((float) $fila['precio_litro'], 2);
-                $precioActualAvg = $totalLitrosProv > 0
-                    ? round(((float) $acopioResumen->sum_bruto) / $totalLitrosProv, 2)
+                $precioActualAvg = $totalLitrosAcopio > 0
+                    ? round(((float) $acopioResumen->sum_bruto) / $totalLitrosAcopio, 2)
                     : round((float) $planta->precio_litro, 2);
 
                 if ((int) ($acopioResumen->total ?? 0) > 0 && abs($precioSolicitado - $precioActualAvg) >= 0.01) {
@@ -1734,8 +1741,10 @@ class PanelController extends Controller
                     $precioEfectivo = $precioSolicitado;
                     $brutoProv = round($totalLitrosProv * $precioEfectivo, 2);
                 } else {
-                    $precioEfectivo = $precioActualAvg;
-                    $brutoProv = round((float) ($acopioResumen->sum_bruto ?? 0), 2);
+                    $precioEfectivo = $esManualLitros ? $precioSolicitado : $precioActualAvg;
+                    $brutoProv = $esManualLitros
+                        ? round($totalLitrosProv * $precioEfectivo, 2)
+                        : round((float) ($acopioResumen->sum_bruto ?? 0), 2);
                 }
 
                 $quincenaQuery = Liquidacion::dePlanta($planta->id)
@@ -1815,8 +1824,10 @@ class PanelController extends Controller
                         'fecha' => $fechaQuincena,
                         'tipo' => 'quincena',
                         'concepto' => "Liquidación quincenal {$desde} al {$hasta}",
+                        'canal_referencia' => $esManualLitros ? 'manual_litros' : null,
                         'litros' => $totalLitrosProv,
                         'cantidad_unidades' => 0,
+                        'precio_unitario' => $precioEfectivo,
                         'monto' => max(0, round($brutoProv - $adelantoSolicitado, 2)),
                         'comision' => 0.00,
                         'descontado' => true,
@@ -1885,7 +1896,9 @@ class PanelController extends Controller
                     : $adelantoSolicitado;
 
                 $quincena->update([
+                    'canal_referencia' => $esManualLitros ? 'manual_litros' : null,
                     'litros' => $totalLitrosProv,
+                    'precio_unitario' => $precioEfectivo,
                     'monto' => max(0, round($brutoProv - $montoDescontadoFinal, 2)),
                     'comision' => 0.00,
                     'descontado' => true,
@@ -1904,6 +1917,85 @@ class PanelController extends Controller
         );
 
         return back()->with('exito', 'Cambios de liquidación quincenal guardados correctamente.');
+    }
+
+    /**
+     * Devuelve las filas calculadas de liquidación quincenal en JSON para actualización dinámica.
+     */
+    public function obtenerDatosLiquidacion(Request $request): JsonResponse
+    {
+        $planta = $this->resolverPlantaActiva($request);
+        [$defDesde, $defHasta] = $this->periodoActual();
+        $filtros = $this->resolverFiltrosLiquidacion($request, $defDesde, $defHasta);
+
+        $filas = $this->service->liquidarQuincena(
+            $filtros['desde'],
+            $filtros['hasta'],
+            (float) $planta->precio_litro,
+            $planta->id,
+            $filtros
+        );
+
+        return response()->json([
+            'desde' => $filtros['desde'],
+            'hasta' => $filtros['hasta'],
+            'filas' => $filas->values()->all(),
+            'totales' => [
+                'litros' => round((float) $filas->sum('litros'), 2),
+                'bruto' => round((float) $filas->sum('bruto'), 2),
+                'adelantos' => round((float) $filas->sum('adelantos'), 2),
+                'neto' => round((float) $filas->sum('neto'), 2),
+            ],
+        ]);
+    }
+
+    /**
+     * Limpia ajustes manuales de litros del período para recalcular directamente desde los acopios.
+     */
+    public function sincronizarLiquidacionAcopios(Request $request): JsonResponse
+    {
+        $planta = $this->resolverPlantaActiva($request);
+        [$defDesde, $defHasta] = $this->periodoActual();
+        $filtros = $this->resolverFiltrosLiquidacion($request, $defDesde, $defHasta);
+
+        $quincenasQuery = Liquidacion::dePlanta($planta->id)
+            ->where('tipo', 'quincena')
+            ->where('canal_referencia', 'manual_litros')
+            ->when(! empty($filtros['proveedor_id']), fn ($q) => $q->where('proveedor_id', (int) $filtros['proveedor_id']));
+        $this->service->aplicarRangoFecha($quincenasQuery, $filtros['desde'], $filtros['hasta']);
+        $quincenasQuery->update(['canal_referencia' => null]);
+
+        $filas = $this->service->liquidarQuincena(
+            $filtros['desde'],
+            $filtros['hasta'],
+            (float) $planta->precio_litro,
+            $planta->id,
+            $filtros
+        );
+
+        foreach ($filas as $fila) {
+            $qRowQuery = Liquidacion::dePlanta($planta->id)
+                ->where('proveedor_id', $fila->proveedor_id)
+                ->where('tipo', 'quincena');
+            $this->service->aplicarRangoFecha($qRowQuery, $filtros['desde'], $filtros['hasta']);
+            $qRowQuery->update([
+                'litros' => $fila->litros,
+                'precio_unitario' => $fila->precio_litro,
+                'monto' => $fila->neto,
+            ]);
+        }
+
+        return response()->json([
+            'desde' => $filtros['desde'],
+            'hasta' => $filtros['hasta'],
+            'filas' => $filas->values()->all(),
+            'totales' => [
+                'litros' => round((float) $filas->sum('litros'), 2),
+                'bruto' => round((float) $filas->sum('bruto'), 2),
+                'adelantos' => round((float) $filas->sum('adelantos'), 2),
+                'neto' => round((float) $filas->sum('neto'), 2),
+            ],
+        ]);
     }
 
     /**

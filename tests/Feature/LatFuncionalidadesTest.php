@@ -101,8 +101,8 @@ class LatFuncionalidadesTest extends TestCase
 
         // Crear usuario personalizado con acceso únicamente a Tinas (ver + operar)
         $this->actingAs($admin)->post('/panel/admin/usuarios', [
-            'name' => 'Lucía Quesera',
-            'usuario' => 'lucia.tina',
+            'name' => 'Téc. Elena Salas',
+            'usuario' => 'elena.tina',
             'password' => 'clave1234',
             'cargo' => 'personalizado',
             'rango' => 'personalizado',
@@ -111,7 +111,7 @@ class LatFuncionalidadesTest extends TestCase
             'permisos' => ['tinas.ver', 'tinas.operar'],
         ])->assertRedirect();
 
-        $custom = User::where('usuario', 'lucia.tina')->firstOrFail();
+        $custom = User::where('usuario', 'elena.tina')->firstOrFail();
         $this->assertSame('personalizado', $custom->cargo);
         $this->assertSame(['tinas.ver', 'tinas.operar'], $custom->permisosEfectivos());
         $this->assertSame('tinas', $custom->primeraSeccionPermitida());
@@ -460,7 +460,7 @@ class LatFuncionalidadesTest extends TestCase
             ->assertSee('data-i18n="bento.how_title"', false);
         $this->get('/login')->assertStatus(200)
             ->assertSee('<html lang="qu" data-server-locale="qu">', false)
-            ->assertSee('data-i18n="login.role_custom"', false);
+            ->assertSee('data-i18n="login.role_collector"', false);
         $this->actingAs($admin)->get('/panel')->assertStatus(200)
             ->assertSee('<html lang="qu" data-server-locale="qu">', false)
             ->assertSee('data-i18n="dash.c1_title"', false);
@@ -1091,13 +1091,14 @@ class LatFuncionalidadesTest extends TestCase
             $resHome->assertSee($ruta, false);
         }
 
-        // Incluso simulando APP_ENV=production (Render), los 6 perfiles rápidos deben mostrarse por defecto
+        // Incluso simulando APP_ENV=production (Render), los 5 perfiles rápidos profesionales deben mostrarse por defecto (sin Lucía)
         config(['app.env' => 'production', 'lat.demo_logins' => true]);
         $resLoginProd = $this->get('/login');
         $resLoginProd->assertStatus(200);
-        foreach (['donjusto@sanborreal.pe', 'carlos.anta', 'sabina.tina', 'contador.marco', 'mateo.ruta', 'lucia.personal'] as $usuario) {
+        foreach (['donjusto@sanborreal.pe', 'carlos.anta', 'sabina.tina', 'contador.marco', 'mateo.ruta'] as $usuario) {
             $resLoginProd->assertSee("data-usuario=\"{$usuario}\"", false);
         }
+        $resLoginProd->assertDontSee('lucia.personal', false);
 
         // Si se desactiva explícitamente demo_logins, los accesos rápidos se ocultan
         config(['lat.demo_logins' => false]);

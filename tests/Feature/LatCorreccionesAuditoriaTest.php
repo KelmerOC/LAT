@@ -618,7 +618,7 @@ class LatCorreccionesAuditoriaTest extends TestCase
         $this->assertIsString($swJs);
         $this->assertStringContainsString('CHUNK_SIZE = 50', $offlineJs);
         $this->assertStringContainsString('LAT_CLEAR_AUTH_CACHE', $offlineJs);
-        $this->assertStringContainsString("const CACHE_VERSION = 'lat-compacto-v8'", $swJs);
+        $this->assertStringContainsString("const CACHE_VERSION = 'lat-compacto-v9'", $swJs);
         $this->assertStringContainsString('LAT_CLEAR_AUTH_CACHE', $swJs);
     }
 
