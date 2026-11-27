@@ -102,7 +102,7 @@
 
 La **Plataforma Láctea Comunitaria LAT Compacto** es una aplicación web con impacto social pensada para microempresas queseras familiares, asociaciones ganaderas y pequeños productores de Zurite, Anta y Cusco Provincia. Busca resolver problemas cotidianos del acopio matutino: cuadernos borrados por la lluvia o el suero, desacuerdos al calcular las liquidaciones quincenales, pérdida de leche con acidez y pantallas incómodas de usar con manos mojadas o guantes.
 
-El sistema fue programado en **Laravel 13** (PHP 8.3+) con arquitectura MVC y capa de servicios (`LacteoService` y `ExcelExportService`), sobre base de datos MariaDB/MySQL y listo para ejecutarse en XAMPP local o en contenedor Docker para Render. Integra gestión multi-planta, acopio por voz (Web Speech API) y botonera táctil, control sanitario a 74° con desvío a quesillos de 4 días, monitoreo térmico de múltiples tinas con cálculo automático de insumos, liquidación quincenal sin comisión (S/ 0.00), exportación nativa a Excel (`.xlsx`), dashboard con gráficas Chart.js, permisos granulares por rol y rango, interfaz trilingüe (español, quechua e inglés) y 11 pruebas automatizadas en PHPUnit. Su uso busca dar cuentas claras, evitar desperdicio y cuidar la privacidad rural. *(181 palabras)*
+El sistema fue programado en **Laravel 13** (PHP 8.3+, validado localmente en PHP 8.5 y en contenedor Docker `php:8.4-apache`) con arquitectura MVC y capa de cuatro servicios (`LacteoService`, `TinaWorkflowService`, `InformePlantaService` y `ExcelExportService`), sobre base de datos MariaDB/MySQL y listo para ejecutarse en XAMPP o Render. Integra gobierno multi-planta con aislamiento estricto por planta, acopio por voz automático y modo PWA offline (`localStorage` + Service Worker), control sanitario a 74° con desvío a quesillos de 4 días y descarte trazable, monitoreo térmico de múltiples tinas con selección de entregas y recetas/cronómetro editables, liquidación quincenal estilo Excel en tres tablas separadas sin comisión (S/ 0.00) y descuento FIFO idempotente de adelantos, informes automáticos cada 24 horas, notificaciones segmentadas por rol, exportación nativa `.xlsx`, gráficas Chart.js, permisos granulares, interfaz trilingüe oficial (español, quechua cusqueño trivocálico e inglés) y **103 pruebas automatizadas en PHPUnit (1,114 aserciones)**. *(187 palabras)*
 
 ---
 
@@ -122,11 +122,11 @@ Desarrollar e implementar la aplicación web comunitaria **LAT Compacto** en Lar
 
 ### 2.3 Objetivos específicos
 
-- Diseñar e implementar una base de datos relacional normalizada de 7 tablas con claves foráneas e índices para operar varias plantas lácteas, múltiples tinas por planta, productores, acopios, lotes térmicos, movimientos financieros y usuarios con permisos personalizados.
-- Separar la lógica de negocio en servicios dedicados (`LacteoService` y `ExcelExportService`) para calcular automáticamente el cuajo, la sal y el cultivo, seguir el enfriamiento de pasteurización (72 °C a 36–40 °C), generar liquidaciones quincenales sin consultas N+1, comparar estadísticas entre plantas y exportar archivos Excel (`.xlsx`).
-- Construir una interfaz web responsiva y accesible basada en la guía visual `DESIGN.md`, con botones táctiles grandes (`>= 54 px` y `>= 64 px`), dictado por voz, gráficas interactivas en Chart.js y cambio completo entre español, quechua e inglés.
-- Implementar autenticación y control de acceso por cargo, rango y 18 permisos específicos, junto con defensas contra vulnerabilidades web frecuentes (SQLi, XSS, CSRF y escalamiento de privilegios) y respeto a la Ley N.° 29733 de Protección de Datos Personales [1].
-- Validar el sistema con pruebas automatizadas en PHPUnit (11 casos), un script base de verificación visual en Playwright (`tests/e2e/visual-standards.cjs`) y configuración lista para despliegue local (XAMPP) y en contenedor (Docker/Render).
+- Diseñar e implementar una base de datos relacional normalizada (**9 migraciones** y **12 tablas activas**, más 1 tabla *legacy* de acceso QR) con claves foráneas e índices compuestos para operar varias plantas lácteas (con papelera de 30 días), múltiples tinas, productores, acopios trazables por lote, aplicaciones de adelantos, reportes Excel, notificaciones e informes de planta.
+- Separar la lógica de negocio en cuatro servicios dedicados (`LacteoService`, `TinaWorkflowService`, `InformePlantaService` y `ExcelExportService`) para dosificar recetas configurables, controlar la curva térmica (72 °C a 36–40 °C), ejecutar liquidaciones quincenales sin consultas N+1 y con descuento FIFO idempotente, compilar informes cada 24 horas y exportar archivos Excel (`.xlsx`).
+- Construir una interfaz web responsiva y accesible basada en `DESIGN.md`, con botones táctiles grandes (`>= 54 px` y `>= 64 px`), dictado por voz automático, cola offline PWA (`sw.js`), tablas estilo Excel (`lat-finanzas-grid.js`), gráficas en Chart.js y conmutador completo entre español, quechua cusqueño trivocálico e inglés.
+- Implementar autenticación y control de acceso por cargo, rango y **19 permisos granulares**, gobierno supervisado para Administración Total, aislamiento estricto por planta, defensas OWASP Top 10 (incluyendo cabeceras HTTP de seguridad, limitación de intentos y protección anti-fórmulas Excel) y cumplimiento de la Ley N.° 29733 [1].
+- Validar el sistema con **103 pruebas automatizadas en PHPUnit (1,114 aserciones)** distribuidas en pruebas unitarias, funcionales, de flujo y seguridad OWASP, junto con verificación visual responsiva en Playwright (`tests/e2e/visual-standards.cjs`) y despliegue listo para XAMPP y Docker/Render.
 
 ### 2.4 Alcance actual del proyecto
 
@@ -134,18 +134,18 @@ Al cierre del curso, el proyecto creció respecto a su propuesta inicial de una 
 
 | Componente / Funcionalidad | Estado actual | Evidencia real en el repositorio |
 | :--- | :---: | :--- |
-| Portal público honesto + Registro de nueva planta + Login híbrido | **Implementado** | `HomeController.php`, `AuthController.php`, `inicio.blade.php`, `login.blade.php`, `register.blade.php` |
-| Arquitectura multi-planta y aislamiento por `planta_id` | **Implementado** | `Planta.php`, migración `2026_01_01_000002`, selector de planta en `topbar.blade.php` |
-| Dashboard interactivo con 4 KPIs, filtros temporales y 3 gráficas Chart.js | **Implementado** | `LacteoService::obtenerDatosDashboard()`, `sections/dashboard.blade.php`, `public/js/chart.umd.min.js` |
-| Módulo 1: Acopio por voz (Web Speech API), botonera 54 px y CRUD de entregas/ganaderos | **Implementado** | `PanelController@guardarAcopio/actualizarAcopio/eliminarAcopio/guardarProveedor`, `sections/acopio.blade.php` |
-| Módulo 2: Triage sanitario (prueba de alcohol 74°) con desvío a quesillo 4 días y confirmación JS | **Implementado** | `PanelController@evaluarCalidad`, `sections/calidad.blade.php`, `partials/modals.blade.php` |
-| Módulo 3: Gestión de múltiples tinas por planta, lotes térmicos y cálculo automático de insumos | **Implementado** | `Tina.php`, `Lote.php`, `LacteoService::dosificarReceta/evaluarTermica`, `sections/tinas.blade.php` |
-| Módulo 4: Liquidación quincenal sin N+1 (S/ 0.00), adelantos, ventas y Ayuda del Día sin DNI | **Implementado** | `LacteoService::liquidarQuincena()`, `PanelController@registrarMovimiento`, `sections/finanzas.blade.php` |
-| Módulo 5: Estadísticas comparativas ("¿Quién vende más?"), 1 gráfica de dona Chart.js y Excel `.xlsx` (4 hojas) | **Implementado** | `LacteoService::obtenerEstadisticas()`, `ExcelExportService.php`, `sections/estadisticas.blade.php` |
-| Módulo 6: Administración de plantas y usuarios personalizados con 18 permisos y 4 rangos | **Implementado** | `AdminController.php`, `User.php`, `CheckLatPermission.php`, `sections/admin.blade.php` |
-| Internacionalización trilingüe completa (ES / QU / EN) con 372 claves y persistencia en sesión | **Implementado** | `public/js/lat-i18n.js`, `SetLocaleMiddleware.php`, ruta `GET /idioma/{lang}` |
-| Suite PHPUnit (11 pruebas) + script base E2E Playwright + despliegue Docker/Render y XAMPP | **Implementado** *(E2E por actualizar al sidebar)* | `tests/Feature/LatFuncionalidadesTest.php`, `tests/e2e/visual-standards.cjs`, `Dockerfile`, `docker/start.sh` |
-| Cola de sincronización offline en `localStorage`, mapa Leaflet/OSM, OTP por correo y Libro de Reclamaciones D.S. 011-2011-PCM | **Fuera de esta versión (trabajo futuro)** | Preparados en esquema los campos `uuid_offline` (`acopios`) y `latitud`/`longitud` (`proveedores`); se proyectan para una fase posterior. |
+| Portal público honesto + anuncio QR de registro + Registro de nueva planta + Login híbrido | **Implementado** | `HomeController.php`, `AuthController.php`, `inicio.blade.php`, `public/js/lat-qr.js`, `login.blade.php`, `register.blade.php` |
+| Gobierno multi-planta, papelera de 30 días, aislamiento de encargado y modo operativo de Admin | **Implementado** | `Planta.php` (`softDeletes`), `PanelController@alternarModoOperativo`, `routes/console.php` (`lat:purgar-plantas`) |
+| Dashboard interactivo con 4 KPIs, filtros temporales, 3 gráficas Chart.js y notificaciones en vivo | **Implementado** | `LacteoService::obtenerDatosDashboard()`, `NotificacionPanel.php`, `public/js/lat-notificaciones.js`, `sections/dashboard.blade.php` |
+| Módulo 1: Acopio por voz automático, botonera 54 px, edición/borrado protegido y cola offline PWA | **Implementado** | `PanelController@guardarAcopio/sincronizarAcopiosOffline/actualizarAcopio`, `public/sw.js`, `public/js/lat-offline.js`, `sections/acopio.blade.php` |
+| Módulo 2: Triage sanitario (74°) con aprobar, desvío a quesillo 4 días, descarte trazable y bloqueo por lote | **Implementado** | `PanelController@evaluarCalidad`, `sections/calidad.blade.php`, `partials/modals.blade.php` |
+| Módulo 3: Múltiples tinas, selección múltiple de acopios filtrables, recetas base y cronómetro editables | **Implementado** | `Tina.php`, `Lote.php`, `TinaWorkflowService.php`, `sections/tinas.blade.php` |
+| Módulo 4: Finanzas estilo Excel en 3 tablas separadas, descuento FIFO de adelantos y bandeja Contador | **Implementado** | `LacteoService::liquidarQuincena()`, `AdelantoAplicacion.php`, `ReporteExcel.php`, `public/js/lat-finanzas-grid.js`, `sections/finanzas.blade.php` |
+| Módulo 5: Estadísticas comparativas, informes de planta 24h (`.txt` Admin) y descargas `.xlsx` | **Implementado** | `InformePlantaService.php`, `ExcelExportService.php`, `sections/estadisticas.blade.php` |
+| Módulo 6: Administración de plantas (papelera 30d) y usuarios con 19 permisos y 4 rangos | **Implementado** | `AdminController.php`, `User.php`, `CheckLatPermission.php`, `sections/admin.blade.php` |
+| Internacionalización trilingüe oficial (ES / QU / EN: 838 claves JS + 179 claves PHP) | **Implementado** | `public/js/lat-i18n.js`, `lang/{es,qu,en}/lat.php`, `SetLocaleMiddleware.php`, `GET /idioma/{lang}` |
+| Suites PHPUnit (**103 tests / 1,114 aserciones**) + E2E Playwright (**294/294 checks**) + Docker/Render y XAMPP | **Implementado** | `tests/Feature/*Test.php`, `tests/Unit/LacteoServiceTest.php`, `tests/e2e/visual-standards.cjs`, `Dockerfile` |
+| Mapa de rutas con Leaflet/OSM, OTP por correo y Libro de Reclamaciones D.S. 011-2011-PCM | **Fuera de esta versión (trabajo futuro)** | Preparados en esquema los campos `latitud`/`longitud` (`proveedores`); se proyectan para una fase posterior. |
 
 ### 2.5 Beneficiarios directos e indirectos
 
@@ -216,10 +216,10 @@ Además, el proyecto se alinea directamente con cinco **Objetivos de Desarrollo 
 
 Desde la Ingeniería de Sistemas e Informática, resolver este caso significó tomar decisiones técnicas pensadas para las condiciones reales del campo y no simplemente adaptar una plantilla genérica:
 
-- **Modelado relacional y rendimiento:** Se diseñaron 7 tablas relacionadas con 12 índices explícitos (10 compuestos y 2 simples) y 7 restricciones `UNIQUE` para que las consultas de acopio, calidad, tinas y liquidaciones respondan rápido incluso en computadoras básicas con XAMPP.
-- **Separación de responsabilidades (SRP):** Los cálculos lecheros (cuajo, sal, cultivo y enfriamiento), el cierre quincenal sin consultas N+1, las estadísticas y la generación del libro `.xlsx` se mantienen dentro de `app/Services/`, evitando sobrecargar los controladores.
-- **Accesibilidad (WCAG 2.1 AA):** Se definieron colores con contraste comprobado (`#c2410c` sobre blanco con ratio `>= 5.2:1`, `#0a2f4d` para texto principal), navegación por teclado, atributos `aria-*` y botón de pausa en el carrusel de portada (criterio WCAG 2.2.2) [4].
-- **Seguridad desde el diseño:** El acceso no depende de un solo campo de "admin"; se armó un catálogo de 18 permisos y 4 rangos con aislamiento por `planta_id` para evitar accesos cruzados entre plantas o escalamiento de privilegios.
+- **Modelado relacional y rendimiento:** Se evolucionó a **12 tablas activas** (construidas con **9 migraciones**) e índices compuestos adicionales (`2026_11_25_153707`, `2026_11_26_184041`, `2026_11_26_210000`, `2026_11_26_221223`) para mantener el presupuesto en `<= 42` consultas SQL por carga de `/panel`.
+- **Separación de responsabilidades (SRP):** La lógica lechera, la trazabilidad de lotes y recetas (`TinaWorkflowService`), la bitácora e informes cada 24h (`InformePlantaService`) y la generación `.xlsx` (`ExcelExportService`) residen en `app/Services/`, manteniendo ligeros los controladores.
+- **Accesibilidad (WCAG 2.1 AA):** Se definieron colores con contraste comprobado (`#c2410c` sobre blanco con ratio `>= 5.2:1`, `#0a2f4d` para texto principal), navegación por teclado, etiquetas `<label for="...">` en todos los controles visibles, atributos `aria-*` y botón de pausa en el carrusel de portada (WCAG 2.2.2) [4].
+- **Seguridad desde el diseño:** El acceso combina **19 permisos** y 4 rangos con aislamiento estricto por `planta_id`, bloqueo operativo por defecto para Administración Total (activable en sesión), `SecurityHeadersMiddleware` y saneamiento anti-fórmulas Excel.
 
 ---
 
@@ -237,10 +237,10 @@ Los principios éticos definidos en `PRODUCT.md` y `DESIGN.md` están trasladado
 | :--- | :--- |
 | **Comisión S/ 0.00** | Configurado en `config/lat.php` (`LAT_COMISION=0.00`), en el valor por defecto de `liquidaciones.comision` y en `LacteoService::liquidarQuincena()`. |
 | **Trato justo sin sesgo** | Cada planta aplica un mismo `precio_litro` a todos sus ganaderos, ya entreguen 5 L o 150 L. |
-| **Cero desperdicio sanitario** | Al clasificar un porongo como `acida` en `PanelController@evaluarCalidad`, el destino pasa automáticamente a `quesillo_4_dias` en lugar de eliminar el registro. |
-| **Minimización de datos (Ley N.° 29733)** [1] | La tabla `proveedores` identifica a cada ganadero con código comunitario (`PRV-01`) sin solicitar DNI; los pagos de tipo `ayuda_del_dia` permiten `proveedor_id = null` sin datos sensibles; el correo electrónico (`users.email`) es opcional para operarios. |
-| **Veracidad y honestidad visual** | La portada (`inicio.blade.php`) no muestra contadores inventados de clientes ni testimonios ficticios, y las fotos de stock del carrusel llevan la nota visible *"Fotografías referenciales de stock, no de socios de la plataforma"*. |
-| **Inclusión cultural y lingüística** | El sistema ofrece 372 claves traducidas al Español, Quechua (*Runasimi*) e Inglés en `public/js/lat-i18n.js`, sincronizadas con la sesión del servidor (`SetLocaleMiddleware`). |
+| **Cero desperdicio sanitario y descarte trazable** | Al clasificar un porongo como `acida` en `PanelController@evaluarCalidad`, el destino pasa automáticamente a `quesillo_4_dias`. Si la leche resulta no apta (`descartada`), se conserva el registro con `motivo_descarte` y `evaluado_por` excluyéndolo de la liquidación (`buena` + `acida`). |
+| **Minimización de datos (Ley N.° 29733)** [1] | La tabla `proveedores` identifica a cada ganadero con código comunitario (`PRV-01`) sin solicitar DNI; la tabla separada de sueldos y `ayuda_del_dia` permite pagos eventuales con `proveedor_id = null` sin datos sensibles; el correo electrónico (`users.email`) es opcional para operarios. |
+| **Veracidad y honestidad visual** | La portada (`inicio.blade.php`) no muestra contadores inventados ni testimonios ficticios, incluye un anuncio QR público honesto hacia `/registrarse` (`lat-qr.js`) y las fotografías reales del carrusel (`public/brand/hero_*.jpg`) llevan su nota visible. |
+| **Inclusión cultural y lingüística** | El sistema ofrece **838 claves** en `public/js/lat-i18n.js` y **179 claves PHP** en `lang/{es,qu,en}/lat.php` en Español, Quechua cusqueño trivocálico oficial y Inglés, sincronizadas con `SetLocaleMiddleware` y modo PWA offline para zonas rurales (`sw.js`, `lat-offline.js`). |
 
 ### 4.3 Plan de sostenibilidad y transferencia a la comunidad
 
@@ -280,23 +280,23 @@ Para el desarrollo se eligió **Laravel 13** (`laravel/framework v13.39.0` sobre
 
 El sistema aplica una arquitectura **MVC apoyada en Capa de Servicios y Middlewares de Autorización e Idioma**:
 
-- **Cliente / Navegador:** Renderiza las vistas Blade con estilos Swiss-Grid (`lat-design-system.css` y `lat-dashboard.css`), ejecuta `lat-i18n.js` (traducción instantánea ES/QU/EN), `Chart.js` [10] (4 gráficas interactivas en `/panel`: 3 en el Dashboard y 1 de dona sanitaria en Estadísticas) y la **Web Speech API** [9] (dictado y confirmación hablada).
-- **Enrutamiento y Middlewares (`bootstrap/app.php`, `routes/web.php`):** Cada petición web pasa por `SetLocaleMiddleware` (idioma en sesión), la verificación CSRF de Laravel, `auth` en rutas `/panel/*` y `CheckLatPermission` (`permiso:*`) en las acciones protegidas.
-- **Controladores (`app/Http/Controllers/`):** Reciben la petición HTTP (`HomeController`, `AuthController`, `PanelController`, `AdminController`), validan los datos, resuelven la planta activa y delegan los cálculos a los servicios.
-- **Capa de Servicios (`app/Services/`):** `LacteoService` centraliza el cálculo de insumos, el control térmico, la liquidación quincenal sin N+1, las estadísticas y los datos del dashboard; `ExcelExportService` arma el archivo `.xlsx` (OOXML/PKZIP) de 4 hojas.
-- **Modelos y Persistencia (`app/Models/`, MariaDB/MySQL):** 7 modelos Eloquent (`Planta`, `User`, `Proveedor`, `Acopio`, `Tina`, `Lote`, `Liquidacion`) con relaciones, casts y *scopes* reutilizables (`dePlanta`, `activos`, `delDia`, `delPeriodo`, `enProceso`).
+- **Cliente / Navegador:** Renderiza las vistas Blade con estilos Swiss-Grid (`lat-design-system.css` y `lat-dashboard.css`), ejecuta `lat-i18n.js` (**838 claves** ES/QU/EN), `lat-offline.js` + `sw.js` (`lat-compacto-v8`, sincronización offline por bloques de hasta 50 entregas), `lat-notificaciones.js` (polling cada 12 s), `lat-finanzas-grid.js` (tablas estilo Excel con barra `fx`), `lat-qr.js` (QR público en `/`), `Chart.js` [10] (4 gráficas en `/panel`) y la **Web Speech API** [9] con envío automático al dictar productor y litros válidos.
+- **Enrutamiento y Middlewares (`bootstrap/app.php`, `routes/web.php`):** Cada petición pasa por `SecurityHeadersMiddleware` (CSP, `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Permissions-Policy`), `SetLocaleMiddleware`, protección CSRF, `auth` en rutas `/panel/*`, `throttle:5,1` en autenticación/registro y `CheckLatPermission` (`permiso:*`).
+- **Controladores (`app/Http/Controllers/`):** Reciben la petición HTTP (`HomeController`, `AuthController`, `PanelController`, `AdminController`), validan datos, verifican el modo operativo de `administracion` o el aislamiento de `encargado_planta` y delegan la lógica a los servicios.
+- **Capa de Servicios (`app/Services/`):** Cuatro servicios especializados: `LacteoService` (cálculo de insumos, curva térmica, liquidación FIFO sin N+1, estadísticas y dashboard), `TinaWorkflowService` (asignación atómica de acopios a tinas, recetas configurables, cronómetro y notificaciones segmentadas), `InformePlantaService` (bitácora operativa e informes consolidados 24h) y `ExcelExportService` (libros OOXML `.xlsx` completo y por tabla con saneamiento anti-fórmulas).
+- **Modelos y Persistencia (`app/Models/`, MariaDB/MySQL):** **12 modelos activos** (`Planta`, `User`, `Proveedor`, `Tina`, `Acopio`, `Lote`, `Liquidacion`, `AdelantoAplicacion`, `ReporteExcel`, `NotificacionPanel`, `ActividadPlanta`, `InformeActividadPlanta`, además de `QrAcceso` *legacy*) con relaciones, casts y *scopes* reutilizables (`dePlanta`, `activos`, `delDia`, `delPeriodo`, `liquidables`, `enProceso`).
 
 ```mermaid
 flowchart TB
     subgraph Cliente["Navegador Web (PC / Smartphone)"]
         UI["Vistas Blade + CSS Swiss-Grid"]
-        I18N["lat-i18n.js (372 claves ES/QU/EN)"]
-        JS["Chart.js v4.4.7 + Web Speech API + Modales JS"]
+        I18N["lat-i18n.js (838 claves ES/QU/EN)"]
+        JS["Chart.js v4.4.7 + Web Speech API + PWA sw.js + Finanzas Grid"]
     end
 
     subgraph Middleware["Pipeline HTTP Laravel 13"]
-        MW1["SetLocaleMiddleware + VerifyCsrfToken"]
-        MW2["Middleware auth + CheckLatPermission (permiso:*)"]
+        MW1["SecurityHeadersMiddleware + SetLocaleMiddleware + VerifyCsrfToken"]
+        MW2["Middleware auth + throttle:5,1 + CheckLatPermission (permiso:*)"]
     end
 
     subgraph Controladores["Capa de Controladores (app/Http/Controllers)"]
@@ -307,12 +307,12 @@ flowchart TB
     end
 
     subgraph Servicios["Capa de Servicios (app/Services)"]
-        S1["LacteoService (Receta, Termica, Liquidacion Anti-N+1, Dashboard)"]
-        S2["ExcelExportService (Generador OOXML .xlsx 4 hojas)"]
+        S1["LacteoService + TinaWorkflowService"]
+        S2["InformePlantaService + ExcelExportService (.xlsx)"]
     end
 
     subgraph Datos["Capa de Modelo y Persistencia"]
-        M["7 Modelos Eloquent (Planta, User, Proveedor, Acopio, Tina, Lote, Liquidacion)"]
+        M["12 Modelos activos Eloquent (Planta..InformeActividadPlanta)"]
         DB[("MariaDB / MySQL (lat_compacto_db) / SQLite testing")]
     end
 
@@ -337,10 +337,16 @@ flowchart TB
 
 ### 5.3 Modelo de datos
 
-La base de datos `lat_compacto_db` se construye mediante **3 migraciones versionadas** en `database/migrations/`:
+La base de datos `lat_compacto_db` se construye mediante **9 migraciones versionadas** en `database/migrations/`:
 1. `2026_01_01_000001_crear_tablas_lat_compacto.php` (esquema base de 5 tablas e índices compuestos iniciales).
 2. `2026_01_01_000002_agregar_plantas_tinas_y_ventas.php` (evolución multi-planta, tabla `tinas`, relaciones `planta_id`/`tina_id` y ventas de productos).
 3. `2026_11_18_205518_agregar_permisos_personalizados_usuarios.php` (soporte para cargo `personalizado`, columna `rango`, JSON `permisos` y auditoría `creado_por`).
+4. `2026_11_25_153704_agregar_papelera_plantas.php` (`softDeletes`, `eliminado_por` e índice `idx_plantas_deleted_at` para papelera de 30 días en `plantas`).
+5. `2026_11_25_153706_crear_reportes_excel_y_qr_accesos.php` (tablas `reportes_excel` para intercambio con el contador y `qr_accesos` *legacy*).
+6. `2026_11_25_153707_optimizar_indices_lat_compacto.php` (índices compuestos adicionales en `liquidaciones`, `acopios`, `lotes`, `users` y `UNIQUE (planta_id, codigo)` en `proveedores`).
+7. `2026_11_26_184041_actualizar_flujo_tinas_recetas_y_notificaciones.php` (`acopios.lote_id`, `evaluado_en`, `tinas.tipo` `VARCHAR(80)`, `lotes` con receta/cronómetro, `plantas.recetas_base` y tabla `notificaciones_panel`).
+8. `2026_11_26_210000_actualizar_roles_finanzas_notificaciones_e_informes.php` (segmentación y `color_tema` en `notificaciones_panel`, columnas de ventas/sueldos en `liquidaciones`, tablas `actividades_planta` e `informes_actividad_planta` y limpieza de `admin.qr`).
+9. `2026_11_26_221223_actualizar_adelantos_aplicaciones_y_acopios_descartados.php` (tabla `adelanto_aplicaciones` para descuento FIFO idempotente y campos `motivo_descarte`/`evaluado_por` en `acopios`).
 
 #### Diagrama Entidad-Relación (Mermaid `erDiagram`)
 
@@ -463,9 +469,9 @@ erDiagram
     }
 ```
 
-![Figura 2. Diagrama Entidad-Relación de las 7 tablas de lat_compacto_db](imagenes/diagramas/02_modelo_er.png)
+![Figura 2. Diagrama Entidad-Relación base de las 7 tablas iniciales de lat_compacto_db](imagenes/diagramas/02_modelo_er.png)
 
-#### Diccionario de datos consolidado (7 tablas reales)
+#### Diccionario de datos consolidado (7 tablas núcleo + extensiones de cierre)
 
 | Tabla | Campo | Tipo y longitud | Restricciones / Claves | Descripción funcional |
 | :--- | :--- | :--- | :--- | :--- |
@@ -528,7 +534,7 @@ erDiagram
 | | `monto` / `comision` | `DECIMAL(10,2)` / `(6,2)` | `comision DEFAULT 0.00` | Importe en soles y garantía de comisión S/ 0.00. |
 | | `descontado` | `BOOLEAN` | `INDEX (proveedor_id, descontado)` | Marca si un adelanto ya fue descontado en quincena. |
 
-*(Todas las tablas incluyen además marcas de auditoría `created_at` y `updated_at`.)*
+*(Todas las tablas incluyen además marcas de auditoría `created_at` y `updated_at`. En las últimas migraciones se añadieron `softDeletes` y `recetas_base` en `plantas`; `lote_id`, `evaluado_en`, `motivo_descarte`, `evaluado_por` y `calidad/destino` ampliados a `'descartada'` en `acopios`; `tinas.tipo` como `VARCHAR(80)`; `receta_nombre`, `duracion_minutos`, `iniciado_en` y `alerta_fin_enviada` en `lotes`; `producto_categoria`, `canal_referencia`, `precio_unitario` y `estado_pago` en `liquidaciones`; y las cinco tablas operativas nuevas: `adelanto_aplicaciones`, `reportes_excel`, `notificaciones_panel`, `actividades_planta` e `informes_actividad_planta`, además de `qr_accesos` en desuso tras retirar el QR interno.)*
 
 ### 5.4 Diseño de interfaz
 
@@ -536,24 +542,24 @@ El diseño visual se documenta formalmente en `DESIGN.md` y se implementa en `pu
 
 - **Paleta cromática y contraste WCAG 2.1 AA:** Fondo blanco papel (`#ffffff`), niebla andina (`#f2f7fb`), azul marino profundo para texto (`#0a2f4d`), azul celeste (`#0284c7`), azul oceánico (`#0d4068`) y naranja ember accesible (`#c2410c` sobre blanco con contraste `>= 5.2:1`; `#ff5900` reservado para acentos y nodos).
 - **Geometría limpia y ergonómica:** Líneas divisorias expuestas de `1px` (*hairlines*), bordes rectos de `0px` a `2px` en botones y tablas, tarjetas multimedia con radio de `8px`, tipografía `Inter` variable con cifras tabulares ligeras (`font-weight: 300`, `tabular-nums`), botonera táctil de `>= 54 px` y botón de dictado de `>= 64 px`.
-- **Dashboard operativo moderno:** Estructura `.dash-shell` con sidebar lateral fijo de `268 px` en escritorio (convertido en menú deslizable *off-canvas* en pantallas `<= 992 px`), topbar con selector de rango (`Hoy`, `7 días`, `Quincena`, `Mes`), selector multi-planta, acceso rápido a *Editar datos* y botón de exportación Excel.
+- **Dashboard operativo moderno:** Estructura `.dash-shell` con sidebar lateral fijo de `268 px` (menú *off-canvas* en `<= 992 px`) donde reside de forma única el conmutador trilingüe `.dash-lang-row` (`ES | QU | EN`), topbar con selector de rango, selector multi-planta, campana de notificaciones segmentadas (con sombreado verde `.is-color-verde` para avisos contables), botón `#btn-toggle-modo-operativo` para Administración Total y exportación `.xlsx`. En la portada pública (`/`), el anuncio QR de registro (`#anuncio-qr-registro`, `lat-qr.js`) y las fotografías reales (`public/brand/hero_*.jpg`) completan la experiencia inicial.
 
-#### Wireframes y mockups ya generados en el repositorio (`mockups/`)
+#### Wireframes y mockups ya generados en el repositorio (`docs/mockups/`)
 
-Mediante los scripts reproducibles `scripts/generate_wireframes.cjs` y `scripts/generate_mockups.cjs` (con Playwright), el equipo cuenta con **10 archivos gráficos** versionados en la carpeta `mockups/`:
+Mediante los scripts reproducibles `scripts/generate_wireframes.cjs` y `scripts/generate_mockups.cjs` (con Playwright), el equipo cuenta con **10 archivos gráficos** versionados en la carpeta `docs/mockups/`:
 
 | N.° | Pantalla representada | Wireframe esquemático (B/N) | Mockup de alta fidelidad (monocromo) |
 | :-: | :--- | :--- | :--- |
-| 1 | Portada pública Swiss-Grid y barra trilingüe | `mockups/mockup_1_portada_wireframe.png` | `mockups/mockup_1_portada_desktop_bw.png` |
-| 2 | Panel operativo — Módulo 1: Acopio por voz y botonera | `mockups/mockup_2_panel_acopio_wireframe.png` | `mockups/mockup_2_panel_acopio_desktop_bw.png` |
-| 3 | Panel operativo — Módulo 2: Control sanitario 74° | `mockups/mockup_3_control_sanitario_wireframe.png` | `mockups/mockup_3_control_sanitario_desktop_bw.png` |
-| 4 | Panel operativo — Módulo 3: Monitoreo térmico y receta | `mockups/mockup_4_tina_receta_wireframe.png` | `mockups/mockup_4_tina_receta_desktop_bw.png` |
-| 5 | Vista móvil smartphone (390 × 844 px) y menú táctil | `mockups/mockup_5_movil_wireframe.png` | `mockups/mockup_5_movil_smartphone_bw.png` |
+| 1 | Portada pública Swiss-Grid y barra trilingüe | `docs/mockups/mockup_1_portada_wireframe.png` | `docs/mockups/mockup_1_portada_desktop_bw.png` |
+| 2 | Panel operativo — Módulo 1: Acopio por voz y botonera | `docs/mockups/mockup_2_panel_acopio_wireframe.png` | `docs/mockups/mockup_2_panel_acopio_desktop_bw.png` |
+| 3 | Panel operativo — Módulo 2: Control sanitario 74° | `docs/mockups/mockup_3_control_sanitario_wireframe.png` | `docs/mockups/mockup_3_control_sanitario_desktop_bw.png` |
+| 4 | Panel operativo — Módulo 3: Monitoreo térmico y receta | `docs/mockups/mockup_4_tina_receta_wireframe.png` | `docs/mockups/mockup_4_tina_receta_desktop_bw.png` |
+| 5 | Vista móvil smartphone (390 × 844 px) y menú táctil | `docs/mockups/mockup_5_movil_wireframe.png` | `docs/mockups/mockup_5_movil_smartphone_bw.png` |
 
 > **[INSERTAR EVIDENCIA VISUAL AQUÍ]**
-> - **Qué mostrar:** Composición visual con los mockups y wireframes de la carpeta `mockups/` junto con capturas a color actuales del nuevo Dashboard con sidebar lateral, gráficas Chart.js y matriz de usuarios personalizados.
-> - **Herramienta recomendada:** Navegador Chrome/Edge + DevTools (`F12`, vistas de escritorio `1280×800` y móvil `390×844`) y archivos PNG de `mockups/`.
-> - **Archivo/Ruta de referencia en el repo:** `mockups/*.png`, `DESIGN.md`, `resources/views/panel.blade.php` y `resources/views/panel/sections/dashboard.blade.php`.
+> - **Qué mostrar:** Composición visual con los mockups y wireframes de la carpeta `docs/mockups/` junto con capturas a color actuales del nuevo Dashboard con sidebar lateral, gráficas Chart.js y matriz de usuarios personalizados.
+> - **Herramienta recomendada:** Navegador Chrome/Edge + DevTools (`F12`, vistas de escritorio `1280×800` y móvil `390×844`) y archivos PNG de `docs/mockups/`.
+> - **Archivo/Ruta de referencia en el repo:** `docs/mockups/*.png`, `DESIGN.md`, `resources/views/panel.blade.php` y `resources/views/panel/sections/dashboard.blade.php`.
 
 ### 5.5 Diseño de seguridad web
 
@@ -562,18 +568,18 @@ El diseño de seguridad de LAT Compacto se estructuró tomando como referencia l
 - **Amenazas identificadas:** Control de acceso roto o escalamiento entre plantas/rangos (A01), exposición de credenciales o sesiones inseguras (A02/A07), inyección SQL y Cross-Site Scripting —XSS— (A03), falsificación de peticiones entre sitios —CSRF— (A01/A05) y errores de configuración del servidor o dependencias desactualizadas (A05/A06).
 - **Controles previstos en el diseño:**
   - *Autenticación y gestión de sesiones:* Inicio de sesión híbrido (correo o usuario) verificando `activo = true`, contraseñas con hash Bcrypt [8], regeneración del ID de sesión tras autenticarse, cierre con invalidación completa y cookies `HttpOnly` + `SameSite=Lax`.
-  - *Autorización por roles, rangos y permisos:* Middleware `CheckLatPermission` (`permiso:*`) en cada ruta operativa protegida, ocultamiento condicional de controles en Blade, filtrado estricto por `planta_id` en todas las consultas y validación jerárquica para que un supervisor jamás asigne permisos superiores a los suyos ni modifique administradores.
+  - *Autorización por roles, rangos y permisos:* Middleware `CheckLatPermission` (`permiso:*`) en cada ruta operativa protegida, ocultamiento condicional de controles en Blade, filtrado estricto por `planta_id`, bloqueo operativo por defecto de M1–M3 en `administracion` (conmutable en sesión), aislamiento estricto de `encargado_planta` y validación jerárquica para impedir escalamiento de privilegios.
   - *Prevención de SQL Injection:* Uso obligatorio de Eloquent ORM y *Query Builder* con consultas parametrizadas PDO [7], [8], más validación estricta con `Rule::exists(...)->where('planta_id', ...)` en identificadores externos.
-  - *Prevención de XSS:* Escape automático de Blade (`{{ }}`) para todo dato proveniente de usuarios o base de datos, escritura DOM mediante `.textContent` en `lat-i18n.js` y saneamiento XML (`ENT_XML1 | ENT_QUOTES`) al generar archivos `.xlsx`.
-  - *Integridad y configuración segura:* Tokens `@csrf` en formularios mutables, whitelists `$fillable` contra *Mass Assignment*, bloqueo de listado de directorios (`Options -Indexes`) y forzado de HTTPS en producción (`AppServiceProvider`).
+  - *Prevención de XSS e inyección en Excel:* Escape automático de Blade (`{{ }}`), escritura DOM mediante `.textContent` en `lat-i18n.js`, saneamiento XML (`ENT_XML1 | ENT_QUOTES`) y neutralización de prefijos de fórmula (`=`, `+`, `-`, `@`) en `ExcelExportService::sanitizeFormulaInjection()`.
+  - *Integridad, cabeceras y configuración segura:* Tokens `@csrf`, cabeceras HTTP defensivas vía `SecurityHeadersMiddleware` (CSP, `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Permissions-Policy`), limitación `throttle:5,1` en registro/login, whitelists `$fillable`, bloqueo de listado de directorios (`Options -Indexes`) y HTTPS en producción.
 
-> **Nota de trazabilidad:** La implementación detallada de cada control, el análisis de brechas pendientes y las evidencias de pruebas de seguridad se desarrollan de forma explícita en la **sección 7.8 (Seguridad web implementada y evidencias)** y en el **Anexo H**.
+> **Nota de trazabilidad:** La implementación detallada de cada control, las mejoras cerradas y las evidencias de pruebas de seguridad se desarrollan de forma explícita en la **sección 7.8 (Seguridad web implementada y evidencias)** y en el **Anexo H**.
 
 ### 5.6 Escalabilidad y sostenibilidad
 
-- **Escalabilidad de datos:** El aislamiento lógico por `planta_id` y los 12 índices explícitos (10 compuestos y 2 simples) permiten sumar nuevas queserías, varias tinas y miles de entregas diarias sin volver lentos los reportes ni mezclar datos entre organizaciones.
-- **Escalabilidad funcional:** Los permisos granulares en formato JSON (`PERMISOS_CATALOGO`) y la capa de servicios facilitan agregar futuros módulos (como mapas de ruta Leaflet o sensores térmicos IoT) sin reescribir el núcleo ni afectar cuentas existentes.
-- **Sostenibilidad operativa:** El despliegue en contenedor (`Dockerfile` + `docker/start.sh` con `config:cache`, `route:cache`, `view:cache` y `opcache`) [11] convive con el uso local en XAMPP, manteniendo los costos de infraestructura muy bajos para asociaciones rurales.
+- **Escalabilidad de datos:** El aislamiento lógico por `planta_id` y los índices compuestos ampliados (`2026_11_25_153707` y siguientes) mantienen consultas ágiles conforme crecen las plantas, tinas y entregas diarias.
+- **Escalabilidad funcional:** Los **19 permisos** en formato JSON (`PERMISOS_CATALOGO`), las recetas base por planta en JSON (`recetas_base`) y los cuatro servicios especializados permiten sumar módulos sin reescribir el núcleo.
+- **Sostenibilidad operativa:** El despliegue en contenedor (`Dockerfile` + `docker/start.sh` con `config:cache`, `route:cache`, `view:cache` y `opcache`) [11], las tareas programadas diarias (`lat:purgar-plantas`, `lat:generar-informes-planta`) y el soporte PWA offline conviven con el uso local en XAMPP a costo S/ 0.00.
 
 ---
 
@@ -585,14 +591,14 @@ La aplicación se divide en una **Zona Pública** (portada, login, registro y ca
 
 | Módulo | Ruta / Sección en UI | Propósito y funciones principales |
 | :--- | :--- | :--- |
-| **Portal Público y Registro** | `/`, `/login`, `/registrarse`, `/idioma/{lang}` | Presenta la propuesta de valor sin métricas falsas, carrusel con pausa WCAG, selector trilingüe (ES/QU/EN), acceso híbrido con 6 botones de perfiles demo (de los 8 usuarios y 3 plantas sembrados) y alta pública de nueva planta con su `TINA-01` inicial. |
-| **Dashboard General** | `/panel` (`#sec-dashboard`) | Muestra 4 tarjetas KPI con variación porcentual respecto al período anterior (`hoy`, `7d`, `quincena`, `mes`), 3 gráficas interactivas Chart.js [10] (acopio diario óptima vs ácida, ventas vs gastos, moldes producidos), ocupación de tinas, ranking multi-planta y actividad reciente. |
-| **M1: Acopio por voz y tacto** | `#sec-acopio` (`/panel/acopio`, `/panel/proveedor`) | Registra entregas de leche dictando al micrófono (`Web Speech API` con confirmación hablada en `es-PE`) [9] o sumando litros con la botonera táctil de `54 px` (`+10` a `+50`). Permite crear ganaderos y corregir o eliminar entregas erróneas. |
-| **M2: Calidad sanitaria (74°)** | `#sec-calidad` (`/panel/calidad/{id}`) | Lista las entregas del día para aplicar la prueba de alcohol a 74°. Cada cambio solicita confirmación mediante modal JS: aprueba leche óptima para tina principal o desvía leche ácida a quesillos frescos de 4 días. |
-| **M3: Múltiples tinas y receta** | `#sec-tina` (`/panel/tinas`, `/panel/tina/{id}`) | Permite crear y editar varias tinas por planta (queso, quesillo, yogur, multipropósito), iniciar lotes validando capacidad máxima, actualizar temperatura/litros viendo el avance de enfriamiento (72 °C a 36–40 °C), recalcular cuajo/sal/cultivo y cerrar el lote con los moldes obtenidos. |
-| **M4: Liquidación y ventas** | `#sec-quincena` (`/panel/movimiento`) | Calcula en vivo la liquidación quincenal de cada proveedor (bruto menos adelantos pendientes, comisión S/ 0.00), permite registrar/editar/eliminar ventas de productos, adelantos (efectivo o queso), gastos operativos y pagos de *Ayuda del Día* sin pedir DNI. |
-| **M5: Estadísticas y Excel `.xlsx`** | `#sec-estadisticas` (`/panel/exportar-excel`) | Presenta el ranking comparativo de plantas (*"¿Quién vende más?"*), gráfica de dona sanitaria (Chart.js), top 6 ganaderos, proporción voz vs manual y descarga directa de un libro Excel `.xlsx` de 4 hojas con fórmulas `SUM`. |
-| **M6: Plantas y usuarios** | `#sec-admin` (`/panel/admin/*`) | Gestiona el catálogo de plantas lácteas (código, ubicación, precio/litro, estado) y crea o edita usuarios con credenciales propias, cargo, rango jerárquico y matriz interactiva de 18 permisos por sección y control. |
+| **Portal Público y Registro** | `/`, `/login`, `/registrarse`, `/idioma/{lang}` | Presenta la propuesta de valor sin métricas falsas, fotos reales con pausa WCAG, anuncio QR público hacia `/registrarse` (`lat-qr.js`), selector trilingüe, acceso con 6 perfiles demo y alta pública de nueva planta con su `TINA-01`/`VAT-01` inicial. |
+| **Dashboard General** | `/panel` (`#sec-dashboard`) | Muestra 4 KPIs con variación temporal (`hoy`, `7d`, `quincena`, `mes`), 3 gráficas Chart.js [10], ocupación de tinas, ranking multi-planta, notificaciones en vivo segmentadas por rol y el interruptor operativo de sesión para Administración Total. |
+| **M1: Acopio por voz y tacto** | `#sec-acopio` (`/panel/acopio`, `/panel/acopio/sync`, `/panel/proveedor`) | Registra entregas en estado inicial `pendiente` mediante dictado automático (`Web Speech API`) o botonera táctil de `54 px` (`Registrar entrega`). Opera offline vía `lat-offline.js` (bloques `<= 50`) e impide editar o borrar entregas ya asignadas a un lote (`lote_id !== null`). |
+| **M2: Calidad sanitaria (74°)** | `#sec-calidad` (`/panel/calidad/{id}`) | Incorpora filtros independientes por fecha/estado para ubicar pendientes de días previos y 3 decisiones con confirmación coloreada (`.is-verde`, `.is-amarillo`, `.is-rojo`): *Aprobar*, *Desviar a quesillo* (4 días) o *Descartar* (conserva `motivo_descarte` y `evaluado_por` fuera de liquidación). Emite notificación hacia Tinas. |
+| **M3: Múltiples tinas y receta** | `#sec-tina` (`/panel/tinas*`, `/panel/tinas/recetas-base`, `/panel/tinas/{tinaId}/lote`, `/panel/tina/{id}`) | Gestiona tinas (`tinas.tipo` libre con sugerencias, prefijo `TINA-`/`VAT-`), selección múltiple de acopios filtrables al iniciar lote (`#modal-iniciar-tina`), recetas base por planta y cronómetro editables, guardado independiente de temperatura (`step="0.1"`) y cierre con moldes reales. |
+| **M4: Liquidación y ventas** | `#sec-quincena` (`/panel/finanzas/liquidacion-grid`, `/panel/movimiento*`, `/panel/reportes-excel*`) | Interfaz estilo Excel (`lat-finanzas-grid.js`) en **3 tablas separadas** con barra `fx`, filtros propios y descargas `.xlsx` exclusivas (`?solo=liquidacion|ventas|sueldos`): Liquidación editable inline con descuento FIFO idempotente (`adelanto_aplicaciones`, comisión S/ 0.00), Ventas y Sueldos/Jornales (sin DNI). Incluye bandeja Excel ↔ Contador con avisos verdes. |
+| **M5: Estadísticas, Excel e Informes 24h** | `#sec-estadisticas` (`/panel/exportar-excel`, `/panel/informes-planta/enviar`, `/panel/estadisticas/informes/{id}/descargar`) | Presenta ranking comparativo (*"¿Quién vende más?"*), dona sanitaria, top 6 ganaderos, proporción voz vs manual, libro `.xlsx` de 4 hojas y bitácora de informes de actividad por planta (automático 24h y manual) con historial y descarga `.txt` exclusiva para Administración Total. |
+| **M6: Plantas y usuarios** | `#sec-admin` (`/panel/admin/*`) | Gestiona plantas lácteas con papelera de 30 días (restauración y purga definitiva) y cuentas con cargo, rango y **19 permisos granulares**, manteniendo el aislamiento estricto de `encargado_planta` dentro de su planta. |
 
 ### 6.2 Flujo de navegación
 
@@ -625,30 +631,31 @@ flowchart TD
 
 ### 6.3 Roles y permisos
 
-En `app/Models/User.php` el sistema define **6 cargos** (5 plantillas predefinidas + `personalizado`), **4 rangos jerárquicos** (`administrador`, `supervisor`, `operador`, `personalizado`) y **18 permisos granulares** agrupados en 7 secciones. La siguiente matriz refleja exactamente las constantes `PERMISOS_CATALOGO` y `PLANTILLAS_CARGO` del código:
+En `app/Models/User.php` el sistema define **6 cargos** (5 plantillas predefinidas + `personalizado`), **4 rangos jerárquicos** (`administrador`, `supervisor`, `operador`, `personalizado`) y **19 permisos granulares** agrupados en 7 secciones (retirado el antiguo permiso `admin.qr` e incorporado `finanzas.enviar_excel`). La matriz vigente es la siguiente:
 
 | Sección | Permiso granular (`permiso:*`) | Administración (`donjusto`) | Encargado Planta (`carlos.anta`) | Recolector Ruta (`mateo.ruta`) | Control Tina (`sabina.tina`) | Contador Externo (`contador.marco`) | Personalizado (ej. `lucia.personal`) |
 | :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
 | **Dashboard** | `dashboard.ver` | Sí | Sí | No | No | Sí | Configurable (No) |
 | | `dashboard.ver_red` | Sí | No | No | No | No | Configurable (No) |
 | **1. Acopio** | `acopio.ver` | Sí | Sí | Sí | No | No | Configurable (No) |
-| | `acopio.crear` | Sí | Sí | Sí | No | No | Configurable (No) |
-| | `acopio.editar` | Sí | Sí | No | No | No | Configurable (No) |
-| | `acopio.proveedores` | Sí | Sí | Sí | No | No | Configurable (No) |
+| | `acopio.crear` | Modo operativo* | Sí | Sí | No | No | Configurable (No) |
+| | `acopio.editar` | Modo operativo* | Sí | **Sí** | No | No | Configurable (No) |
+| | `acopio.proveedores` | Modo operativo* | Sí | Sí | No | No | Configurable (No) |
 | **2. Calidad** | `calidad.ver` | Sí | Sí | No | Sí | No | Configurable (**Sí**) |
-| | `calidad.evaluar` | Sí | Sí | No | Sí | No | Configurable (**Sí**) |
+| | `calidad.evaluar` | Modo operativo* | Sí | No | Sí | No | Configurable (**Sí**) |
 | **3. Tinas** | `tinas.ver` | Sí | Sí | No | Sí | No | Configurable (**Sí**) |
-| | `tinas.operar` | Sí | Sí | No | Sí | No | Configurable (**Sí**) |
-| | `tinas.gestionar` | Sí | Sí | No | No | No | Configurable (No) |
+| | `tinas.operar` | Modo operativo* | Sí | No | Sí | No | Configurable (**Sí**) |
+| | `tinas.gestionar` | Modo operativo* | Sí | No | No | No | Configurable (No) |
 | **4. Finanzas** | `finanzas.ver` | Sí | Sí | No | No | Sí | Configurable (No) |
 | | `finanzas.registrar` | Sí | Sí | No | No | No | Configurable (No) |
-| | `finanzas.editar` | Sí | No | No | No | No | Configurable (No) |
-| | `finanzas.exportar` | Sí | No | No | No | Sí | Configurable (No) |
-| **5. Estadísticas** | `estadisticas.ver` | Sí | Sí | No | No | Sí | Configurable (No) |
-| **6. Admin** | `admin.usuarios` | Sí | No | No | No | No | Configurable (según rango) |
+| | `finanzas.editar` | Sí | Sí | No | No | No | Configurable (No) |
+| | `finanzas.exportar` | Sí | Sí | No | No | Sí | Configurable (No) |
+| | `finanzas.enviar_excel` | Sí | Sí | No | No | No | Configurable (No) |
+| **5. Estadísticas** | `estadisticas.ver` | Sí (incluye `.txt` 24h) | Sí (su planta) | No | No | Sí | Configurable (No) |
+| **6. Admin** | `admin.usuarios` | Sí | Sí (solo su planta) | No | No | No | Configurable (según rango) |
 | | `admin.plantas` | Sí | No | No | No | No | Configurable (No) |
 
-*(Nota: Un usuario de rango `supervisor` al que se le otorgue `admin.usuarios` solo puede crear/editar cuentas dentro de su misma planta y asignar únicamente un subconjunto de sus propios permisos; nunca puede modificar ni crear administradores.)*
+*(Nota: \*En `administracion`, los 6 permisos de escritura operativa de M1–M3 están deshabilitados por defecto y se habilitan temporalmente en sesión mediante `#btn-toggle-modo-operativo`. Por su parte, `encargado_planta` está aislado a su propia planta y un supervisor con `admin.usuarios` solo delega un subconjunto de sus permisos dentro de su misma planta.)*
 
 ### 6.4 Casos de uso principales
 
@@ -726,11 +733,11 @@ ADM --> UC12
 | Código | Caso de uso | Actor principal | Flujo básico y resultado esperado |
 | :--- | :--- | :--- | :--- |
 | **CU-02** | Registrar planta y administrador | Visitante | Completa formulario en `/registrarse`; el sistema valida unicidad y crea en `DB::transaction()` la planta (`PLT-XX`), `TINA-01` y el usuario `administracion`, iniciando sesión automáticamente. |
-| **CU-05** | Registrar acopio por voz o tacto | Recolector / Encargado | Selecciona ganadero, dicta la frase por micrófono (o pulsa `+10` a `+50` en botonera) y envía `POST /panel/acopio`; se guarda con `uuid_offline`, `precio_litro` vigente y `registrado_por`. |
-| **CU-07** | Evaluar calidad sanitaria 74° | Control de Tina / Encargado | Elige *Aprobar* o *Desviar a quesillo*, confirma en el modal JS y envía `POST /panel/calidad/{id}`; actualiza `calidad` y `destino` (`queso_yogur` o `quesillo_4_dias`). |
-| **CU-08** | Operar tina y receta automática | Control de Tina / Encargado | Inicia lote validando `litros <= capacidad_litros`; al actualizar °C o litros, `LacteoService` recalcula cuajo, sal, cultivo, moldes estimados y estado térmico; al cerrar, registra `moldes_producidos` y pasa a `terminado`. |
-| **CU-10** | Exportar balance Excel `.xlsx` | Contador / Administración | Accede a `GET /panel/exportar-excel`; `LacteoService` consolida la quincena en 3 consultas y `ExcelExportService` descarga un libro `.xlsx` válido con 4 hojas y fórmulas `SUM`. |
-| **CU-12** | Crear usuario personalizado | Administración / Supervisor | Abre modal en `#sec-admin`, define usuario/clave/rango y marca los permisos exactos por sección; `AdminController` valida jerarquía y persiste el JSON `permisos` y `creado_por`. |
+| **CU-05** | Registrar acopio por voz o offline | Recolector / Encargado | Selecciona ganadero, dicta la frase por micrófono (envío automático al validar productor y litros) o usa la botonera `+10` a `+50` (`Registrar entrega`). Si no hay red, `lat-offline.js` encola en `localStorage` y sincroniza en bloques `<= 50`. |
+| **CU-07** | Evaluar calidad sanitaria 74° | Control de Tina / Encargado | Elige *Aprobar*, *Desviar a quesillo* o *Descartar* (con confirmación modal coloreada), bloqueando cambios si el acopio ya está en un lote (`lote_id !== null`). Emite alerta dirigida solo a `encargado_planta` y `control_tina`. |
+| **CU-08** | Operar tina trazable y receta editable | Control de Tina / Encargado | Selecciona acopios evaluados libres (`#modal-iniciar-tina`), ajusta receta/cronómetro y valida capacidad máxima; guarda temperatura de forma independiente (`step=0.1`), recalcula insumos y cierra el lote con moldes reales. |
+| **CU-10** | Liquidar y enviar Excel al Contador | Contador / Encargado / Admin | Opera las 3 tablas estilo Excel (`Liquidación`, `Ventas`, `Sueldos`), aplica adelantos por FIFO (`adelanto_aplicaciones`), exporta `.xlsx` completo o por tabla (`?solo=...`) y remite/revisa reportes en `reportes_excel` con alerta verde. |
+| **CU-12** | Administrar plantas, usuarios e informes 24h | Administración / Encargado | Administración gestiona plantas (con papelera 30d), alterna su modo operativo y descarga informes `.txt` de 24h; Encargado gestiona únicamente usuarios dentro de su planta y envía informes manuales de actividad. |
 
 ### 6.5 Funcionalidades CRUD completas
 
@@ -738,13 +745,14 @@ A continuación se detallan las operaciones **Create, Read, Update y Delete** ve
 
 | Entidad / Recurso | Create (Crear) | Read (Consultar) | Update (Actualizar) | Delete (Eliminar / Inactivar) | Controlador y permiso |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Acopios (`acopios`)** | `POST /panel/acopio` (`guardarAcopio`) | `GET /panel` (`index` — entregas del día y series) | `PUT /panel/acopio/{id}` (`actualizarAcopio`) y `POST /panel/calidad/{id}` (`evaluarCalidad`) | `DELETE /panel/acopio/{id}` (`eliminarAcopio`, con modal JS) | `PanelController` (`acopio.crear`, `acopio.editar`, `calidad.evaluar`) |
-| **Movimientos / Ventas (`liquidaciones`)** | `POST /panel/movimiento` (`registrarMovimiento`) | `GET /panel` (`index` — liquidación quincenal y últimos 25 movimientos) y `GET /panel/exportar-excel` | `PUT /panel/movimiento/{id}` (`actualizarMovimiento`) | `DELETE /panel/movimiento/{id}` (`eliminarMovimiento`, con modal JS) | `PanelController` (`finanzas.ver`, `finanzas.registrar`, `finanzas.editar`, `finanzas.exportar`) |
-| **Ganaderos (`proveedores`)** | `POST /panel/proveedor` (`guardarProveedor`) | `GET /panel` (`index` — lista activa ordenada por nombre) | `PUT /panel/proveedor/{id}` (`actualizarProveedor`, implementado en backend; en la UI actual el modal muestra alta y listado) | Baja lógica vía campo `activo` en modelo/BD | `PanelController` (`acopio.proveedores`) |
-| **Tinas (`tinas`)** | `POST /panel/tinas` (`crearTina`) | `GET /panel` (`index` — grilla de tinas y ocupación) | `PUT /panel/tinas/{id}` (`editarTina`, incluye estado `activa`) | Inactivación segura (`activa = 0`, preserva historial de lotes) | `PanelController` (`tinas.ver`, `tinas.gestionar`) |
-| **Lotes térmicos (`lotes`)** | `POST /panel/tinas/{tinaId}/lote` (`iniciarLoteEnTina`) | `GET /panel` (`index` — lote activo por tina y moldes diarios) | `POST /panel/tina/{id}` (`actualizarTina` — °C, litros y cierre `terminado`) | Cierre definitivo a estado `terminado` (trazabilidad intacta) | `PanelController` (`tinas.operar`) |
-| **Plantas (`plantas`)** | `POST /registrarse` (`register`) y `POST /panel/admin/plantas` (`crearPlanta`) | `GET /panel` (`index` — tabla con conteo de tinas/usuarios y ranking) | `PUT /panel/admin/plantas/{id}` (`actualizarPlanta`) y `POST /panel/cambiar-planta` | Inactivación controlada (`activa = 0` para no borrar historial) | `AuthController` / `AdminController` / `PanelController` (`admin.plantas`) |
-| **Usuarios (`users`)** | `POST /registrarse` (`register`) y `POST /panel/admin/usuarios` (`crearUsuario`) | `GET /panel` (`index` — listado filtrado por planta/rango) | `PUT /panel/admin/usuarios/{id}` (`actualizarUsuario` — cargo, rango, clave y 18 permisos) | Desactivación lógica (`activo = 0`, impide auto-desactivarse) | `AuthController` / `AdminController` (`admin.usuarios`) |
+| **Acopios (`acopios`)** | `POST /panel/acopio` y `POST /panel/acopio/sync` (`guardarAcopio` / offline) | `GET /panel` (`index` — entregas y filtros) | `PUT /panel/acopio/{id}` (`actualizarAcopio`) y `POST /panel/calidad/{id}` (`evaluarCalidad`) | `DELETE /panel/acopio/{id}` (bloqueado si `lote_id !== null`) | `PanelController` (`acopio.*`, `calidad.evaluar`) |
+| **Movimientos, Liquidación y Reportes (`liquidaciones`, `reportes_excel`)** | `POST /panel/movimiento` y `POST /panel/reportes-excel/enviar` | `GET /panel` (3 grillas estilo Excel), `GET /panel/exportar-excel` (`?solo=...`) | `PUT /panel/finanzas/liquidacion-grid`, `PUT /panel/movimiento/{id}`, `POST /panel/reportes-excel/{id}/revisar` | `DELETE /panel/movimiento/{id}` (con modal JS) | `PanelController` (`finanzas.*`) |
+| **Ganaderos (`proveedores`)** | `POST /panel/proveedor` (`guardarProveedor`) | `GET /panel` (`index` — lista activa por planta) | `PUT /panel/proveedor/{id}` (`actualizarProveedor`) | `DELETE /panel/proveedor/{id}` (`eliminarProveedor` / baja lógica) | `PanelController` (`acopio.proveedores`) |
+| **Tinas y Recetas (`tinas`, `plantas.recetas_base`)** | `POST /panel/tinas` (`crearTina`) | `GET /panel` (`index` — grilla de tinas y ocupación) | `PUT /panel/tinas/{id}` (`editarTina`), `PUT /panel/tinas/recetas-base` | `DELETE /panel/tinas/{id}` / inactivación segura (`activa = 0`) | `PanelController` (`tinas.ver`, `tinas.gestionar`) |
+| **Lotes térmicos (`lotes`)** | `POST /panel/tinas/{tinaId}/lote` (`iniciarLoteEnTina`) | `GET /panel` (`index` — lote activo, cronómetro y moldes) | `POST /panel/tina/{id}` (`actualizarTina` — °C independiente, insumos, cronómetro y cierre) | Cierre definitivo a estado `terminado` (trazabilidad intacta) | `PanelController` + `TinaWorkflowService` (`tinas.operar`) |
+| **Plantas (`plantas`)** | `POST /registrarse` y `POST /panel/admin/plantas` | `GET /panel` (`index` — activas, papelera y ranking) | `PUT /panel/admin/plantas/{id}`, `POST /panel/cambiar-planta` y `POST .../restaurar` | `DELETE /panel/admin/plantas/{id}` (papelera 30d) y `.../definitivo` (`lat:purgar-plantas`) | `AuthController` / `AdminController` (`admin.plantas`) |
+| **Usuarios (`users`)** | `POST /registrarse` y `POST /panel/admin/usuarios` | `GET /panel` (`index` — listado por planta/rango) | `PUT /panel/admin/usuarios/{id}` (cargo, rango, clave y 19 permisos) | `DELETE /panel/admin/usuarios/{id}` / desactivación lógica (`activo = 0`) | `AuthController` / `AdminController` (`admin.usuarios`) |
+| **Notificaciones e Informes (`notificaciones_panel`, `informes_actividad_planta`)** | `POST /panel/notificaciones/contable` y `POST /panel/informes-planta/enviar` | `GET /panel/notificaciones/poll` y `GET /panel/estadisticas/informes/{id}/descargar` | `POST /panel/notificaciones/leer` | Historial auditable inmutable (Admin Total descarga `.txt`) | `PanelController` + `InformePlantaService` |
 
 ### 6.6 Métricas proyectadas de impacto social
 
@@ -757,7 +765,7 @@ Rescatando los indicadores base levantados en el diagnóstico inicial de Anta/Zu
 | **Trazabilidad de leche ácida aprovechada** | Desordenado / rechazo frecuente | **100%** clasificada hacia `quesillo_4_dias` | Gráfica de distribución sanitaria y hoja *Detalle Acopios* del `.xlsx`. |
 | **Tiempo de cierre de liquidación quincenal** | 6 a 8 horas sumando cuadernos y adelantos | **Instantáneo (< 200 ms)** + Excel en 1 clic | Respuesta del servidor en `LacteoService::liquidarQuincena()`. |
 | **Costo por uso de software para la quesería** | S/ 150–450/mes (ERP) o comisión por litro | **S/ 0.00 garantizado** | Parámetro `LAT_COMISION=0.00` y licencia abierta en GitHub. |
-| **Inclusión de operarios quechuahablantes** | 0% (interfaces solo en español) | **100% de la interfaz** (372 etiquetas en *Runasimi*) | Conmutador trilingüe verificado en `LatFuncionalidadesTest`. |
+| **Inclusión de operarios quechuahablantes** | 0% (interfaces solo en español) | **100% de la interfaz** (**838 claves JS + 179 PHP** en *Runasimi* oficial) | Conmutador trilingüe en sidebar verificado en PHPUnit y Playwright. |
 
 ---
 
@@ -781,14 +789,14 @@ En el código actual del repositorio ya se implementaron las siguientes mejoras:
 
 | Técnica de optimización | Ubicación exacta en el repositorio | Efecto técnico logrado |
 | :--- | :--- | :--- |
-| **Agregación SQL agrupada Anti-N+1 (3 consultas fijas)** | `app/Services/LacteoService.php` (`liquidarQuincena`, líneas 84–139) | Cambia `1 + 2N` consultas por exactamente **3 consultas fijas** (`Proveedor::select(...)`, `Acopio::groupBy('proveedor_id')->selectRaw('SUM(litros)')` y `Liquidacion::groupBy('proveedor_id')->selectRaw('SUM(monto)')`), cruzando los resultados en memoria en orden `O(N)`. |
-| **12 índices explícitos (10 compuestos + 2 simples) y 7 `UNIQUE`** | `database/migrations/2026_01_01_000001` y `2026_01_01_000002` | Acelera búsquedas por planta, rango de fechas, calidad, proveedor, estado de lote y adelantos (`idx_acopios_planta_fecha`, `idx_acopios_proveedor_fecha`, `idx_acopios_fecha_calidad`, `idx_liquidaciones_prov_descontado`, `idx_liquidaciones_planta_fecha_tipo`, `idx_lotes_planta_estado`, etc.). |
-| **Eager Loading y selección puntual de columnas (`select`)** | `app/Http/Controllers/PanelController.php` (líneas 117–238) | Uso de `with('proveedor:id,codigo,nombre,sector')`, `with('loteActivo')`, `with(['planta:id,codigo,nombre', 'creador:id,name,usuario'])` y `withCount(['tinas', 'users', 'proveedores'])`, evitando N+1 y reduciendo datos cargados. |
-| **Carga condicional según permisos del usuario** | `app/Http/Controllers/PanelController.php` (líneas 106–248) | Solo consulta tablas de las secciones autorizadas (`$puedeVerFinanzas`, `$puedeVerTinas`, `$puedeVerDashboard`, etc.). Un recolector de ruta omite por completo las consultas de tinas, liquidaciones, dashboard y usuarios. |
-| **Límite en listados recientes y sumas en SQL** | `PanelController.php` (`limit(25)`), `LacteoService.php` (`limit(4)`, `groupBy('planta_id')`) | Limita las filas mostradas en historiales recientes y calcula el ranking multi-planta mediante `SUM`/`COUNT` directamente en SQL. |
-| **Caché de producción y PHP OPcache** | `Dockerfile`, `docker/start.sh` | Activa `opcache` y ejecuta `config:cache`, `route:cache` y `view:cache` al iniciar el contenedor [11]. |
+| **Agregación SQL agrupada Anti-N+1 + FIFO idempotente** | `app/Services/LacteoService.php` (`liquidarQuincena`) | Cambia `1 + 2N` consultas por consultas agrupadas fijas (`Proveedor`, `Acopio::liquidables()` y `Liquidacion` unida a `adelanto_aplicaciones`), aplicando adelantos en orden FIFO sin doble descuento ni alteración del historial. |
+| **Índices compuestos ampliados y restricciones por planta** | Migraciones `000001`, `000002`, `2026_11_25_153707`, `2026_11_26_184041`, `210000` y `221223` | Acelera búsquedas por planta, fechas, lote/calidad, notificaciones globales/planta, bitácora, informes y `uq_adelanto_aplicacion_quincena`. |
+| **Rangos de fecha sin funciones SQL (`DATE()`)** | `app/Services/LacteoService.php` (`aplicarRangoFecha`, `aplicarHastaFecha`) | Reemplaza `whereDate()` por `whereBetween()` / comparaciones directas sobre columna `DATE` en MariaDB/MySQL, preservando los índices B-Tree. |
+| **Eager Loading, selección puntual y presupuesto `<= 42` SQL** | `app/Http/Controllers/PanelController.php` | Reutiliza colecciones ya cargadas (como `$plantas`), usa `with()` y `withCount()` y mantiene `GET /panel` bajo el techo verificado de `<= 42` consultas. |
+| **Carga condicional y límites por sección** | `app/Http/Controllers/PanelController.php`, `public/js/lat-offline.js` | Solo consulta las tablas autorizadas al rol activo; limita consultas recientes y sincroniza la cola offline por bloques de hasta `50` entregas. |
+| **Caché de producción, OPcache y Service Worker `v8`** | `Dockerfile`, `docker/start.sh`, `public/sw.js` | Activa `opcache`, cachea rutas/vistas/configuración y sirve estáticos *Cache-First* excluyendo descargas Excel, informes `.txt`, `/idioma` y polling de notificaciones. |
 
-*Mejoras pendientes detectadas en la auditoría:* reemplazar `whereDate('fecha', ...)` por `whereBetween('fecha', [$desde, $hasta])` en `Acopio::scopeDelPeriodo()` y `LacteoService` (pues `fecha` es columna `DATE`), reutilizar `$estadisticas` cuando el rango del dashboard coincida con la quincena para evitar la doble llamada a `obtenerEstadisticas()`, y agregar `paginate()` en historiales largos.
+*Estado tras la auditoría:* Se cerraron el reemplazo de `whereDate()` por `aplicarRangoFecha()`, el presupuesto `<= 42` consultas en `GET /panel` (verificado en `LatAuditoriaFinalTest`) y el registro trazable de aplicaciones FIFO en `adelanto_aplicaciones`. Queda como mejora opcional futura la paginación (`paginate()`) en historiales históricos extensos.
 
 #### 7.7.3 Evidencias antes/después
 
@@ -829,42 +837,36 @@ La auditoría directa sobre controladores, middlewares, configuración y vistas 
 
 | Amenaza | Control implementado y verificado en código | Archivo de referencia en el repo |
 | :--- | :--- | :--- |
-| **Control de acceso roto y escalamiento** | Middleware `auth` en las 21 rutas privadas (`/panel` con filtrado interno por `seccionesPermitidas()` y **20 rutas operativas** protegidas con `CheckLatPermission` / `permiso:*` que devuelven **HTTP 403**); consultas filtradas con `dePlanta($planta->id)` (bloquea IDOR entre plantas); validación `Rule::exists('proveedores', 'id')->where('planta_id', $planta->id)`; métodos `permisosAsignables()` y `puedeGestionarUsuario()` que impiden otorgar permisos no poseídos, crear usuarios en otra planta o tocar cuentas `administracion`; bloqueo de auto-desactivación en sesión. | `routes/web.php`, `app/Http/Middleware/CheckLatPermission.php`, `app/Models/User.php`, `app/Http/Controllers/AdminController.php`, `app/Http/Controllers/PanelController.php` |
-| **SQL Injection** | 100% de las lecturas y escrituras pasan por Eloquent ORM / PDO con *bindings* parametrizados; los únicos `selectRaw()` usan expresiones estáticas de agregación (`SUM(litros)`, `SUM(monto)`) sin interpolar entrada del usuario. | `app/Services/LacteoService.php`, `app/Http/Controllers/PanelController.php` |
-| **Cross-Site Scripting (XSS)** | Escape automático `{{ }}` en todas las vistas Blade. La auditoría de `{!! !!}` confirmó que los 33 usos existentes corresponden únicamente a íconos SVG estáticos definidos internamente (`$icoDash`, `$icoEditar`, etc.), sin datos de usuario. `lat-i18n.js` usa `el.textContent` y `ExcelExportService::esc()` limpia caracteres de control y aplica `htmlspecialchars(..., ENT_XML1 \| ENT_QUOTES, 'UTF-8')`. | `resources/views/**/*.blade.php`, `public/js/lat-i18n.js`, `app/Services/ExcelExportService.php` |
-| **CSRF** | Directiva `@csrf` en todos los formularios `POST`/`PUT`/`DELETE`, etiqueta `<meta name="csrf-token">` en `layouts/app.blade.php` y cookie `SESSION_SAME_SITE=lax`. | `resources/views/**/*.blade.php`, `config/session.php` |
-| **Autenticación, contraseñas y sesiones** | Hash Bcrypt (`'password' => 'hashed'` y `Hash::make()`), verificación `'activo' => true` en `Auth::attempt()`, `$request->session()->regenerate()` al ingresar/registrar, `invalidate()` + `regenerateToken()` al salir, `http_only => true` y serialización JSON de sesión (`'serialization' => 'json'`). | `app/Http/Controllers/AuthController.php`, `app/Models/User.php`, `config/session.php` |
-| **Configuración segura y Mass Assignment** | Whitelists `$fillable` y `$hidden` (`password`, `remember_token`) en modelos; `.gitignore` endurecido (excluye `.env` y BD binaria); `Options -Indexes` en `public/.htaccess` y `docker/000-default.conf`; `URL::forceScheme('https')` en producción. | `.gitignore`, `public/.htaccess`, `docker/000-default.conf`, `app/Providers/AppServiceProvider.php` |
+| **Control de acceso roto y escalamiento** | Middleware `auth` y `CheckLatPermission` (`permiso:*` con respuesta **HTTP 403**); aislamiento por `planta_id` en todas las rutas; bloqueo por defecto de escritura M1–M3 en `administracion` (`admin_modo_operativo`); aislamiento estricto de `encargado_planta` dentro de su planta; bloqueo de edición/borrado en acopios con `lote_id !== null`; `permisosAsignables()` y `puedeGestionarUsuario()`. | `routes/web.php`, `CheckLatPermission.php`, `User.php`, `AdminController.php`, `PanelController.php` |
+| **SQL Injection** | 100% de las lecturas y escrituras pasan por Eloquent ORM / PDO con *bindings* parametrizados; las agregaciones `selectRaw()` usan expresiones fijas o parámetros enlazados sin interpolar entrada del usuario. | `LacteoService.php`, `InformePlantaService.php`, `PanelController.php` |
+| **XSS y Excel Formula Injection** | Escape automático `{{ }}` en Blade (los `{!! !!}` corresponden únicamente a SVG estáticos internos), escritura con `.textContent` en `lat-i18n.js`, saneamiento XML (`ENT_XML1 \| ENT_QUOTES`) y neutralización de prefijos peligrosos (`=`, `+`, `-`, `@`) en `ExcelExportService::sanitizeFormulaInjection()`. | `resources/views/**/*.blade.php`, `public/js/lat-i18n.js`, `ExcelExportService.php` |
+| **CSRF y Fuerza bruta** | Directiva `@csrf` en formularios mutables, `SESSION_SAME_SITE=lax`, limpieza de caché `/panel` en Service Worker al cerrar sesión (`LAT_CLEAR_AUTH_CACHE`) y limitación `throttle:5,1` en registro y control de intentos en login. | `routes/web.php`, `AuthController.php`, `public/sw.js`, `config/session.php` |
+| **Autenticación, contraseñas y sesiones** | Hash Bcrypt (`hashed`), verificación `'activo' => true`, `session()->regenerate()` al ingresar, `invalidate()` + `regenerateToken()` al salir y cookies `http_only => true`. | `AuthController.php`, `User.php`, `config/session.php` |
+| **Cabeceras HTTP y configuración segura** | `SecurityHeadersMiddleware` global (`X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy`, `Permissions-Policy` con `microphone=(self)` y `Content-Security-Policy`), whitelists `$fillable`/`$hidden`, `.gitignore` endurecido y `URL::forceScheme('https')` en producción. | `SecurityHeadersMiddleware.php`, `bootstrap/app.php`, `AppServiceProvider.php`, `public/.htaccess` |
 
-*Mejoras de endurecimiento detectadas para el cierre antes de producción:*
-1. Agregar limitación de intentos (`middleware('throttle:5,1')`) en `POST /login` y `POST /registrarse` contra fuerza bruta.
-2. Añadir validación explícita `$request->validate(...)` en `PanelController::evaluarCalidad()` (`in:buena,acida`) y `PanelController::actualizarTina()` (rangos numéricos para `temperatura`, `litros` y `moldes`).
-3. Incorporar un middleware de cabeceras HTTP de seguridad (`X-Frame-Options: SAMEORIGIN`, `X-Content-Type-Options: nosniff`, `Referrer-Policy`) y evitar prellenar `value="secreto123"` en `login.blade.php` cuando `APP_ENV=production`.
+*Estado de las mejoras de endurecimiento:* Las tres medidas recomendadas en el informe previo quedaron implementadas y cubiertas por pruebas (`throttle:5,1`, validación explícita en `evaluarCalidad`/`actualizarTina` y `SecurityHeadersMiddleware` global), además de suprimir accesos demo inseguros en producción (`APP_ENV=production`).
 
 #### 7.8.3 Evidencias de pruebas
 
-El repositorio cuenta con la suite automatizada **`tests/Feature/LatFuncionalidadesTest.php`** (11 casos de prueba en PHPUnit 12 con `RefreshDatabase` sobre SQLite en memoria), que cubre directamente seguridad de acceso, jerarquía de rangos y operaciones críticas:
+El repositorio cuenta ahora con una batería automatizada ampliada a **103 pruebas en PHPUnit 12 (1,114 aserciones — 100% PASS)** ejecutadas con SQLite en memoria (`RefreshDatabase`), complementadas por verificación E2E en Playwright (`tests/e2e/visual-standards.cjs`, **294/294 checks** en escritorio `1280×800`, móvil `390×844` y móvil compacto `320×568`):
 
-| N.° | Método en `LatFuncionalidadesTest.php` | Qué verifica | Enfoque |
+| N.° | Suite de pruebas (`tests/`) | Casos / Qué verifica | Enfoque |
 | :-: | :--- | :--- | :--- |
-| 1 | `test_registro_publico_crea_planta_tina_y_usuario_admin` | Transacción atómica al registrar planta, `TINA-01` y admin autenticado. | Integridad / Auth |
-| 2 | `test_admin_crea_y_edita_credenciales_de_usuario_y_no_admin_es_bloqueado` | Alta/edición de usuarios y rechazo **HTTP 403** cuando un no-admin intenta crear cuentas. | Seguridad RBAC |
-| 3 | `test_usuario_personalizado_solo_ve_y_accede_a_sus_secciones_y_controles` | Usuario solo con `tinas.ver/operar` no ve otras secciones en HTML y recibe **HTTP 403** en 5 rutas prohibidas (`/acopio`, `/calidad`, `/tinas`, `/movimiento`, `/exportar-excel`). | Seguridad RBAC |
-| 4 | `test_control_granular_ver_sin_editar_bloquea_modificaciones` | Usuario con `acopio.ver/crear` puede registrar, no ve el botón editar y recibe **HTTP 403** al enviar `PUT` o `DELETE`. | Seguridad granular |
-| 5 | `test_rango_delegado_permite_crear_usuarios_solo_en_su_planta_y_sin_escalar` | Supervisor delega solo subconjunto de sus permisos en su planta; recibe **HTTP 403** si intenta otorgar `finanzas.ver`, crear en otra planta o modificar al admin. | Anti-escalamiento |
-| 6 | `test_dashboard_retorna_series_temporales_y_respeta_filtro_de_rango` | Renderizado de los 3 `<canvas>` Chart.js y filtros `?rango=7d` y `?rango=mes`. | Funcional / Dashboard |
-| 7 | `test_admin_gestiona_plantas_y_cambia_planta_activa` | Creación y edición multi-planta (`PLT-04`) con actualización de `precio_litro`. | CRUD Multi-planta |
-| 8 | `test_multiples_tinas_agregar_editar_iniciar_y_finalizar_lote` | Ciclo completo: crear/editar `TINA-04`, iniciar lote a 72 °C (`pasteurizando`), enfriar a 38 °C (`lista_para_cuajo`) y cerrar con 20 moldes (`terminado`). | Lógica de negocio |
-| 9 | `test_edicion_de_datos_acopio_y_movimiento` | Edición `PUT` de acopio (cambio automático de destino a `quesillo_4_dias`) y movimiento financiero. | CRUD / Consistencia |
-| 10 | `test_exportacion_excel_xlsx_valida_y_estadisticas_de_plantas` | Firma binaria PKZIP (`PK\x03\x04`), 4 hojas XML del `.xlsx` y ranking comparativo de plantas. | Exportación / Stats |
-| 11 | `test_cambio_de_idioma_persiste_en_sesion` | Conmutación de sesión `/idioma/qu` y `/idioma/en` reflejada en `data-server-locale` y etiquetas `data-i18n` en portada, login y panel. | Inclusión i18n |
+| 1 | `Unit/LacteoServiceTest.php` | 4 pruebas unitarias de dosificación estequiométrica, curva térmica, liquidación quincenal y estadísticas. | Lógica Core |
+| 2 | `Feature/LatFuncionalidadesTest.php` | 25 casos (con *data providers*) sobre registro, RBAC, multi-planta, múltiples tinas, edición/borrado, Excel `.xlsx` e i18n trilingüe. | Funcional / RBAC |
+| 3 | `Feature/LatSeguridadOwaspTest.php` | 6 casos OWASP Top 10: IDOR cruzado entre plantas (A01), SQLi/XSS/Excel Formula Injection (A03), rate limiting (A07), cabeceras y CSRF (A05). | Seguridad OWASP |
+| 4 | `Feature/LatAuditoriaFinalTest.php` | 8 casos sobre papelera de plantas 30d, bloqueo de login tras intentos fallidos, cola offline PWA, envío Excel al contador y presupuesto `<= 42` SQL en `/panel`. | Auditoría / N+1 |
+| 5 | `Feature/LatFlujoTinasNotificacionesTest.php` | 17 casos del flujo obligatorio `Acopio → Calidad → Tinas`, recetas base, cronómetro editable, prefijo `TINA-`/`VAT-` y notificaciones en vivo. | Flujo Trazable |
+| 6 | `Feature/LatObservacionesPanelTest.php` | 11 casos sobre validación de código `PLT-`, selector único de idioma en sidebar, estado `pendiente` en acopios y filtros en panel. | Reglas Panel / UI |
+| 7 | `Feature/LatRolesFinanzasInformesTest.php` | 6 casos sobre gobierno del Administrador Total, aislamiento de `encargado_planta`, notificaciones verdes contables, 3 tablas Excel e informes 24h. | Gobierno / Finanzas |
+| 8 | `Feature/LatCorreccionesAuditoriaTest.php` | 11 casos sobre aplicaciones FIFO idempotentes (`adelanto_aplicaciones`), conservación de descartados, bloqueo por `lote_id`, temperatura y chunks offline. | Integridad / Pagos |
 
-*(Nota de auditoría: en el entorno local de trabajo `vendor/` y `node_modules/` no se encontraban instalados al momento de redactar este informe. Antes de la sustentación final corresponde ejecutar `composer install`, `php artisan test --compact`, `composer audit`, `npm audit` y las pruebas manuales de SQLi/XSS/CSRF del Anexo H. Asimismo, el script E2E `tests/e2e/visual-standards.cjs` requiere actualizar sus selectores de pestañas antiguos al nuevo sidebar lateral.)*
+*(Nota: Se completó la instalación de `vendor/` y `node_modules/`, quedando validada la suite PHPUnit con `103 tests / 1,114 assertions` en verde y el script E2E Playwright `tests/e2e/visual-standards.cjs` actualizado al sidebar actual.)*
 
 > **[INSERTAR EVIDENCIA VISUAL AQUÍ]**
-> - **Qué mostrar:** Capturas en vivo de: (1) salida en verde de `php artisan test --compact` con los 11 tests pasando, (2) intento de SQLi (`' OR '1'='1' --`) rechazado en `/login`, (3) payload XSS (`<script>alert('XSS')</script>`) en concepto financiero mostrado como texto escapado sin ejecutarse, (4) petición `POST` sin token CSRF bloqueada con **HTTP 419**, y (5) reporte de `composer audit` y `npm audit`.
+> - **Qué mostrar:** Capturas en vivo de: (1) salida en verde de PHPUnit con las **103 pruebas / 1,114 aserciones** pasando, (2) intento de SQLi (`' OR '1'='1' --`) rechazado en `/login`, (3) payload XSS (`<script>alert('XSS')</script>`) en concepto financiero mostrado como texto escapado sin ejecutarse, (4) petición `POST` sin token CSRF bloqueada con **HTTP 419**, y (5) reporte de `composer audit` y `npm audit`.
 > - **Herramienta recomendada:** Terminal PowerShell + Navegador con DevTools (`F12 -> Network / Console / Elements`) + `curl`.
-> - **Archivo/Ruta de referencia en el repo:** `tests/Feature/LatFuncionalidadesTest.php`, `app/Http/Middleware/CheckLatPermission.php`, `resources/views/login.blade.php` y `Anexo H`.
+> - **Archivo/Ruta de referencia en el repo:** `tests/Feature/LatSeguridadOwaspTest.php`, `app/Http/Middleware/SecurityHeadersMiddleware.php`, `resources/views/login.blade.php` y `Anexo H`.
 
 ---
 
@@ -872,7 +874,7 @@ El repositorio cuenta con la suite automatizada **`tests/Feature/LatFuncionalida
 
 ### 8.1 Cronograma con hitos y responsables
 
-El desarrollo del proyecto se organizó a lo largo de las **16 semanas** del semestre académico, consolidando el código en el repositorio GitHub durante noviembre de 2026 (`01/11/2026` al `18/11/2026`) y cerrando con la auditoría y entrega final:
+El desarrollo del proyecto se organizó a lo largo de las **16 semanas** del semestre académico, consolidando el código en el repositorio GitHub durante noviembre de 2026 (`01/11/2026` al `26/11/2026`) y cerrando con la auditoría y entrega final:
 
 | Semanas | Fase / Hito principal | Entregables concretos | Responsable principal | Estado |
 | :---: | :--- | :--- | :--- | :---: |
@@ -880,20 +882,20 @@ El desarrollo del proyecto se organizó a lo largo de las **16 semanas** del sem
 | **3 – 4** | Especificación y diseño de arquitectura | Requerimientos RF/RNF, modelo ER inicial, diseño visual `DESIGN.md` y estructura del repositorio GitHub. | Nasdig / Arantxa / Kelmer | Completado |
 | **5 – 6** | Persistencia base y modelos Eloquent | Instalación Laravel, migración base con índices compuestos, modelos iniciales (`User`, `Proveedor`, `Acopio`, `Lote`, `Liquidacion`) y `DatabaseSeeder`. | Nasdig Ortiz | Completado |
 | **7 – 8** | Lógica core y vistas iniciales | `LacteoService` (receta, curva térmica, liquidación sin N+1), `AuthController`, `PanelController`, layout trilingüe y vistas iniciales. | Arantxa Lovatón / Kelmer Obregón | Completado |
-| **9 – 10** | Rediseño Swiss-Grid y prototipado visual | Evolución a sistema editorial Swiss-Grid, líneas discontinuas en panel y generación de 10 archivos en `mockups/`. | Kelmer Obregón | Completado |
+| **9 – 10** | Rediseño Swiss-Grid y prototipado visual | Evolución a sistema editorial Swiss-Grid, líneas discontinuas en panel y generación de 10 archivos en `docs/mockups/`. | Kelmer Obregón | Completado |
 | **11 – 12** | Evolución multi-planta, multi-tina y exportación `.xlsx` | Migración `000002` (`plantas`, `tinas`, ventas), `ExcelExportService.php`, ranking de plantas y modales de edición/confirmación JS. | Nasdig / Arantxa / Kelmer | Completado |
-| **13 – 14** | Dashboard analítico, permisos granulares, i18n total y Docker | Migración `permisos`/`rango`, `CheckLatPermission`, `SetLocaleMiddleware`, Dashboard Chart.js, 372 claves ES/QU/EN, `LatFuncionalidadesTest.php` y `Dockerfile` para Render. | Todo el equipo (integración: Kelmer) | Completado |
-| **15 – 16** | Auditoría técnica, informe final y sustentación | Revisión integral de rendimiento/seguridad, elaboración de `docs/INFORME_FINAL_LAT.md` y `docs/INFORME_FINAL_LAT.docx`, diagramas y preparación de la sustentación. | Todo el equipo | En cierre |
+| **13 – 14** | Dashboard analítico, permisos granulares, i18n total y Docker | Migración `permisos`/`rango`, `CheckLatPermission`, `SetLocaleMiddleware`, Dashboard Chart.js, i18n ES/QU/EN oficial, `LatFuncionalidadesTest.php` y `Dockerfile` para Render. | Todo el equipo (integración: Kelmer) | Completado |
+| **15 – 16** | Auditoría técnica, endurecimiento, informe final y sustentación | Revisión integral de rendimiento/seguridad (OWASP + `<= 42` SQL), flujo trazable Acopio–Calidad–Tinas, finanzas Excel, informes 24h, `103` pruebas PHPUnit, E2E Playwright (`294/294`) y actualización de `docs/INFORME_FINAL_LAT.md`/`.docx`. | Todo el equipo | Completado / En sustentación |
 
 ### 8.2 Distribución de responsabilidades
 
-El equipo mantuvo una división equilibrada de roles técnicos (33.3% / 33.3% / 33.4%) combinando desarrollo de código, diseño de base de datos, validación de campo, pruebas y documentación. En el historial real de Git (`28 commits` entre el `01/11/2026` y el `18/11/2026`) se refleja tanto el trabajo inicial por módulos como la integración final de funcionalidades:
+El equipo mantuvo una división equilibrada de roles técnicos (33.3% / 33.3% / 33.4%) combinando desarrollo de código, diseño de base de datos, validación de campo, pruebas y documentación. En el historial acumulado de Git (**42 commits** hasta el `26/11/2026`) se refleja tanto el trabajo por módulos como las correcciones de auditoría e integración final:
 
 | Integrante | Rol en el equipo | Responsabilidades técnicas y académicas cubiertas | Aporte trazado en GitHub |
 | :--- | :--- | :--- | :--- |
-| **Ortiz Gutierrez, Nasdig Jordan** | Arquitecto de Base de Datos y Persistencia (33.3%) | Migración unificada, índices compuestos anti *Full Table Scan*, modelos Eloquent y relaciones, ajuste de dependencias PHP 8.3, `DatabaseSeeder`, diccionario de datos y verificación SQL/EXPLAIN. | 7 commits (`75120565-arch`) |
+| **Ortiz Gutierrez, Nasdig Jordan** | Arquitecto de Base de Datos y Persistencia (33.3%) | Migraciones e índices compuestos anti *Full Table Scan*, modelo `AdelantoAplicacion` (FIFO idempotente), descarte trazable de acopios, modelos Eloquent y relaciones, `DatabaseSeeder`, documentación en `docs/` y auditoría de pagos/lotes/calidad. | 12 commits (`75120565-arch`) |
 | **Lovatón Casas, Arantxa Alejandra** | Ingeniero Backend y Lógica Core (33.3%) | Servicios de negocio (`LacteoService`: cálculo de insumos, control térmico, liquidación sin N+1), controladores core (`AuthController`, `PanelController`), rutas protegidas, diseño de casos de prueba y documentación de seguridad. | 3 commits (`Arantxa` / `Lovaton`) |
-| **Obregon Choque, Kelmer Wilder** | Diseñador Frontend UI/UX y Accesibilidad (33.4%) | Design System Swiss-Grid (`DESIGN.md`, CSS), vistas Blade, Web Speech API, mockups/wireframes, integración de la etapa multi-planta/multi-tina, Dashboard Chart.js, matriz de permisos, i18n trilingüe (372 claves), `LatFuncionalidadesTest` y Docker/Render. | 18 commits (`KelmerOC`) |
+| **Obregon Choque, Kelmer Wilder** | Diseñador Frontend UI/UX y Accesibilidad (33.4%) | Design System Swiss-Grid (`DESIGN.md`, CSS), vistas Blade, Web Speech API, PWA/offline, `TinaWorkflowService`, `InformePlantaService`, tablas Excel (`lat-finanzas-grid.js`), notificaciones segmentadas, i18n trilingüe oficial (838 JS / 179 PHP), seguridad OWASP, suites PHPUnit/Playwright y Docker/Render. | 27 commits (`KelmerOC`) |
 
 ### 8.3 Registro de reuniones y acuerdos
 
@@ -901,9 +903,10 @@ El equipo mantuvo una división equilibrada de roles técnicos (33.3% / 33.3% / 
 | :-: | :--- | :--- | :--- | :--- |
 | 1 | 11 oct 2026 | Nasdig, Arantxa, Kelmer | Salida de campo y definición del caso social (Zurite / Anta) | Priorizar dictado por voz + botonera de `54 px`, desvío a quesillos de 4 días y comisión S/ 0.00 sin pedir DNI en jornales eventuales. |
 | 2 | 01 nov 2026 | Nasdig, Arantxa, Kelmer | Arranque de repositorio y plan de commits (`GUIA_GITHUB_ESTUDIANTES.md`) | Establecer el orden de dependencias por capas (Migración -> Modelos -> Servicios -> Controladores -> Vistas) para evitar conflictos de fusión. |
-| 3 | 03 nov 2026 | Nasdig, Arantxa, Kelmer | Revisión de diseño UI/UX y accesibilidad | Adoptar la guía Swiss-Grid (`DESIGN.md`), validar contraste AA y generar los 10 wireframes y mockups en `mockups/`. |
-| 4 | 18 nov 2026 | Nasdig, Arantxa, Kelmer | Cierre técnico: Dashboard, multi-planta, permisos granulares e i18n | Integrar múltiples tinas, exportación nativa `.xlsx`, gráficas Chart.js, 18 permisos con jerarquía de rangos, 372 claves ES/QU/EN, pruebas PHPUnit y Docker para Render. |
-| 5 | 24 nov 2026 | Nasdig, Arantxa, Kelmer | Auditoría de cierre y entrega final del informe | Auditar el código real frente a borradores anteriores, corregir inconsistencias en `docs/INFORME_FINAL_LAT.md`, generar `docs/INFORME_FINAL_LAT.docx` y repartir las capturas pendientes. |
+| 3 | 03 nov 2026 | Nasdig, Arantxa, Kelmer | Revisión de diseño UI/UX y accesibilidad | Adoptar la guía Swiss-Grid (`DESIGN.md`), validar contraste AA y generar los 10 wireframes y mockups en `docs/mockups/`. |
+| 4 | 18 nov 2026 | Nasdig, Arantxa, Kelmer | Cierre técnico: Dashboard, multi-planta, permisos granulares e i18n | Integrar múltiples tinas, exportación nativa `.xlsx`, gráficas Chart.js, permisos con jerarquía de rangos, i18n ES/QU/EN, pruebas PHPUnit y Docker para Render. |
+| 5 | 24 nov 2026 | Nasdig, Arantxa, Kelmer | Entrega base del informe técnico en `docs/` | Elaborar `docs/INFORME_FINAL_LAT.md` y `docs/INFORME_FINAL_LAT.docx` con diagramas e inventariado del código real. |
+| 6 | 25–26 nov 2026 | Nasdig, Arantxa, Kelmer | Auditoría integral OWASP, trazabilidad, finanzas Excel y actualización del informe | Implementar hardening OWASP, PWA offline, flujo trazable Acopio–Calidad–Tinas, gobierno Admin Total, finanzas en 3 tablas Excel, informes 24h, correcciones FIFO/lote/descarte (`103` tests PASS) y actualizar el informe final. |
 
 ### 8.4 Acuerdos de trabajo y compromisos
 
@@ -957,7 +960,7 @@ Listado exacto verificado directamente en `composer.json`, `composer.lock`, `pac
 
 Nosotros, **Ortiz Gutierrez, Nasdig Jordan**, **Lovatón Casas, Arantxa Alejandra** y **Obregon Choque, Kelmer Wilder**, estudiantes de la Escuela Profesional de Ingeniería de Sistemas e Informática de la Universidad Continental (Asignatura Programación Web, NRC 24589), declaramos bajo responsabilidad académica que el desarrollo de la **Plataforma Láctea Comunitaria LAT Compacto** y el presente informe son de autoría propia de nuestro equipo. Las librerías de código abierto, frameworks, estadísticas institucionales y referencias normativas empleadas han sido debidamente citadas y licenciadas, y lo descrito en este documento corresponde fielmente al código verificado en nuestro repositorio GitHub.
 
-Cusco, 24 de noviembre de 2026.
+Cusco, 26 de noviembre de 2026.
 
 - **Ortiz Gutierrez, Nasdig Jordan** — Firma: ___________________________
 - **Lovatón Casas, Arantxa Alejandra** — Firma: ___________________________
@@ -970,25 +973,25 @@ Cusco, 24 de noviembre de 2026.
 ### Anexo A: Manual de usuario
 
 **1. Ingreso al sistema y selección de idioma**
-1. Abrir en el navegador `http://localhost/lat-compacto/` (XAMPP) o la URL pública desplegada en Render.
-2. En la parte superior derecha elegir el idioma: **ES** (Español), **QU** (*Runasimi* / Quechua) o **EN** (English). La elección se mantiene activa en todas las pantallas.
-3. Pulsar **Iniciar Sesión** (`/login`) e ingresar el usuario o correo y la contraseña. En demostración local se puede hacer clic sobre cualquiera de los **6 perfiles de acceso rápido** mostrados en `/login` (`donjusto@sanborreal.pe`, `carlos.anta`, `sabina.tina`, `contador.marco`, `mateo.ruta`, `lucia.personal`, contraseña `secreto123`; `DatabaseSeeder` crea además 2 encargados para las plantas vecinas `PLT-02` y `PLT-03`), o crear una planta propia desde **Registrarse** (`/registrarse`).
+1. Abrir en el navegador `http://localhost/lat-compacto/` (XAMPP) o la URL pública desplegada en Render. En la portada (`/`) se muestra además el anuncio QR público **"Puedes registrarte ahora"** para acceder directamente a `/registrarse`.
+2. Elegir el idioma en la portada (`ES`, `QU`, `EN`) o, dentro del panel, desde el selector único de la barra lateral (`.dash-lang-row`).
+3. Pulsar **Iniciar Sesión** (`/login`) e ingresar el usuario o correo y la contraseña. En entorno local de demostración se muestran los **6 perfiles de acceso rápido** (`donjusto@sanborreal.pe`, `carlos.anta`, `sabina.tina`, `contador.marco`, `mateo.ruta`, `lucia.personal`, contraseña `secreto123`).
 
-**2. Uso del Dashboard y cambio de planta**
-1. Al ingresar en `/panel`, quienes tengan permiso `dashboard.ver` ven los 4 KPIs principales y las 3 gráficas interactivas.
+**2. Uso del Dashboard, notificaciones y modo operativo**
+1. Al ingresar en `/panel`, quienes tengan permiso `dashboard.ver` ven los 4 KPIs, las 3 gráficas interactivas y la campana de notificaciones en vivo (alertas de tina para encargados/control y mensajes sombreados en verde para contabilidad).
 2. Usar los botones superiores (`Hoy`, `7 días`, `Quincena`, `Mes`) para cambiar el período analizado.
-3. Si la cuenta posee `admin.plantas`, el desplegable superior permite cambiar entre plantas sin cerrar sesión.
+3. El **Administrador Total** puede cambiar de planta y activar temporalmente la escritura en M1–M3 mediante el botón `#btn-toggle-modo-operativo`; los encargados de planta operan estrictamente en su planta asignada.
 
-**3. Operación diaria en planta (Módulos 1 al 4)**
-- **1. Acopio:** Elegir el ganadero, pulsar **Dictar acopio por voz** (ej. *"Don Eloy Condori, 35 litros"*) o tocar los botones `+10` a `+50` de la botonera táctil, y presionar **Guardar entrega en tina**. Para corregir un error de digitación, usar **Editar** o el botón superior **Editar datos**.
-- **2. Calidad sanitaria (74°):** Revisar cada entrega del día y pulsar **Aprobar** (va a tina principal) o **Desviar a quesillo** (leche ácida hacia quesillo fresco de 4 días), confirmando el aviso en el modal.
-- **3. Tinas y receta:** En una tina libre, indicar litros y temperatura inicial para iniciar lote; en un lote activo, actualizar °C y litros para recalcular cuajo, sal y cultivo. Al concluir la producción, ingresar los moldes obtenidos y pulsar **Finalizar lote**.
-- **4. Liquidación y ventas:** Revisar la tabla quincenal (comisión S/ 0.00), asentar ventas, adelantos o *Pago de ayuda del día (sin DNI)* y pulsar **Descargar balance en Excel (.xlsx)** para abrir el reporte de 4 hojas en Excel o LibreOffice Calc.
+**3. Operación diaria en planta (Módulos 1 al 5)**
+- **1. Acopio:** Elegir el ganadero, dictar por voz (envío automático al reconocer productor y litros válidos) o usar la botonera `+10` a `+50` y pulsar **Registrar entrega** (funciona también offline y sincroniza al volver la conexión). Las entregas ya asignadas a un lote no pueden modificarse ni eliminarse.
+- **2. Calidad sanitaria (74°):** Filtrar pendientes por fecha/estado y elegir **Aprobar**, **Desviar a quesillo** o **Descartar** (confirmación modal coloreada); las entregas descartadas guardan motivo y responsable sin entrar a liquidación.
+- **3. Tinas y receta:** En **Iniciar lote**, seleccionar las entregas evaluadas disponibles en `#modal-iniciar-tina`, revisar la receta y el cronómetro; durante el lote, actualizar temperatura (`step=0.1`) de forma independiente y finalizar registrando los moldes obtenidos.
+- **4. Liquidación y ventas:** Operar las **3 tablas estilo Excel** (*Liquidación quincenal* editable inline con descuento FIFO de adelantos, *Ventas* y *Sueldos/Jornales sin DNI*), descargar `.xlsx` completo o por tabla (`?solo=...`) y enviar/revisar reportes en la bandeja del Contador.
+- **5. Estadísticas e informes 24h:** Consultar rankings y dona sanitaria; los encargados pueden remitir informes manuales y el Administrador Total revisa y descarga el historial `.txt` de cada planta.
 
-**4. Creación de usuarios personalizados (Módulo 6)**
-1. Abrir **6. Plantas y usuarios** y pulsar **+ Crear usuario personalizado**.
-2. Completar nombre, usuario de acceso, contraseña inicial, plantilla/cargo y rango jerárquico.
-3. Marcar únicamente las secciones y controles que podrá ver esa persona (el contador muestra en vivo cuántas secciones y controles tiene activos) y guardar.
+**4. Plantas, papelera y usuarios personalizados (Módulo 6)**
+1. Abrir **6. Plantas y usuarios**: el Administrador Total gestiona plantas (incluyendo papelera de 30 días y restauración), mientras que cada encargado gestiona únicamente las cuentas de su planta.
+2. Pulsar **+ Crear usuario personalizado**, definir credenciales/cargo/rango y marcar únicamente los **19 permisos** deseados por sección y control.
 
 ---
 
@@ -1005,12 +1008,12 @@ Respaldo documental y fotográfico del trabajo de campo realizado en Zurite / An
 
 ### Anexo C: Capturas de pantalla del sistema
 
-**Mockups y wireframes ya versionados en el repositorio (`mockups/`):**
-- `mockups/mockup_1_portada_wireframe.png` y `mockups/mockup_1_portada_desktop_bw.png`
-- `mockups/mockup_2_panel_acopio_wireframe.png` y `mockups/mockup_2_panel_acopio_desktop_bw.png`
-- `mockups/mockup_3_control_sanitario_wireframe.png` y `mockups/mockup_3_control_sanitario_desktop_bw.png`
-- `mockups/mockup_4_tina_receta_wireframe.png` y `mockups/mockup_4_tina_receta_desktop_bw.png`
-- `mockups/mockup_5_movil_wireframe.png` y `mockups/mockup_5_movil_smartphone_bw.png`
+**Mockups y wireframes ya versionados en el repositorio (`docs/mockups/`):**
+- `docs/mockups/mockup_1_portada_wireframe.png` y `docs/mockups/mockup_1_portada_desktop_bw.png`
+- `docs/mockups/mockup_2_panel_acopio_wireframe.png` y `docs/mockups/mockup_2_panel_acopio_desktop_bw.png`
+- `docs/mockups/mockup_3_control_sanitario_wireframe.png` y `docs/mockups/mockup_3_control_sanitario_desktop_bw.png`
+- `docs/mockups/mockup_4_tina_receta_wireframe.png` y `docs/mockups/mockup_4_tina_receta_desktop_bw.png`
+- `docs/mockups/mockup_5_movil_wireframe.png` y `docs/mockups/mockup_5_movil_smartphone_bw.png`
 
 **Capturas a color en vivo del sistema actual:**
 
@@ -1081,7 +1084,7 @@ flowchart LR
 ### Anexo E: Enlace al repositorio Git
 
 - **Repositorio oficial en GitHub:** https://github.com/KelmerOC/LAT
-- **Rama principal auditada:** `main` (28 commits registrados entre `01/11/2026` y `18/11/2026`; último commit verificado: `7ca8c20` — *feat(i18n): integracion trilingue completa en quechua e ingles*).
+- **Rama principal auditada:** `main` (**42 commits** registrados entre `01/11/2026` y `26/11/2026`; último commit verificado: `d8fa4c3` — *Merge branch 'fix/auditoria-pagos-lotes-calidad' into main*).
 - **Comandos de instalación local (XAMPP / Windows):**
   ```powershell
   git clone https://github.com/KelmerOC/LAT.git
@@ -1141,8 +1144,8 @@ GROUP BY proveedor_id;
 Comandos de validación para ejecutar en terminal local tras `composer install`:
 
 ```powershell
-# 1. Suite automatizada PHPUnit (verifica RBAC, HTTP 403, anti-escalamiento, Excel e i18n)
-php artisan test --compact
+# 1. Suite automatizada PHPUnit (103 tests / 1,114 aserciones: RBAC, OWASP, flujo, FIFO, Excel e i18n)
+php -d extension=pdo_sqlite -d extension=sqlite3 vendor/bin/phpunit
 
 # 2. Auditoria de vulnerabilidades conocidas en dependencias PHP y Node
 composer audit
@@ -1153,6 +1156,6 @@ curl -i -X POST http://127.0.0.1:8000/login -d "login=donjusto&password=secreto1
 ```
 
 > **[INSERTAR EVIDENCIA VISUAL AQUÍ]**
-> - **Qué mostrar:** Capturas de pantalla de: (1) `php artisan test --compact` con los 11 casos en verde, (2) salida de `composer audit` y `npm audit`, (3) respuesta **HTTP 419** al enviar `POST /login` sin token CSRF, (4) rechazo del payload SQLi (`' OR '1'='1' --`) en el login, y (5) escape del payload XSS (`<script>alert('XSS')</script>`) mostrado como texto inofensivo en la tabla de movimientos financieros.
+> - **Qué mostrar:** Capturas de pantalla de: (1) `vendor/bin/phpunit` con los **103 tests / 1,114 aserciones** en verde y `tests/e2e/visual-standards.cjs`, (2) salida de `composer audit` y `npm audit`, (3) respuesta **HTTP 419** al enviar `POST /login` sin token CSRF, (4) rechazo del payload SQLi (`' OR '1'='1' --`) en el login, y (5) escape del payload XSS (`<script>alert('XSS')</script>`) mostrado como texto inofensivo en las tablas financieras.
 > - **Herramienta recomendada:** Terminal PowerShell + `curl` + Navegador con DevTools (`F12 -> Network / Elements`).
 > - **Archivo/Ruta de referencia en el repo:** `tests/Feature/LatFuncionalidadesTest.php`, `app/Http/Middleware/CheckLatPermission.php`, `app/Http/Controllers/AuthController.php` y `resources/views/panel/sections/finanzas.blade.php`.
