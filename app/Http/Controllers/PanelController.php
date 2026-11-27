@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Acopio;
+use App\Models\AdelantoAplicacion;
 use App\Models\InformeActividadPlanta;
 use App\Models\Liquidacion;
 use App\Models\Lote;
@@ -307,7 +308,9 @@ class PanelController extends Controller
      */
     private function construirResumenLecheTinas(Collection $acopios, Collection $lotesActivos): array
     {
-        $disponibles = $acopios->filter(fn (Acopio $acopio): bool => $acopio->lote_id === null);
+        $disponibles = $acopios->filter(
+            fn (Acopio $acopio): bool => $acopio->lote_id === null && $acopio->calidad !== 'descartada'
+        );
 
         $resumenPorCalidad = function (string $calidad) use ($disponibles): array {
             $filtrados = $disponibles->where('calidad', $calidad);
@@ -417,7 +420,7 @@ class PanelController extends Controller
             }
         }
 
-        $proveedores = ($puedeVerAcopio || $puedeVerFinanzas)
+        $proveedores = ($puedeVerAcopio || $puedeVerCalidad || $puedeVerFinanzas)
             ? Proveedor::dePlanta($plantaId)
                 ->activos()
                 ->select('id', 'planta_id', 'codigo', 'nombre', 'sector')
@@ -436,8 +439,8 @@ class PanelController extends Controller
         $hayFiltrosAcopio = collect($filtrosAcopio)->contains(fn ($v): bool => $v !== null && $v !== '');
 
         $acopiosHoy = collect();
-        if ($puedeVerAcopio || $puedeVerCalidad || $puedeVerTinas || $puedeVerDashboard) {
-            $acopiosQuery = Acopio::with('proveedor:id,codigo,nombre,sector')
+        if ($puedeVerAcopio || $puedeVerTinas || $puedeVerDashboard || ($puedeVerCalidad && ! $hayFiltrosAcopio)) {
+            $acopiosQuery = Acopio::with(['proveedor:id,codigo,nombre,sector', 'evaluador:id,name'])
                 ->dePlanta($plantaId);
 
             if ($hayFiltrosAcopio) {
@@ -470,8 +473,82 @@ class PanelController extends Controller
             }
         }
 
+        $calVistaRaw = (string) $request->query('cal_vista', 'hoy');
+        $calEstadoRaw = (string) $request->query('cal_estado', '');
+        $calProvRaw = $request->query('cal_proveedor_id', '');
+        $filtrosCalidad = [
+            'vista' => in_array($calVistaRaw, ['hoy', 'pendientes', 'todos'], true) ? $calVistaRaw : 'hoy',
+            'fecha_desde' => $this->normalizarFechaFiltro($request->query('cal_fecha_desde')),
+            'fecha_hasta' => $this->normalizarFechaFiltro($request->query('cal_fecha_hasta')),
+            'estado' => in_array($calEstadoRaw, ['pendiente', 'buena', 'acida', 'descartada'], true) ? $calEstadoRaw : '',
+            'proveedor_id' => is_numeric($calProvRaw) && (int) $calProvRaw > 0 ? (int) $calProvRaw : '',
+        ];
+        if (
+            $filtrosCalidad['fecha_desde'] !== ''
+            && $filtrosCalidad['fecha_hasta'] !== ''
+            && $filtrosCalidad['fecha_desde'] > $filtrosCalidad['fecha_hasta']
+        ) {
+            [$filtrosCalidad['fecha_desde'], $filtrosCalidad['fecha_hasta']] = [
+                $filtrosCalidad['fecha_hasta'],
+                $filtrosCalidad['fecha_desde'],
+            ];
+        }
+        $hayFiltrosCalidad = $filtrosCalidad['vista'] !== 'hoy'
+            || $filtrosCalidad['fecha_desde'] !== ''
+            || $filtrosCalidad['fecha_hasta'] !== ''
+            || $filtrosCalidad['estado'] !== ''
+            || $filtrosCalidad['proveedor_id'] !== '';
+
+        $acopiosCalidad = collect();
+        $pendientesOtrosDias = 0;
+
+        if ($puedeVerCalidad) {
+            if (! $hayFiltrosCalidad && ! $hayFiltrosAcopio) {
+                $acopiosCalidad = $acopiosHoy;
+            } else {
+                $calQuery = Acopio::with(['proveedor:id,codigo,nombre,sector', 'evaluador:id,name'])
+                    ->dePlanta($plantaId);
+
+                if ($filtrosCalidad['vista'] === 'pendientes') {
+                    $calQuery->where('calidad', 'pendiente');
+                } elseif (
+                    $filtrosCalidad['vista'] === 'hoy'
+                    && $filtrosCalidad['fecha_desde'] === ''
+                    && $filtrosCalidad['fecha_hasta'] === ''
+                ) {
+                    $calQuery->delDia($hoy);
+                }
+
+                $this->aplicarFiltrosFechaQuery($calQuery, $filtrosCalidad['fecha_desde'], $filtrosCalidad['fecha_hasta']);
+
+                if ($filtrosCalidad['estado'] !== '' && $filtrosCalidad['vista'] !== 'pendientes') {
+                    $calQuery->where('calidad', $filtrosCalidad['estado']);
+                }
+
+                if ($filtrosCalidad['proveedor_id'] !== '') {
+                    $calQuery->where('proveedor_id', (int) $filtrosCalidad['proveedor_id']);
+                }
+
+                $acopiosCalidad = $calQuery->orderByDesc('fecha')->orderByDesc('id')->limit(200)->get();
+            }
+
+            $pendientesOtrosDias = Acopio::dePlanta($plantaId)
+                ->where('calidad', 'pendiente')
+                ->where('fecha', '<', $hoy)
+                ->count();
+
+            $pendientesHoy = ! $hayFiltrosAcopio
+                ? $acopiosHoy->where('calidad', 'pendiente')->count()
+                : (! $hayFiltrosCalidad && $filtrosCalidad['vista'] === 'hoy'
+                    ? $acopiosCalidad->where('calidad', 'pendiente')->count()
+                    : Acopio::dePlanta($plantaId)->delDia($hoy)->where('calidad', 'pendiente')->count());
+
+            $totalPendientesCalidad = $pendientesHoy + $pendientesOtrosDias;
+        } else {
+            $totalPendientesCalidad = $acopiosHoy->where('calidad', 'pendiente')->count();
+        }
+
         $litrosHoy = (float) $acopiosHoy->sum('litros');
-        $totalPendientesCalidad = $acopiosHoy->where('calidad', 'pendiente')->count();
 
         $tinasPanel = collect();
         $tinas = null;
@@ -586,6 +663,7 @@ class PanelController extends Controller
             if (! $hayFiltrosVentas && ! $hayFiltrosSueldos) {
                 $movimientos = Liquidacion::with('proveedor:id,nombre')
                     ->dePlanta($plantaId)
+                    ->where('tipo', '!=', 'quincena')
                     ->latest('fecha')
                     ->latest('id')
                     ->limit(120)
@@ -715,6 +793,10 @@ class PanelController extends Controller
             'usuarios',
             'proveedores',
             'acopiosHoy',
+            'acopiosCalidad',
+            'filtrosCalidad',
+            'hayFiltrosCalidad',
+            'pendientesOtrosDias',
             'acopiosDisponiblesTinas',
             'filtrosAcopio',
             'hayFiltrosAcopio',
@@ -930,6 +1012,17 @@ class PanelController extends Controller
             }
         });
 
+        if ($sincronizados !== []) {
+            $this->informes->registrarActividad(
+                $planta->id,
+                $request->user()->id,
+                'acopio',
+                'acopio_sync_offline',
+                'Sincronización offline: '.count($sincronizados).' entrega(s) registrada(s).',
+                ['cantidad' => count($sincronizados)]
+            );
+        }
+
         return response()->json([
             'ok' => true,
             'sincronizados' => $sincronizados,
@@ -943,26 +1036,47 @@ class PanelController extends Controller
         $planta = $this->resolverPlantaActiva($request);
         $acopio = Acopio::dePlanta($planta->id)->findOrFail($id);
 
+        if ($acopio->lote_id !== null) {
+            return back()->withErrors(['acopio' => __('lat.intake_locked_in_batch')]);
+        }
+
+        $puedeEvaluarCalidad = $request->user()->tienePermiso('calidad.evaluar');
+
         $datos = $request->validate([
             'proveedor_id' => ['required', Rule::exists('proveedores', 'id')->where('planta_id', $planta->id)],
             'litros' => ['required', 'numeric', 'min:1', 'max:5000'],
-            'calidad' => ['required', 'in:pendiente,buena,acida'],
+            'calidad' => [$puedeEvaluarCalidad ? 'required' : 'nullable', 'in:pendiente,buena,acida,descartada'],
             'metodo' => ['required', 'in:voz,manual'],
             'frase_dictada' => ['nullable', 'string', 'max:255'],
             'fecha' => ['nullable', 'date', 'before_or_equal:today'],
             'hora' => ['nullable', 'regex:/^\d{2}:\d{2}(:\d{2})?$/'],
         ]);
 
-        $destino = $datos['calidad'] === 'acida'
-            ? 'quesillo_4_dias'
-            : ($datos['calidad'] === 'buena' ? 'queso_yogur' : 'pendiente');
+        if (! $puedeEvaluarCalidad && ! empty($datos['calidad']) && $datos['calidad'] !== $acopio->calidad) {
+            abort(403, __('lat.intake_quality_permission_denied'));
+        }
+
+        $calidadFinal = $puedeEvaluarCalidad
+            ? (string) $datos['calidad']
+            : (string) $acopio->calidad;
+
+        $destino = match ($calidadFinal) {
+            'acida' => 'quesillo_4_dias',
+            'buena' => 'queso_yogur',
+            'descartada' => 'descartada',
+            default => 'pendiente',
+        };
 
         $acopio->update([
             'proveedor_id' => $datos['proveedor_id'],
             'litros' => $datos['litros'],
-            'calidad' => $datos['calidad'],
+            'calidad' => $calidadFinal,
             'destino' => $destino,
-            'evaluado_en' => $datos['calidad'] === 'pendiente' ? null : ($acopio->evaluado_en ?? Carbon::now()),
+            'evaluado_en' => $calidadFinal === 'pendiente' ? null : ($acopio->evaluado_en ?? Carbon::now()),
+            'evaluado_por' => $calidadFinal === 'pendiente' ? null : ($acopio->evaluado_por ?? $request->user()->id),
+            'motivo_descarte' => $calidadFinal === 'descartada'
+                ? ($acopio->motivo_descarte ?: __('lat.quality_discard_default_reason'))
+                : null,
             'metodo' => $datos['metodo'],
             'frase_dictada' => $request->has('frase_dictada')
                 ? (trim((string) ($datos['frase_dictada'] ?? '')) !== '' ? trim((string) ($datos['frase_dictada'] ?? '')) : null)
@@ -989,9 +1103,27 @@ class PanelController extends Controller
     {
         $planta = $this->resolverPlantaActiva($request);
         $acopio = Acopio::dePlanta($planta->id)->findOrFail($id);
+
+        if ($acopio->lote_id !== null) {
+            return back()->withErrors(['acopio' => __('lat.intake_locked_in_batch_delete')]);
+        }
+
         $acopioId = $acopio->id;
         $litros = (float) $acopio->litros;
-        $acopio->delete();
+
+        $eliminado = DB::transaction(function () use ($planta, $id): bool {
+            $bloqueado = Acopio::dePlanta($planta->id)->where('id', $id)->lockForUpdate()->firstOrFail();
+            if ($bloqueado->lote_id !== null) {
+                return false;
+            }
+            $bloqueado->delete();
+
+            return true;
+        });
+
+        if (! $eliminado) {
+            return back()->withErrors(['acopio' => __('lat.intake_locked_in_batch_delete')]);
+        }
 
         $this->informes->registrarActividad(
             $planta->id,
@@ -1008,25 +1140,67 @@ class PanelController extends Controller
     public function evaluarCalidad(Request $request, int $id): RedirectResponse
     {
         $planta = $this->resolverPlantaActiva($request);
-        $acopio = Acopio::dePlanta($planta->id)->findOrFail($id);
-
-        if ($acopio->lote_id !== null) {
-            return back()->withErrors(['calidad' => __('lat.quality_locked_in_batch')]);
-        }
 
         $datos = $request->validate([
             'calidad' => ['required', 'in:buena,acida,descartada'],
+            'motivo_descarte' => ['nullable', 'string', 'max:255'],
         ]);
+
+        $usuarioId = $request->user()->id;
+        $rolesDestino = ['encargado_planta', 'control_tina'];
+
+        $acopio = DB::transaction(function () use ($planta, $id, $datos, $usuarioId): ?Acopio {
+            $registro = Acopio::dePlanta($planta->id)->where('id', $id)->lockForUpdate()->firstOrFail();
+
+            if ($registro->lote_id !== null) {
+                return null;
+            }
+
+            if ($datos['calidad'] === 'descartada') {
+                $motivo = trim((string) ($datos['motivo_descarte'] ?? ''));
+                if ($motivo === '') {
+                    $motivo = __('lat.quality_discard_default_reason');
+                }
+
+                $registro->update([
+                    'calidad' => 'descartada',
+                    'destino' => 'descartada',
+                    'evaluado_en' => Carbon::now(),
+                    'evaluado_por' => $usuarioId,
+                    'motivo_descarte' => $motivo,
+                ]);
+            } elseif ($datos['calidad'] === 'acida') {
+                $registro->update([
+                    'calidad' => 'acida',
+                    'destino' => 'quesillo_4_dias',
+                    'evaluado_en' => Carbon::now(),
+                    'evaluado_por' => $usuarioId,
+                    'motivo_descarte' => null,
+                ]);
+            } else {
+                $registro->update([
+                    'calidad' => 'buena',
+                    'destino' => 'queso_yogur',
+                    'evaluado_en' => Carbon::now(),
+                    'evaluado_por' => $usuarioId,
+                    'motivo_descarte' => null,
+                ]);
+            }
+
+            return $registro;
+        });
+
+        if (! $acopio instanceof Acopio) {
+            return back()->withErrors(['calidad' => __('lat.quality_locked_in_batch')]);
+        }
 
         $acopio->loadMissing('proveedor:id,nombre');
         $provNombre = $acopio->proveedor?->nombre ?? __('lat.producer_default');
         $litrosFmt = number_format((float) $acopio->litros, 1);
-        $usuarioId = $request->user()->id;
-        $rolesDestino = ['encargado_planta', 'control_tina'];
 
         if ($datos['calidad'] === 'descartada') {
             $litros = (float) $acopio->litros;
-            $acopio->delete();
+            $motivo = (string) $acopio->motivo_descarte;
 
             $this->tinaWorkflow->notificar(
                 $planta->id,
@@ -1034,7 +1208,7 @@ class PanelController extends Controller
                 'tinas',
                 __('lat.notif_quality_discarded_title'),
                 __('lat.notif_quality_discarded_msg', ['producer' => $provNombre, 'liters' => $litrosFmt]),
-                ['litros' => $litros],
+                ['acopio_id' => $acopio->id, 'litros' => $litros, 'motivo' => $motivo],
                 $usuarioId,
                 rolesDestino: $rolesDestino
             );
@@ -1044,20 +1218,14 @@ class PanelController extends Controller
                 $usuarioId,
                 'calidad',
                 'calidad_descartada',
-                "Leche descartada en prueba sanitaria: {$provNombre} ({$litrosFmt} L).",
-                ['litros' => $litros]
+                "Leche descartada en prueba sanitaria: {$provNombre} ({$litrosFmt} L) · {$motivo}.",
+                ['acopio_id' => $acopio->id, 'litros' => $litros, 'motivo' => $motivo]
             );
 
             return back()->with('exito', __('lat.quality_classified_discarded'));
         }
 
         if ($datos['calidad'] === 'acida') {
-            $acopio->update([
-                'calidad' => 'acida',
-                'destino' => 'quesillo_4_dias',
-                'evaluado_en' => Carbon::now(),
-            ]);
-
             $this->tinaWorkflow->notificar(
                 $planta->id,
                 'calidad_acida',
@@ -1080,12 +1248,6 @@ class PanelController extends Controller
 
             return back()->with('exito', __('lat.quality_classified_acid'));
         }
-
-        $acopio->update([
-            'calidad' => 'buena',
-            'destino' => 'queso_yogur',
-            'evaluado_en' => Carbon::now(),
-        ]);
 
         $this->tinaWorkflow->notificar(
             $planta->id,
@@ -1115,7 +1277,7 @@ class PanelController extends Controller
         $planta = $this->resolverPlantaActiva($request);
         $this->normalizarCodigoTinaInput($request);
         if ($request->has('tipo')) {
-            $request->merge(['tipo' => trim((string) $request->input('tipo'))]);
+            $request->merge(['tipo' => Tina::normalizarTipo((string) $request->input('tipo'))]);
         }
 
         $datos = $request->validate([
@@ -1149,7 +1311,7 @@ class PanelController extends Controller
         $tina = Tina::dePlanta($planta->id)->findOrFail($id);
         $this->normalizarCodigoTinaInput($request);
         if ($request->has('tipo')) {
-            $request->merge(['tipo' => trim((string) $request->input('tipo'))]);
+            $request->merge(['tipo' => Tina::normalizarTipo((string) $request->input('tipo'))]);
         }
 
         $datos = $request->validate([
@@ -1553,6 +1715,7 @@ class PanelController extends Controller
                 $acopioResumen = Acopio::dePlanta($planta->id)
                     ->where('proveedor_id', $provId)
                     ->delPeriodo($desde, $hasta)
+                    ->liquidables()
                     ->selectRaw('COUNT(*) as total, COALESCE(SUM(litros), 0) as sum_litros, COALESCE(SUM(litros * COALESCE(precio_litro, ?)), 0) as sum_bruto', [(float) $planta->precio_litro])
                     ->first();
 
@@ -1566,88 +1729,168 @@ class PanelController extends Controller
                     Acopio::dePlanta($planta->id)
                         ->where('proveedor_id', $provId)
                         ->delPeriodo($desde, $hasta)
+                        ->liquidables()
                         ->update(['precio_litro' => $precioSolicitado]);
                     $precioEfectivo = $precioSolicitado;
+                    $brutoProv = round($totalLitrosProv * $precioEfectivo, 2);
                 } else {
                     $precioEfectivo = $precioActualAvg;
+                    $brutoProv = round((float) ($acopioResumen->sum_bruto ?? 0), 2);
                 }
 
-                $adelantoSolicitado = round((float) $fila['adelantos'], 2);
-                $pendientesQuery = Liquidacion::dePlanta($planta->id)
-                    ->where('proveedor_id', $provId)
-                    ->whereIn('tipo', ['adelanto_efectivo', 'adelanto_queso'])
-                    ->where('descontado', false);
-                $this->service->aplicarHastaFecha($pendientesQuery, $hasta);
-                $pendientes = $pendientesQuery->orderByDesc('fecha')->orderByDesc('id')->get();
-                $adelantoActual = round((float) $pendientes->sum('monto'), 2);
-                $diff = round($adelantoSolicitado - $adelantoActual, 2);
-
-                if (abs($diff) >= 0.01) {
-                    if ($adelantoSolicitado <= 0.0) {
-                        if ($pendientes->isNotEmpty()) {
-                            Liquidacion::whereIn('id', $pendientes->pluck('id')->all())
-                                ->update(['descontado' => true]);
-                        }
-                    } elseif ($diff > 0.0) {
-                        Liquidacion::create([
-                            'planta_id' => $planta->id,
-                            'proveedor_id' => $provId,
-                            'fecha' => $fechaAjuste,
-                            'tipo' => 'adelanto_efectivo',
-                            'concepto' => 'Ajuste de adelanto en liquidación',
-                            'litros' => 0,
-                            'cantidad_unidades' => 0,
-                            'monto' => $diff,
-                            'comision' => 0.00,
-                            'descontado' => false,
-                            'estado_pago' => $fila['estado_pago'],
-                        ]);
-                    } else {
-                        $restanteReducir = round($adelantoActual - $adelantoSolicitado, 2);
-                        foreach ($pendientes as $pendiente) {
-                            if ($restanteReducir <= 0.009) {
-                                break;
-                            }
-
-                            $montoItem = round((float) $pendiente->monto, 2);
-                            if ($montoItem <= $restanteReducir + 0.001) {
-                                $pendiente->update(['descontado' => true]);
-                                $restanteReducir = round($restanteReducir - $montoItem, 2);
-                            } else {
-                                $pendiente->update(['monto' => round($montoItem - $restanteReducir, 2)]);
-                                $restanteReducir = 0.0;
-                            }
-                        }
-                    }
-                }
-
-                $netoProv = max(0, round(($totalLitrosProv * $precioEfectivo) - $adelantoSolicitado, 2));
                 $quincenaQuery = Liquidacion::dePlanta($planta->id)
                     ->where('proveedor_id', $provId)
                     ->where('tipo', 'quincena');
                 $this->service->aplicarRangoFecha($quincenaQuery, $desde, $hasta);
-                $quincena = $quincenaQuery->orderByDesc('id')->first();
+                $quincena = $quincenaQuery->orderByDesc('id')->lockForUpdate()->first();
 
-                $payloadQuincena = [
-                    'litros' => $totalLitrosProv,
-                    'monto' => $netoProv,
-                    'comision' => 0.00,
-                    'descontado' => true,
-                    'estado_pago' => $fila['estado_pago'],
-                ];
+                $aplicacionesActuales = $quincena !== null
+                    ? AdelantoAplicacion::where('quincena_liquidacion_id', $quincena->id)
+                        ->lockForUpdate()
+                        ->get()
+                        ->keyBy('adelanto_liquidacion_id')
+                    : collect();
 
-                if ($quincena !== null) {
-                    $quincena->update($payloadQuincena);
-                } else {
-                    Liquidacion::create(array_merge($payloadQuincena, [
+                $idsVinculados = $aplicacionesActuales->keys()->map('intval')->all();
+
+                $candidatosQuery = Liquidacion::dePlanta($planta->id)
+                    ->where('proveedor_id', $provId)
+                    ->whereIn('tipo', Liquidacion::TIPOS_ADELANTO)
+                    ->where(function ($q) use ($hasta, $idsVinculados): void {
+                        $q->where(function ($sub) use ($hasta): void {
+                            $sub->where('descontado', false);
+                            $this->service->aplicarHastaFecha($sub, $hasta);
+                        });
+                        if ($idsVinculados !== []) {
+                            $q->orWhereIn('id', $idsVinculados);
+                        }
+                    });
+                $candidatos = $candidatosQuery
+                    ->orderBy('fecha')
+                    ->orderBy('id')
+                    ->lockForUpdate()
+                    ->get();
+
+                $aplicadoOtrasMap = $candidatos->isNotEmpty()
+                    ? AdelantoAplicacion::whereIn('adelanto_liquidacion_id', $candidatos->pluck('id')->all())
+                        ->when($quincena !== null, fn ($q) => $q->where('quincena_liquidacion_id', '!=', $quincena->id))
+                        ->groupBy('adelanto_liquidacion_id')
+                        ->selectRaw('adelanto_liquidacion_id, SUM(monto_aplicado) as total_aplicado')
+                        ->pluck('total_aplicado', 'adelanto_liquidacion_id')
+                    : collect();
+
+                $disponibleTotal = 0.0;
+                $disponiblesPorId = [];
+                foreach ($candidatos as $adel) {
+                    $yaAplicadoOtras = (float) ($aplicadoOtrasMap[$adel->id] ?? 0.0);
+                    $disp = max(0.0, round((float) $adel->monto - $yaAplicadoOtras, 2));
+                    $disponiblesPorId[$adel->id] = $disp;
+                    $disponibleTotal = round($disponibleTotal + $disp, 2);
+                }
+
+                $adelantoSolicitado = round((float) $fila['adelantos'], 2);
+                $excedente = round($adelantoSolicitado - $disponibleTotal, 2);
+                if ($excedente >= 0.01) {
+                    $nuevoAjuste = Liquidacion::create([
+                        'planta_id' => $planta->id,
+                        'proveedor_id' => $provId,
+                        'fecha' => $fechaAjuste,
+                        'tipo' => 'adelanto_efectivo',
+                        'concepto' => 'Ajuste de adelanto en liquidación',
+                        'litros' => 0,
+                        'cantidad_unidades' => 0,
+                        'monto' => $excedente,
+                        'comision' => 0.00,
+                        'descontado' => false,
+                        'estado_pago' => $fila['estado_pago'],
+                    ]);
+                    $candidatos->push($nuevoAjuste);
+                    $disponiblesPorId[$nuevoAjuste->id] = $excedente;
+                }
+
+                if ($quincena === null) {
+                    $quincena = Liquidacion::create([
                         'planta_id' => $planta->id,
                         'proveedor_id' => $provId,
                         'fecha' => $fechaQuincena,
                         'tipo' => 'quincena',
                         'concepto' => "Liquidación quincenal {$desde} al {$hasta}",
+                        'litros' => $totalLitrosProv,
                         'cantidad_unidades' => 0,
-                    ]));
+                        'monto' => max(0, round($brutoProv - $adelantoSolicitado, 2)),
+                        'comision' => 0.00,
+                        'descontado' => true,
+                        'estado_pago' => $fila['estado_pago'],
+                    ]);
                 }
+
+                $adelantosTocadosIds = [];
+                $totalAplicadoEnQuincena = 0.0;
+
+                if ($fila['estado_pago'] === 'pagado') {
+                    $restantePorAplicar = $brutoProv > 0.0
+                        ? round(min($adelantoSolicitado, $brutoProv), 2)
+                        : 0.0;
+
+                    foreach ($candidatos as $adel) {
+                        $disp = $disponiblesPorId[$adel->id] ?? 0.0;
+                        $aplicar = $restantePorAplicar >= 0.01 && $disp >= 0.01
+                            ? round(min($disp, $restantePorAplicar), 2)
+                            : 0.0;
+
+                        if ($aplicar >= 0.01) {
+                            AdelantoAplicacion::updateOrCreate(
+                                [
+                                    'quincena_liquidacion_id' => $quincena->id,
+                                    'adelanto_liquidacion_id' => $adel->id,
+                                ],
+                                [
+                                    'planta_id' => $planta->id,
+                                    'monto_aplicado' => $aplicar,
+                                ]
+                            );
+                            $totalAplicadoEnQuincena = round($totalAplicadoEnQuincena + $aplicar, 2);
+                            $restantePorAplicar = round($restantePorAplicar - $aplicar, 2);
+                            $adelantosTocadosIds[] = $adel->id;
+                        } elseif ($aplicacionesActuales->has($adel->id)) {
+                            $aplicacionesActuales->get($adel->id)->delete();
+                            $adelantosTocadosIds[] = $adel->id;
+                        }
+                    }
+                } else {
+                    if ($aplicacionesActuales->isNotEmpty()) {
+                        AdelantoAplicacion::where('quincena_liquidacion_id', $quincena->id)->delete();
+                        $adelantosTocadosIds = $idsVinculados;
+                    }
+                }
+
+                $adelantosTocadosIds = array_values(array_unique($adelantosTocadosIds));
+                if ($adelantosTocadosIds !== []) {
+                    $totalesAplicados = AdelantoAplicacion::whereIn('adelanto_liquidacion_id', $adelantosTocadosIds)
+                        ->groupBy('adelanto_liquidacion_id')
+                        ->selectRaw('adelanto_liquidacion_id, SUM(monto_aplicado) as total_aplicado')
+                        ->pluck('total_aplicado', 'adelanto_liquidacion_id');
+
+                    foreach ($candidatos->whereIn('id', $adelantosTocadosIds) as $adelTocado) {
+                        $sumAplicado = (float) ($totalesAplicados[$adelTocado->id] ?? 0.0);
+                        $estaSaldado = $sumAplicado >= ((float) $adelTocado->monto - 0.009);
+                        if ((bool) $adelTocado->descontado !== $estaSaldado) {
+                            $adelTocado->update(['descontado' => $estaSaldado]);
+                        }
+                    }
+                }
+
+                $montoDescontadoFinal = $fila['estado_pago'] === 'pagado'
+                    ? $totalAplicadoEnQuincena
+                    : $adelantoSolicitado;
+
+                $quincena->update([
+                    'litros' => $totalLitrosProv,
+                    'monto' => max(0, round($brutoProv - $montoDescontadoFinal, 2)),
+                    'comision' => 0.00,
+                    'descontado' => true,
+                    'estado_pago' => $fila['estado_pago'],
+                ]);
             }
         });
 
@@ -1750,8 +1993,26 @@ class PanelController extends Controller
     {
         $planta = $this->resolverPlantaActiva($request);
         $mov = Liquidacion::dePlanta($planta->id)->findOrFail($id);
+
+        if ($mov->tipo === 'quincena') {
+            return back()->withErrors(['movimiento' => __('lat.movement_quincena_locked')]);
+        }
+
         $validado = $this->validarYCalcularMovimiento($request, $planta->id);
         $datos = $validado['datos'];
+        $aplicado = (float) $mov->aplicacionesComoAdelanto()->sum('monto_aplicado');
+        $esAdelantoNuevo = in_array($datos['tipo'], Liquidacion::TIPOS_ADELANTO, true);
+
+        if ($aplicado > 0.009) {
+            if (! $esAdelantoNuevo || $validado['monto'] < ($aplicado - 0.009)) {
+                return back()->withErrors(['monto' => __('lat.movement_advance_applied_locked')]);
+            }
+            $descontado = $validado['monto'] <= ($aplicado + 0.009);
+        } elseif ($esAdelantoNuevo) {
+            $descontado = ($mov->tipo === $datos['tipo']) ? (bool) $mov->descontado : false;
+        } else {
+            $descontado = true;
+        }
 
         $mov->update([
             'tipo' => $datos['tipo'],
@@ -1767,7 +2028,7 @@ class PanelController extends Controller
             'cantidad_unidades' => $validado['cantidad'],
             'precio_unitario' => $request->has('precio_unitario') ? $validado['precio_unitario'] : $mov->precio_unitario,
             'monto' => $validado['monto'],
-            'descontado' => ! in_array($datos['tipo'], ['adelanto_efectivo', 'adelanto_queso'], true),
+            'descontado' => $descontado,
             'estado_pago' => $datos['estado_pago'] ?? ($mov->estado_pago ?? 'pendiente'),
         ]);
 
@@ -1787,6 +2048,15 @@ class PanelController extends Controller
     {
         $planta = $this->resolverPlantaActiva($request);
         $mov = Liquidacion::dePlanta($planta->id)->findOrFail($id);
+
+        if ($mov->tipo === 'quincena') {
+            return back()->withErrors(['movimiento' => __('lat.movement_quincena_locked')]);
+        }
+
+        if ($mov->aplicacionesComoAdelanto()->exists()) {
+            return back()->withErrors(['movimiento' => __('lat.movement_advance_applied_locked')]);
+        }
+
         $movId = $mov->id;
         $tipo = $mov->tipo;
         $concepto = $mov->concepto;
@@ -1978,7 +2248,7 @@ class PanelController extends Controller
                 $planta,
                 $desde,
                 $hasta,
-                $remitente->tienePermiso('dashboard.ver_red'),
+                $destinatario->tienePermiso('dashboard.ver_red'),
                 $provId
             );
         }

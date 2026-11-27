@@ -33,10 +33,15 @@ return [
     'intake_voice_auto_created' => 'Acopio por voz registrado automáticamente: :producer (:liters L).',
     'intake_updated' => 'Registro de acopio actualizado correctamente.',
     'intake_deleted' => 'Registro de acopio eliminado.',
+    'intake_locked_in_batch' => 'Esta entrega ya forma parte de un lote en tina y no puede modificarse.',
+    'intake_locked_in_batch_delete' => 'Esta entrega ya forma parte de un lote en tina y no puede eliminarse.',
+    'intake_quality_permission_denied' => 'No tienes permiso para cambiar la calidad sanitaria de una entrega.',
     'quality_classified_acid' => 'Leche ácida clasificada y derivada a quesillos frescos de 4 días.',
     'quality_classified_good' => 'Leche aprobada para pasteurización en tina principal.',
     'quality_pending' => 'Leche marcada como pendiente de prueba sanitaria.',
-    'quality_classified_discarded' => 'Leche descartada por control sanitario. No ingresará a tina.',
+    'quality_classified_discarded' => 'Leche descartada por control sanitario. Se conserva en el historial y no ingresará a tina ni liquidación.',
+    'quality_discard_default_reason' => 'Rechazo sanitario en prueba de alcohol (74°)',
+    'quality_discarded_event' => 'Descartada en recepción (excluida de tina y pago)',
     'quality_locked_in_batch' => 'Esta entrega ya ingresó a un lote en tina y su clasificación está bloqueada.',
 
     // Tinas y lotes
@@ -69,6 +74,8 @@ return [
     'movement_created' => 'Movimiento registrado correctamente.',
     'movement_updated' => 'Movimiento actualizado correctamente.',
     'movement_deleted' => 'Movimiento eliminado.',
+    'movement_quincena_locked' => 'Los registros de cierre quincenal solo se gestionan desde la tabla de liquidación.',
+    'movement_advance_applied_locked' => 'Este adelanto ya tiene montos aplicados a una liquidación pagada y no puede eliminarse ni reducirse por debajo de lo aplicado.',
     'producer_created' => 'Ganadero registrado en la planta.',
     'producer_updated' => 'Datos del ganadero actualizados.',
 
@@ -182,8 +189,10 @@ return [
 
     'excel_quality_good' => 'Aprobada (Óptima)',
     'excel_quality_acid' => 'Con acidez (74°)',
+    'excel_quality_discarded' => 'Descartada',
     'excel_quality_pending' => 'Pendiente',
     'excel_dest_acid' => 'Quesillo fresco (4 días)',
+    'excel_dest_discarded' => 'Descartada (excluida de tina y pago)',
     'excel_dest_pending' => 'Pendiente de prueba',
     'excel_dest_good' => 'Tina principal (Queso/Yogur)',
     'excel_method_voice' => 'Dictado por voz',

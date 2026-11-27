@@ -133,13 +133,21 @@ class LacteoService
                 $q->where('activo', true)
                     ->orWhereHas('acopios', function ($sub) use ($desde, $hasta, $plantaId): void {
                         $sub->delPeriodo($desde, $hasta)
+                            ->liquidables()
                             ->when($plantaId !== null, fn ($p) => $p->where('planta_id', $plantaId));
                     })
-                    ->orWhereHas('liquidaciones', function ($sub) use ($hasta, $plantaId): void {
-                        $sub->whereIn('tipo', ['adelanto_efectivo', 'adelanto_queso'])
-                            ->where('descontado', false)
-                            ->when($plantaId !== null, fn ($p) => $p->where('planta_id', $plantaId));
-                        $this->aplicarHastaFecha($sub, $hasta);
+                    ->orWhereHas('liquidaciones', function ($sub) use ($desde, $hasta, $plantaId): void {
+                        $sub->when($plantaId !== null, fn ($p) => $p->where('planta_id', $plantaId))
+                            ->where(function ($inner) use ($desde, $hasta): void {
+                                $inner->where(function ($adelQ) use ($hasta): void {
+                                    $adelQ->whereIn('tipo', Liquidacion::TIPOS_ADELANTO)
+                                        ->where('descontado', false);
+                                    $this->aplicarHastaFecha($adelQ, $hasta);
+                                })->orWhere(function ($qQ) use ($desde, $hasta): void {
+                                    $qQ->where('tipo', 'quincena');
+                                    $this->aplicarRangoFecha($qQ, $desde, $hasta);
+                                });
+                            });
                     });
             })
             ->ordenadosPorNombre()
@@ -153,44 +161,69 @@ class LacteoService
 
         $acopiosPorProveedor = Acopio::whereIn('proveedor_id', $ids)
             ->delPeriodo($desde, $hasta)
+            ->liquidables()
             ->when($plantaId !== null, fn ($q) => $q->where('planta_id', $plantaId))
             ->groupBy('proveedor_id')
             ->selectRaw('proveedor_id, SUM(litros) as total_litros, SUM(litros * COALESCE(precio_litro, ?)) as total_bruto', [$precioLitro])
             ->get()
             ->keyBy('proveedor_id');
 
-        $adelantosQuery = Liquidacion::whereIn('proveedor_id', $ids)
-            ->whereIn('tipo', ['adelanto_efectivo', 'adelanto_queso'])
-            ->where('descontado', false)
-            ->when($plantaId !== null, fn ($q) => $q->where('planta_id', $plantaId));
-        $this->aplicarHastaFecha($adelantosQuery, $hasta);
-
-        $adelantosMap = $adelantosQuery
-            ->groupBy('proveedor_id')
-            ->selectRaw('proveedor_id, SUM(monto) as total_adelantos')
-            ->pluck('total_adelantos', 'proveedor_id');
-
-        $quincenasQuery = Liquidacion::whereIn('proveedor_id', $ids)
-            ->where('tipo', 'quincena')
-            ->when($plantaId !== null, fn ($q) => $q->where('planta_id', $plantaId));
-        $this->aplicarRangoFecha($quincenasQuery, $desde, $hasta);
+        $quincenasQuery = Liquidacion::query()
+            ->from('liquidaciones')
+            ->whereIn('liquidaciones.proveedor_id', $ids)
+            ->where('liquidaciones.tipo', 'quincena')
+            ->when($plantaId !== null, fn ($q) => $q->where('liquidaciones.planta_id', $plantaId))
+            ->leftJoin('adelanto_aplicaciones as aa', 'aa.quincena_liquidacion_id', '=', 'liquidaciones.id')
+            ->groupBy('liquidaciones.id', 'liquidaciones.proveedor_id', 'liquidaciones.estado_pago')
+            ->selectRaw('liquidaciones.id, liquidaciones.proveedor_id, liquidaciones.estado_pago, COALESCE(SUM(aa.monto_aplicado), 0) as total_aplicado');
+        $this->aplicarRangoFecha($quincenasQuery, $desde, $hasta, 'liquidaciones.fecha');
 
         $quincenasMap = $quincenasQuery
-            ->orderByDesc('id')
-            ->get(['proveedor_id', 'estado_pago'])
+            ->orderByDesc('liquidaciones.id')
+            ->get()
             ->unique('proveedor_id')
             ->keyBy('proveedor_id');
 
-        $filas = $proveedores->map(function (Proveedor $p) use ($acopiosPorProveedor, $adelantosMap, $quincenasMap, $precioLitro): object {
+        $adelantosQuery = Liquidacion::query()
+            ->from('liquidaciones')
+            ->whereIn('liquidaciones.proveedor_id', $ids)
+            ->whereIn('liquidaciones.tipo', Liquidacion::TIPOS_ADELANTO)
+            ->where('liquidaciones.descontado', false)
+            ->when($plantaId !== null, fn ($q) => $q->where('liquidaciones.planta_id', $plantaId))
+            ->leftJoin('adelanto_aplicaciones as aa', 'aa.adelanto_liquidacion_id', '=', 'liquidaciones.id')
+            ->groupBy('liquidaciones.id', 'liquidaciones.proveedor_id', 'liquidaciones.monto')
+            ->selectRaw('liquidaciones.id, liquidaciones.proveedor_id, liquidaciones.monto, COALESCE(SUM(aa.monto_aplicado), 0) as total_aplicado');
+        $this->aplicarHastaFecha($adelantosQuery, $hasta, 'liquidaciones.fecha');
+
+        $saldosPendientesMap = $adelantosQuery
+            ->get()
+            ->groupBy('proveedor_id')
+            ->map(function (Collection $items): float {
+                return round((float) $items->sum(function (object $adel): float {
+                    return max(0.0, round((float) $adel->monto - (float) $adel->total_aplicado, 2));
+                }), 2);
+            });
+
+        $filas = $proveedores->map(function (Proveedor $p) use ($acopiosPorProveedor, $saldosPendientesMap, $quincenasMap, $precioLitro): object {
             $acopio = $acopiosPorProveedor->get($p->id);
             $litros = (float) ($acopio->total_litros ?? 0);
             $rawBruto = (float) ($acopio->total_bruto ?? 0);
             $bruto = round($rawBruto, 2);
-            $adelanto = (float) ($adelantosMap[$p->id] ?? 0);
-            $comision = 0.00;
-            $neto = max(0, round($bruto - $adelanto, 2));
-
             $quincena = $quincenasMap->get($p->id);
+            $aplicadoEnQuincena = $quincena !== null
+                ? round((float) ($quincena->total_aplicado ?? 0.0), 2)
+                : 0.0;
+            $saldoAbierto = (float) ($saldosPendientesMap[$p->id] ?? 0.0);
+
+            if ($quincena !== null && $quincena->estado_pago === 'pagado') {
+                $adelanto = $aplicadoEnQuincena;
+            } else {
+                $adelanto = round($aplicadoEnQuincena + $saldoAbierto, 2);
+            }
+
+            $comision = 0.00;
+            $neto = max(0.0, round($bruto - $adelanto, 2));
+
             if ($quincena !== null && in_array($quincena->estado_pago, Liquidacion::ESTADOS_PAGO, true)) {
                 $estadoPago = (string) $quincena->estado_pago;
             } elseif ($bruto > 0 && $neto <= 0.0) {
@@ -246,6 +279,7 @@ class LacteoService
         $litrosBuena = (float) $resumenAcopio->where('calidad', 'buena')->sum('total_litros');
         $litrosAcida = (float) $resumenAcopio->where('calidad', 'acida')->sum('total_litros');
         $litrosPendiente = (float) $resumenAcopio->where('calidad', 'pendiente')->sum('total_litros');
+        $litrosDescartada = (float) $resumenAcopio->where('calidad', 'descartada')->sum('total_litros');
         $totalLitrosPlanta = $litrosBuena + $litrosAcida + $litrosPendiente;
 
         $vozCount = (int) $resumenAcopio->where('metodo', 'voz')->sum('total_entregas');
@@ -284,7 +318,8 @@ class LacteoService
             ->keyBy('tipo');
 
         $ventasRow = $movsPorTipo->get('venta_producto');
-        $gastosMonto = (float) ($movsPorTipo->get('ayuda_del_dia')?->total_monto ?? 0)
+        $gastosMonto = (float) ($movsPorTipo->get('sueldo_personal')?->total_monto ?? 0)
+            + (float) ($movsPorTipo->get('ayuda_del_dia')?->total_monto ?? 0)
             + (float) ($movsPorTipo->get('gasto_operativo')?->total_monto ?? 0);
         $adelantosMonto = (float) ($movsPorTipo->get('adelanto_efectivo')?->total_monto ?? 0)
             + (float) ($movsPorTipo->get('adelanto_queso')?->total_monto ?? 0);
@@ -298,6 +333,7 @@ class LacteoService
                 'buena_litros' => round($litrosBuena, 1),
                 'acida_litros' => round($litrosAcida, 1),
                 'pendiente_litros' => round($litrosPendiente, 1),
+                'descartada_litros' => round($litrosDescartada, 1),
                 'buena_pct' => $totalLitrosPlanta > 0 ? round(($litrosBuena / $totalLitrosPlanta) * 100, 1) : 0.0,
                 'acida_pct' => $totalLitrosPlanta > 0 ? round(($litrosAcida / $totalLitrosPlanta) * 100, 1) : 0.0,
             ],
@@ -374,7 +410,7 @@ class LacteoService
 
         $ventasActual = round((float) $movsActual->where('tipo', 'venta_producto')->sum('monto'), 2);
         $unidadesActual = (int) $movsActual->where('tipo', 'venta_producto')->sum('cantidad_unidades');
-        $gastosActual = round((float) $movsActual->whereIn('tipo', ['ayuda_del_dia', 'gasto_operativo'])->sum('monto'), 2);
+        $gastosActual = round((float) $movsActual->whereIn('tipo', ['sueldo_personal', 'ayuda_del_dia', 'gasto_operativo'])->sum('monto'), 2);
 
         $ventasPrevQuery = Liquidacion::where('planta_id', $plantaId)->where('tipo', 'venta_producto');
         $this->aplicarRangoFecha($ventasPrevQuery, $prevDesde, $prevHasta);
@@ -410,7 +446,7 @@ class LacteoService
 
             $grupoMov = $movsPorDia->get($key, collect());
             $serieVentas[] = round((float) $grupoMov->where('tipo', 'venta_producto')->sum('monto'), 2);
-            $serieGastos[] = round((float) $grupoMov->whereIn('tipo', ['ayuda_del_dia', 'gasto_operativo'])->sum('monto'), 2);
+            $serieGastos[] = round((float) $grupoMov->whereIn('tipo', ['sueldo_personal', 'ayuda_del_dia', 'gasto_operativo'])->sum('monto'), 2);
 
             $grupoLote = $lotesPorDia->get($key, collect());
             $serieMoldes[] = (int) $grupoLote->sum('moldes_producidos');
@@ -450,11 +486,12 @@ class LacteoService
             $detalle = match ($ac->calidad) {
                 'acida' => __('lat.quality_diverted'),
                 'pendiente' => __('lat.quality_pending'),
+                'descartada' => __('lat.quality_discarded_event'),
                 default => __('lat.quality_approved', ['method' => $metodoLabel]),
             };
 
             $eventos->push((object) [
-                'tipo' => $ac->calidad === 'acida' ? 'alerta' : 'acopio',
+                'tipo' => in_array($ac->calidad, ['acida', 'descartada'], true) ? 'alerta' : 'acopio',
                 'titulo' => ($ac->proveedor?->nombre ?? __('lat.producer_default')).' · '.number_format($ac->litros, 1).' L',
                 'detalle' => $detalle,
                 'timestamp' => $ac->created_at ?? Carbon::parse($ac->fecha),

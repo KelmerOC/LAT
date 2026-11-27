@@ -8,6 +8,10 @@
     <div class="modal-body">
       <p id="confirm-modal-badge" class="confirm-status-notice" hidden></p>
       <p id="confirm-modal-message" style="font-size: 1rem; color: var(--color-ink); margin: 0;"></p>
+      <div id="confirm-modal-reason-wrap" class="form-grupo" style="margin-top: 0.85rem; margin-bottom: 0;" hidden>
+        <label for="confirm-modal-reason" class="form-label" data-i18n="confirm.discard_reason_label">Motivo del descarte</label>
+        <input type="text" id="confirm-modal-reason" class="input-lat" maxlength="255" placeholder="Ej: Acidez excesiva / contaminación física" data-i18n-placeholder="confirm.discard_reason_ph">
+      </div>
     </div>
     <div class="modal-foot">
       <button type="button" class="btn btn-outline" data-close-modal="modal-confirmacion-lat" data-i18n="confirm.cancel">Cancelar</button>
@@ -57,19 +61,23 @@
                   <td class="num"><strong>{{ number_format($a->litros, 1) }} L</strong></td>
                   <td><span data-i18n="calidad.state_{{ $a->calidad }}">{{ $a->calidad }}</span></td>
                   <td style="display: flex; gap: 0.35rem;">
-                    <button type="button" class="btn-micro js-edit-acopio"
-                      data-id="{{ $a->id }}"
-                      data-proveedor="{{ $a->proveedor_id }}"
-                      data-litros="{{ $a->litros }}"
-                      data-calidad="{{ $a->calidad }}"
-                      data-metodo="{{ $a->metodo }}"
-                      data-fecha="{{ $a->fecha?->format('Y-m-d') }}"
-                      data-hora="{{ substr($a->hora, 0, 5) }}"
-                      data-frase="{{ $a->frase_dictada ?? '' }}" data-i18n="common.edit">Editar</button>
-                    <form method="POST" action="{{ route('panel.acopio.delete', $a->id) }}" class="js-confirm-form" data-confirm-kind="delete" data-detalle-tipo="acopio" data-detalle-nombre="{{ $a->proveedor->nombre ?? '' }}" data-litros="{{ number_format($a->litros, 1) }}" data-detalle="acopio de {{ $a->proveedor->nombre }}">
-                      @csrf @method('DELETE')
-                      <button type="submit" class="btn-micro btn-micro-danger" data-i18n="common.erase">Borrar</button>
-                    </form>
+                    @if($a->lote_id !== null)
+                      <span class="chip chip-celeste" data-i18n="m1.locked_in_batch">En lote (protegida)</span>
+                    @else
+                      <button type="button" class="btn-micro js-edit-acopio"
+                        data-id="{{ $a->id }}"
+                        data-proveedor="{{ $a->proveedor_id }}"
+                        data-litros="{{ $a->litros }}"
+                        data-calidad="{{ $a->calidad }}"
+                        data-metodo="{{ $a->metodo }}"
+                        data-fecha="{{ $a->fecha?->format('Y-m-d') }}"
+                        data-hora="{{ substr($a->hora, 0, 5) }}"
+                        data-frase="{{ $a->frase_dictada ?? '' }}" data-i18n="common.edit">Editar</button>
+                      <form method="POST" action="{{ route('panel.acopio.delete', $a->id) }}" class="js-confirm-form" data-confirm-kind="delete" data-detalle-tipo="acopio" data-detalle-nombre="{{ $a->proveedor->nombre ?? '' }}" data-litros="{{ number_format($a->litros, 1) }}" data-detalle="acopio de {{ $a->proveedor->nombre }}">
+                        @csrf @method('DELETE')
+                        <button type="submit" class="btn-micro btn-micro-danger" data-i18n="common.erase">Borrar</button>
+                      </form>
+                    @endif
                   </td>
                 </tr>
               @empty
@@ -241,11 +249,15 @@
         <div class="grid-form-2">
           <div class="form-grupo">
             <label class="form-label" for="edit-ac-calidad" data-i18n="m1.col_quality">Calidad</label>
-            <select name="calidad" id="edit-ac-calidad" class="select-lat">
+            <select name="calidad" id="edit-ac-calidad" class="select-lat" @disabled(! $usuario->tienePermiso('calidad.evaluar'))>
               <option value="buena" data-i18n="calidad.state_buena">Aprobada (Tina principal)</option>
               <option value="acida" data-i18n="calidad.state_acida">Ácida (Quesillo 4 días)</option>
               <option value="pendiente" data-i18n="calidad.state_pendiente">Pendiente</option>
+              <option value="descartada" data-i18n="m2.status_discarded">Descartada</option>
             </select>
+            @if(! $usuario->tienePermiso('calidad.evaluar'))
+              <input type="hidden" name="calidad" id="edit-ac-calidad-hidden" value="">
+            @endif
           </div>
           <div class="form-grupo">
             <label class="form-label" for="edit-ac-metodo" data-i18n="m1.col_method">Método</label>
@@ -337,11 +349,11 @@
           </div>
           <div class="form-grupo">
             <label class="form-label" for="edit-mov-punit" data-i18n="m4.col_unit_price">P. Unit. / Tarifa (S/)</label>
-            <input type="number" step="0.1" min="0" name="precio_unitario" id="edit-mov-punit" class="input-lat">
+            <input type="number" step="0.01" min="0" name="precio_unitario" id="edit-mov-punit" class="input-lat">
           </div>
           <div class="form-grupo">
             <label class="form-label" for="edit-mov-monto" data-i18n="m4.lbl_amount">Monto (S/)</label>
-            <input type="number" step="0.5" min="0.5" name="monto" id="edit-mov-monto" class="input-lat" required>
+            <input type="number" step="0.01" min="0.5" name="monto" id="edit-mov-monto" class="input-lat" required>
           </div>
         </div>
       </div>
@@ -494,7 +506,7 @@
             </select>
           </div>
           <div>
-            <label class="form-label" for="it-filtro-fecha" data-i18n="m3.filter_date">Fecha</label>
+            <label class="form-label" for="it-filtro-fecha" data-i18n="m3.filter_intake_date">Fecha de acopio</label>
             <input type="date" id="it-filtro-fecha" class="input-lat">
           </div>
           <div>
@@ -515,6 +527,11 @@
           <div id="it-litros-resumen" class="it-litros-meter num-tabular">0.0 L</div>
         </div>
 
+        <div id="it-hidden-selection-notice" class="alerta alerta-amarillo it-hidden-selection-notice" role="status" aria-live="polite" hidden>
+          <span id="it-hidden-selection-text"></span>
+          <button type="button" id="it-btn-desmarcar-ocultas" class="btn-micro" data-i18n="m3.uncheck_hidden">Desmarcar fuera de filtro</button>
+        </div>
+
         @php $acopiosDisp = $acopiosDisponiblesTinas ?? collect(); @endphp
         <div id="it-lista-acopios" class="it-acopios-list">
           @foreach($acopiosDisp as $ac)
@@ -529,7 +546,12 @@
               </span>
               <span class="it-acopio-prov"><strong>{{ $ac->proveedor->nombre }}</strong></span>
               <strong class="num-tabular it-acopio-litros">{{ number_format($ac->litros, 1) }} L</strong>
-              <small class="num-tabular it-acopio-fecha">{{ ($ac->evaluado_en ?? $ac->created_at)?->format('d/m/Y H:i') }}</small>
+              <span class="it-acopio-fechas num-tabular">
+                <small><strong data-i18n="m3.lbl_received">Recibida:</strong> {{ $ac->fecha?->format('d/m/Y') }} {{ substr((string) $ac->hora, 0, 5) }}</small>
+                @if($ac->evaluado_en)
+                  <small><strong data-i18n="m3.lbl_evaluated">Evaluada:</strong> {{ $ac->evaluado_en->format('d/m/Y H:i') }}</small>
+                @endif
+              </span>
             </label>
           @endforeach
           <p id="it-acopios-empty" class="it-acopios-empty" data-i18n="m3.no_milk_available" @if($acopiosDisp->isNotEmpty()) hidden @endif>
@@ -683,7 +705,7 @@
           </div>
           <div class="form-grupo">
             <label class="form-label" for="np-pre" data-i18n="m6.col_price">Precio / L (S/)</label>
-            <input type="number" step="0.05" min="0.5" max="20" name="precio_litro" id="np-pre" class="input-lat" value="1.65" required>
+            <input type="number" step="0.01" min="0.5" max="20" name="precio_litro" id="np-pre" class="input-lat" value="1.65" required>
           </div>
         </div>
       </div>
@@ -725,7 +747,7 @@
           </div>
           <div class="form-grupo">
             <label class="form-label" for="ep-pre" data-i18n="m6.col_price">Precio / L (S/)</label>
-            <input type="number" step="0.05" min="0.5" max="20" name="precio_litro" id="ep-pre" class="input-lat" required>
+            <input type="number" step="0.01" min="0.5" max="20" name="precio_litro" id="ep-pre" class="input-lat" required>
           </div>
         </div>
         <div class="form-grupo">

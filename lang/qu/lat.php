@@ -33,10 +33,15 @@ return [
     'intake_voice_auto_created' => 'Rimaywan lichi huñuyqa kikillanmanta qillqasqañam: :producer (:liters L).',
     'intake_updated' => 'Lichi huñuy qillqaqa allinta musuqyachisqañam.',
     'intake_deleted' => 'Lichi huñuy qillqaqa wikch\'usqañam.',
+    'intake_locked_in_batch' => 'Kay chaskiyqa tinapi lutiman yaykunñam, manam t\'ikrayta atikunchu.',
+    'intake_locked_in_batch_delete' => 'Kay chaskiyqa tinapi lutiman yaykunñam, manam qulluyta atikunchu.',
+    'intake_quality_permission_denied' => 'Manam kanchu kamachiyki lichip allin kayninta t\'ikranaykipaq.',
     'quality_classified_acid' => 'P\'usqu lichiqa akllasqa hinaspa tawa p\'unchaw kisillupaq t\'ikrasqañam.',
     'quality_classified_good' => 'Allin lichiqa hatun tinapi q\'uñichinapaq ari nisqañam.',
     'quality_pending' => 'Lichiqa ch\'uya kaynin qhawanapaq suyachkaqman churasqañam.',
-    'quality_classified_discarded' => 'Mana allin lichiqa wikch\'usqañam, manam tinaman yaykunqachu.',
+    'quality_classified_discarded' => 'Mana allin lichiqa wikch\'usqañam; qillqaypi waqaychakunmi, manam tinaman nitaq pagaman yaykunqachu.',
+    'quality_discard_default_reason' => '74° alkuhulwan qhawaypi mana allin lichi',
+    'quality_discarded_event' => 'Chaskiypi wikch\'usqa (tinamanta pagamantawan qichusqa)',
     'quality_locked_in_batch' => 'Kay chaskiyqa tinapi lutiman yaykunñam, manam allin kayninqa t\'ikrayta atikunñachu.',
 
     // Tinas y lotes
@@ -69,6 +74,8 @@ return [
     'movement_created' => 'Qullqi kuyuyqa allinta qillqasqañam.',
     'movement_updated' => 'Qullqi kuyuyqa allinta musuqyachisqañam.',
     'movement_deleted' => 'Qullqi kuyuyqa wikch\'usqañam.',
+    'movement_quincena_locked' => 'Quincena paga qillqakunaqa paga tablamantallam kamachikun.',
+    'movement_advance_applied_locked' => 'Kay ñawpaq qullqiqa pagasqa quincenapi llamk\'achisqañam, manam qulluyta nitaq uraykachiyta atikunchu.',
     'producer_created' => 'Waka uywaqqa kisu ruwana wasipi qillqasqañam.',
     'producer_updated' => 'Waka uywaqpa datunkunaqa musuqyachisqañam.',
 
@@ -182,8 +189,10 @@ return [
 
     'excel_quality_good' => 'Ari nisqa (Allin)',
     'excel_quality_acid' => 'P\'usquyuq (74°)',
+    'excel_quality_discarded' => 'Wikch\'usqa',
     'excel_quality_pending' => 'Suyachkaq',
     'excel_dest_acid' => 'Ch\'uwa kisillu (4 p\'unchaw)',
+    'excel_dest_discarded' => 'Wikch\'usqa (tinamanta pagamantawan qichusqa)',
     'excel_dest_pending' => 'Qhaway suyachkaq',
     'excel_dest_good' => 'Hatun tina (Kisu/Yogur)',
     'excel_method_voice' => 'Rimaywan qillqasqa',

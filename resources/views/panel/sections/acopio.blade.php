@@ -48,7 +48,7 @@
           @endif
         </div>
 
-        <form method="POST" action="{{ route('panel.acopio') }}" id="form-acopio" data-sync-url="{{ route('panel.acopio.sync') }}">
+        <form method="POST" action="{{ route('panel.acopio') }}" id="form-acopio" data-sync-url="{{ route('panel.acopio.sync') }}" data-planta-id="{{ $plantaActiva->id }}" data-user-id="{{ $usuario->id }}">
           @csrf
           <input type="hidden" name="metodo" id="input-metodo" value="manual">
           <input type="hidden" name="frase_dictada" id="input-frase" value="">
@@ -83,7 +83,7 @@
             </div>
           </div>
 
-          <button type="submit" class="btn btn-ocean btn-bloque btn-grande" data-i18n="m1.save_btn">Guardar entrega en tina</button>
+          <button type="submit" class="btn btn-ocean btn-bloque btn-grande" data-i18n="m1.save_btn">Registrar entrega</button>
         </form>
       </div>
     @endif
@@ -179,35 +179,44 @@
                       <span class="chip chip-verde">{!! $icoOk !!} <span data-i18n="common.approved">Aprobada</span></span>
                     @elseif($acopio->calidad === 'acida')
                       <span class="chip chip-amarillo">{!! $icoAlerta !!} <span data-i18n="common.acid_chip">Ácida (quesillo)</span></span>
+                    @elseif($acopio->calidad === 'descartada')
+                      <span class="chip chip-rojo" data-i18n="m1.discarded_chip">Descartada</span>
+                      @if(! empty($acopio->motivo_descarte))
+                        <small>{{ $acopio->motivo_descarte }}</small>
+                      @endif
                     @else
                       <span class="chip chip-amarillo" data-i18n="common.pending">Pendiente</span>
                     @endif
                   </td>
                   @if($usuario->tienePermiso('acopio.editar'))
                     <td>
-                      <div style="display: flex; gap: 0.35rem; flex-wrap: wrap;">
-                        <button type="button" class="btn-micro js-edit-acopio"
-                          data-id="{{ $acopio->id }}"
-                          data-proveedor="{{ $acopio->proveedor_id }}"
-                          data-litros="{{ $acopio->litros }}"
-                          data-calidad="{{ $acopio->calidad }}"
-                          data-metodo="{{ $acopio->metodo }}"
-                          data-fecha="{{ $acopio->fecha?->format('Y-m-d') }}"
-                          data-hora="{{ substr($acopio->hora, 0, 5) }}"
-                          data-frase="{{ $acopio->frase_dictada ?? '' }}">
-                          {!! $icoEditar !!} <span data-i18n="common.edit">Editar</span>
-                        </button>
-                        <form method="POST" action="{{ route('panel.acopio.delete', $acopio->id) }}"
-                          class="js-confirm-form"
-                          data-confirm-kind="delete"
-                          data-detalle-tipo="acopio"
-                          data-detalle-nombre="{{ $acopio->proveedor->nombre }}"
-                          data-litros="{{ number_format($acopio->litros, 1) }}"
-                          data-detalle="acopio de {{ $acopio->proveedor->nombre }}">
-                          @csrf @method('DELETE')
-                          <button type="submit" class="btn-micro btn-micro-danger" data-i18n="common.delete">Eliminar</button>
-                        </form>
-                      </div>
+                      @if($acopio->lote_id !== null)
+                        <span class="chip chip-celeste" data-i18n="m1.locked_in_batch">En lote (protegida)</span>
+                      @else
+                        <div style="display: flex; gap: 0.35rem; flex-wrap: wrap;">
+                          <button type="button" class="btn-micro js-edit-acopio"
+                            data-id="{{ $acopio->id }}"
+                            data-proveedor="{{ $acopio->proveedor_id }}"
+                            data-litros="{{ $acopio->litros }}"
+                            data-calidad="{{ $acopio->calidad }}"
+                            data-metodo="{{ $acopio->metodo }}"
+                            data-fecha="{{ $acopio->fecha?->format('Y-m-d') }}"
+                            data-hora="{{ substr($acopio->hora, 0, 5) }}"
+                            data-frase="{{ $acopio->frase_dictada ?? '' }}">
+                            {!! $icoEditar !!} <span data-i18n="common.edit">Editar</span>
+                          </button>
+                          <form method="POST" action="{{ route('panel.acopio.delete', $acopio->id) }}"
+                            class="js-confirm-form"
+                            data-confirm-kind="delete"
+                            data-detalle-tipo="acopio"
+                            data-detalle-nombre="{{ $acopio->proveedor->nombre }}"
+                            data-litros="{{ number_format($acopio->litros, 1) }}"
+                            data-detalle="acopio de {{ $acopio->proveedor->nombre }}">
+                            @csrf @method('DELETE')
+                            <button type="submit" class="btn-micro btn-micro-danger" data-i18n="common.delete">Eliminar</button>
+                          </form>
+                        </div>
+                      @endif
                     </td>
                   @endif
                 </tr>

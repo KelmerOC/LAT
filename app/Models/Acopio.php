@@ -12,6 +12,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class Acopio extends Model
 {
+    /** @var list<string> */
+    public const CALIDADES_LIQUIDABLES = ['buena', 'acida'];
+
     protected $fillable = [
         'planta_id',
         'lote_id',
@@ -27,6 +30,8 @@ class Acopio extends Model
         'calidad',
         'destino',
         'evaluado_en',
+        'motivo_descarte',
+        'evaluado_por',
     ];
 
     protected $casts = [
@@ -54,6 +59,17 @@ class Acopio extends Model
     public function registrador(): BelongsTo
     {
         return $this->belongsTo(User::class, 'registrado_por');
+    }
+
+    public function evaluador(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'evaluado_por');
+    }
+
+    /** Scope: Solo entregas evaluadas aprovechables (óptimas o con acidez) para liquidación */
+    public function scopeLiquidables(Builder $query): Builder
+    {
+        return $query->whereIn('calidad', self::CALIDADES_LIQUIDABLES);
     }
 
     /** Scope: Entregas correspondientes a una fecha usando índice B-Tree */

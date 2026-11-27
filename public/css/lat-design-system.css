@@ -1214,6 +1214,7 @@ main > .contenedor,
   background: var(--color-paper); color: var(--color-ink);
   font-family: var(--font-sans);
 }
+.btn-micro[hidden] { display: none; }
 .btn-micro:hover { background: var(--color-sky-wash); }
 .btn-micro-danger { color: var(--rojo-text); border-color: rgba(185, 28, 28, 0.25); }
 .btn-micro-danger:hover { background: var(--rojo-fill); }

@@ -63,4 +63,37 @@ class Tina extends Model
     {
         return in_array($this->tipo, self::TIPOS_PREESTABLECIDOS, true);
     }
+
+    /**
+     * Normaliza etiquetas traducidas de tipos preestablecidos a su clave canónica.
+     */
+    public static function normalizarTipo(string $valor): string
+    {
+        $limpio = trim($valor);
+        $norm = strtolower(str_replace(
+            ['á', 'é', 'í', 'ó', 'ú', 'ü', 'ñ', 'Á', 'É', 'Í', 'Ó', 'Ú', 'Ü', 'Ñ'],
+            ['a', 'e', 'i', 'o', 'u', 'u', 'n', 'a', 'e', 'i', 'o', 'u', 'u', 'n'],
+            $limpio
+        ));
+        $norm = preg_replace('/\s+/', ' ', $norm) ?? $norm;
+
+        $mapa = [
+            'principal_queso' => 'principal_queso',
+            'queso principal' => 'principal_queso',
+            'hatun kisu' => 'principal_queso',
+            'main cheese' => 'principal_queso',
+            'quesillo' => 'quesillo',
+            'quesillo 4 dias' => 'quesillo',
+            "4 p'unchaw kisillu" => 'quesillo',
+            '4-day quesillo' => 'quesillo',
+            '4 day quesillo' => 'quesillo',
+            'yogur' => 'yogur',
+            'yogurt' => 'yogur',
+            'multiproposito' => 'multiproposito',
+            'tukuy ruwanapaq' => 'multiproposito',
+            'multipurpose' => 'multiproposito',
+        ];
+
+        return $mapa[$norm] ?? $limpio;
+    }
 }

@@ -30,6 +30,24 @@ class AdminController extends Controller
     }
 
     /**
+     * Retorna los permisos almacenados en BD sin depender del estado activo del usuario.
+     *
+     * @return list<string>
+     */
+    private function permisosGuardados(User $user): array
+    {
+        if ($user->esAdmin()) {
+            return User::PLANTILLAS_CARGO['administracion'];
+        }
+
+        if (is_array($user->permisos)) {
+            return array_values(array_intersect(User::todasLasClavesPermisos(), $user->permisos));
+        }
+
+        return User::PLANTILLAS_CARGO[$user->cargo] ?? [];
+    }
+
+    /**
      * Resuelve y valida los permisos solicitados respetando el alcance del actor.
      *
      * @param  array<int, string>|null  $permisosInput
@@ -52,7 +70,7 @@ class AdminController extends Controller
 
         $asignables = $actor->permisosAsignables();
         $fueraDeAlcanceActuales = ($target && ! $actor->esAdmin())
-            ? array_values(array_diff($target->permisosEfectivos(), $asignables, $prohibidosNoAdmin))
+            ? array_values(array_diff($this->permisosGuardados($target), $asignables, $prohibidosNoAdmin))
             : [];
 
         if ($permisosInput === null) {
@@ -214,7 +232,7 @@ class AdminController extends Controller
         if ($request->boolean('permisos_present') || $request->has('permisos')) {
             $permisosInput = $datos['permisos'] ?? [];
         } else {
-            $permisosInput = $datos['cargo'] === $target->cargo ? $target->permisosEfectivos() : null;
+            $permisosInput = $datos['cargo'] === $target->cargo ? $this->permisosGuardados($target) : null;
         }
 
         $permisosFinales = $this->resolverPermisosPermitidos($actor, $datos['cargo'], $permisosInput, $target);

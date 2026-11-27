@@ -173,12 +173,12 @@
                     <td class="num num-tabular js-liq-litros" data-litros="{{ number_format($liq->litros, 2, '.', '') }}">{{ number_format($liq->litros, 1) }} L</td>
                     <td class="num">
                       <label class="sr-only" for="liq-precio-{{ $idx }}">Precio/L {{ $liq->nombre }}</label>
-                      <input type="number" step="0.05" min="0.5" max="20" id="liq-precio-{{ $idx }}" name="filas[{{ $idx }}][precio_litro]" value="{{ number_format($liq->precio_litro, 2, '.', '') }}" class="excel-cell-input js-liq-precio" list="lista-precios-litro" disabled>
+                      <input type="number" step="0.01" min="0.5" max="20" id="liq-precio-{{ $idx }}" name="filas[{{ $idx }}][precio_litro]" value="{{ number_format($liq->precio_litro, 2, '.', '') }}" class="excel-cell-input js-liq-precio" list="lista-precios-litro" disabled>
                     </td>
                     <td class="num num-tabular js-liq-bruto">S/ {{ number_format($liq->bruto, 2) }}</td>
                     <td class="num">
                       <label class="sr-only" for="liq-adel-{{ $idx }}">Adelantos {{ $liq->nombre }}</label>
-                      <input type="number" step="0.5" min="0" max="100000" id="liq-adel-{{ $idx }}" name="filas[{{ $idx }}][adelantos]" value="{{ number_format($liq->adelantos, 2, '.', '') }}" class="excel-cell-input js-liq-adelantos" disabled>
+                      <input type="number" step="0.01" min="0" max="100000" id="liq-adel-{{ $idx }}" name="filas[{{ $idx }}][adelantos]" value="{{ number_format($liq->adelantos, 2, '.', '') }}" class="excel-cell-input js-liq-adelantos" disabled>
                     </td>
                     <td class="num num-tabular" style="color: var(--verde-text);">S/ 0.00</td>
                     <td class="num num-tabular js-liq-neto" style="font-weight: 700; background: #f7fbfe;">S/ {{ number_format($liq->neto, 2) }}</td>
@@ -340,11 +340,11 @@
           </div>
           <div class="form-grupo">
             <label for="nv-punit" class="form-label" data-i18n="m4.col_unit_price">P. Unit. (S/)</label>
-            <input type="number" id="nv-punit" name="precio_unitario" class="input-lat js-venta-punit" min="0" max="100000" step="0.1" placeholder="18.00">
+            <input type="number" id="nv-punit" name="precio_unitario" class="input-lat js-venta-punit" min="0" max="100000" step="0.01" placeholder="18.00">
           </div>
           <div class="form-grupo">
             <label for="nv-total" class="form-label" data-i18n="m4.col_total_sale">Total (S/)</label>
-            <input type="number" id="nv-total" name="monto" class="input-lat js-venta-total" min="0.5" max="1000000" step="0.1" required placeholder="0.00">
+            <input type="number" id="nv-total" name="monto" class="input-lat js-venta-total" min="0.5" max="1000000" step="0.01" required placeholder="0.00">
           </div>
           <div class="excel-inline-submit">
             <button type="submit" class="btn btn-ocean btn-compacto" data-i18n="m4.btn_add_sale">+ Registrar venta</button>
@@ -532,11 +532,11 @@
           </div>
           <div class="form-grupo">
             <label for="ns-tarifa" class="form-label" data-i18n="m4.col_rate">Tarifa (S/)</label>
-            <input type="number" id="ns-tarifa" name="precio_unitario" class="input-lat js-sueldo-tarifa" min="0" max="100000" step="0.5" placeholder="60.00">
+            <input type="number" id="ns-tarifa" name="precio_unitario" class="input-lat js-sueldo-tarifa" min="0" max="100000" step="0.01" placeholder="60.00">
           </div>
           <div class="form-grupo">
             <label for="ns-total" class="form-label" data-i18n="m4.col_total_pay">Total (S/)</label>
-            <input type="number" id="ns-total" name="monto" class="input-lat js-sueldo-total" min="0.5" max="1000000" step="0.5" required placeholder="0.00">
+            <input type="number" id="ns-total" name="monto" class="input-lat js-sueldo-total" min="0.5" max="1000000" step="0.01" required placeholder="0.00">
           </div>
           <div class="excel-inline-submit">
             <button type="submit" class="btn btn-ocean btn-compacto" data-i18n="m4.btn_add_pay">+ Registrar pago</button>
