@@ -10,25 +10,21 @@ use App\Models\Proveedor;
 use App\Models\Tina;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
 /**
- * ============================================================================
- * CAPA DE SERVICIO: LÓGICA DE NEGOCIO, CÁLCULOS LÁCTEOS Y ESTADÍSTICAS
- * ============================================================================
- * Aplica el principio de Responsabilidad Única (SRP) y separación en capas.
- * Desacopla cálculos térmicos, recetas, liquidación sin N+1 y rankings.
+ * Servicio de lógica de negocio para acopio, control térmico, liquidaciones y analítica.
  */
 class LacteoService
 {
-    /** Parámetros técnicos estandarizados de campo (Anta / Cusco) */
-    public const CUAJO_ML_X_LITRO = 0.025;  // 2.5 ml por cada 100 L
+    public const CUAJO_ML_X_LITRO = 0.025;
 
-    public const SAL_KG_X_LITRO = 0.018;  // 1.8 kg por cada 100 L
+    public const SAL_KG_X_LITRO = 0.018;
 
-    public const CULTIVO_G_X_LITRO = 0.010;  // 1.0 g por cada 100 L
+    public const CULTIVO_G_X_LITRO = 0.010;
 
-    public const LITROS_X_MOLDE = 9.0;    // ~11 moldes por cada 100 L
+    public const LITROS_X_MOLDE = 9.0;
 
     public const TEMP_PASTEURIZACION = 72.0;
 
@@ -38,10 +34,12 @@ class LacteoService
 
     /**
      * Calcula la dosificación estequiométrica de insumos según litros de leche.
+     *
+     * @return array{litros: float, cuajo_ml: float, sal_kg: float, cultivo_g: float, moldes_estimados: int}
      */
     public function dosificarReceta(float $litros): array
     {
-        $litros = max(0, $litros);
+        $litros = max(0.0, $litros);
 
         return [
             'litros' => round($litros, 1),
@@ -53,15 +51,12 @@ class LacteoService
     }
 
     /**
-     * Monitoreo térmico: Curva de enfriamiento desde 72 °C hasta 36-40 °C.
+     * Evalúa el estado térmico de la leche en la curva de 72 °C hacia 36-40 °C.
+     *
+     * @return array{temperatura: float, porcentaje: int, estado: string, apta: bool}
      */
     public function evaluarTermica(float $temperatura): array
     {
-        $rangoTotal = self::TEMP_PASTEURIZACION - self::TEMP_INOCULACION_MAX;
-        $enfriado = self::TEMP_PASTEURIZACION - $temperatura;
-        $porcentaje = $rangoTotal > 0 ? ($enfriado / $rangoTotal) * 100 : 100;
-        $porcentaje = max(0, min(100, round($porcentaje)));
-
         $estado = match (true) {
             $temperatura >= (self::TEMP_PASTEURIZACION - 0.5) => 'pasteurizando',
             $temperatura > self::TEMP_INOCULACION_MAX => 'enfriando',
@@ -69,29 +64,86 @@ class LacteoService
             default => 'muy_fria',
         };
 
+        if ($estado === 'muy_fria') {
+            $porcentaje = 0;
+        } else {
+            $rangoTotal = self::TEMP_PASTEURIZACION - self::TEMP_INOCULACION_MAX;
+            $enfriado = self::TEMP_PASTEURIZACION - $temperatura;
+            $calculado = $rangoTotal > 0 ? ($enfriado / $rangoTotal) * 100 : 100;
+            $porcentaje = (int) max(0, min(100, round($calculado)));
+        }
+
         return [
             'temperatura' => round($temperatura, 1),
-            'porcentaje' => (int) $porcentaje,
+            'porcentaje' => $porcentaje,
             'estado' => $estado,
             'apta' => ($estado === 'lista_para_cuajo'),
         ];
     }
 
     /**
-     * CÁLCULO QUINCENAL MASIVO SIN N+1 (AISLADO POR PLANTA)
-     * Resuelve el reporte en exactamente 3 consultas SQL independientes.
+     * Aplica filtro de rango sobre columnas DATE sin usar DATE() para conservar índices B-Tree.
      */
-    public function liquidarQuincena(string $desde, string $hasta, float $precioLitro = 1.65, ?int $plantaId = null): Collection
+    public function aplicarRangoFecha(Builder $query, string $desde, string $hasta, string $columna = 'fecha'): Builder
     {
-        $proveedoresQuery = Proveedor::activos()
-            ->select('id', 'planta_id', 'codigo', 'nombre', 'sector')
-            ->ordenadosPorNombre();
-
-        if ($plantaId !== null) {
-            $proveedoresQuery->where('planta_id', $plantaId);
+        $driver = $query->getConnection()->getDriverName();
+        if ($driver === 'sqlite') {
+            return $query->where($columna, '>=', $desde)
+                ->where($columna, '<=', $hasta.' 23:59:59');
         }
 
-        $proveedores = $proveedoresQuery->get();
+        if ($desde === $hasta) {
+            return $query->where($columna, $desde);
+        }
+
+        return $query->whereBetween($columna, [$desde, $hasta]);
+    }
+
+    /**
+     * Aplica límite superior sobre columnas DATE sin funciones SQL.
+     */
+    public function aplicarHastaFecha(Builder $query, string $hasta, string $columna = 'fecha'): Builder
+    {
+        $driver = $query->getConnection()->getDriverName();
+        if ($driver === 'sqlite') {
+            return $query->where($columna, '<=', $hasta.' 23:59:59');
+        }
+
+        return $query->where($columna, '<=', $hasta);
+    }
+
+    /**
+     * Calcula la liquidación quincenal por productor aislada por planta.
+     *
+     * @param  array{proveedor_id?: int|string|null, sector?: string|null, estado_pago?: string|null}|null  $filtros
+     */
+    public function liquidarQuincena(
+        string $desde,
+        string $hasta,
+        float $precioLitro = 1.65,
+        ?int $plantaId = null,
+        ?array $filtros = null
+    ): Collection {
+        $proveedores = Proveedor::query()
+            ->select('id', 'planta_id', 'codigo', 'nombre', 'sector', 'activo')
+            ->when($plantaId !== null, fn ($q) => $q->where('planta_id', $plantaId))
+            ->when(! empty($filtros['proveedor_id']), fn ($q) => $q->where('id', (int) $filtros['proveedor_id']))
+            ->when(! empty($filtros['sector']), fn ($q) => $q->where('sector', (string) $filtros['sector']))
+            ->where(function ($q) use ($desde, $hasta, $plantaId): void {
+                $q->where('activo', true)
+                    ->orWhereHas('acopios', function ($sub) use ($desde, $hasta, $plantaId): void {
+                        $sub->delPeriodo($desde, $hasta)
+                            ->when($plantaId !== null, fn ($p) => $p->where('planta_id', $plantaId));
+                    })
+                    ->orWhereHas('liquidaciones', function ($sub) use ($hasta, $plantaId): void {
+                        $sub->whereIn('tipo', ['adelanto_efectivo', 'adelanto_queso'])
+                            ->where('descontado', false)
+                            ->when($plantaId !== null, fn ($p) => $p->where('planta_id', $plantaId));
+                        $this->aplicarHastaFecha($sub, $hasta);
+                    });
+            })
+            ->ordenadosPorNombre()
+            ->get();
 
         if ($proveedores->isEmpty()) {
             return collect();
@@ -99,29 +151,55 @@ class LacteoService
 
         $ids = $proveedores->pluck('id')->all();
 
-        // Consulta agrupada: Litros totales entregados en el período
-        $litrosMap = Acopio::whereIn('proveedor_id', $ids)
+        $acopiosPorProveedor = Acopio::whereIn('proveedor_id', $ids)
             ->delPeriodo($desde, $hasta)
             ->when($plantaId !== null, fn ($q) => $q->where('planta_id', $plantaId))
             ->groupBy('proveedor_id')
-            ->selectRaw('proveedor_id, SUM(litros) as total_litros')
-            ->pluck('total_litros', 'proveedor_id');
+            ->selectRaw('proveedor_id, SUM(litros) as total_litros, SUM(litros * COALESCE(precio_litro, ?)) as total_bruto', [$precioLitro])
+            ->get()
+            ->keyBy('proveedor_id');
 
-        // Consulta agrupada: Adelantos pendientes en efectivo o queso
-        $adelantosMap = Liquidacion::whereIn('proveedor_id', $ids)
+        $adelantosQuery = Liquidacion::whereIn('proveedor_id', $ids)
             ->whereIn('tipo', ['adelanto_efectivo', 'adelanto_queso'])
             ->where('descontado', false)
-            ->when($plantaId !== null, fn ($q) => $q->where('planta_id', $plantaId))
+            ->when($plantaId !== null, fn ($q) => $q->where('planta_id', $plantaId));
+        $this->aplicarHastaFecha($adelantosQuery, $hasta);
+
+        $adelantosMap = $adelantosQuery
             ->groupBy('proveedor_id')
             ->selectRaw('proveedor_id, SUM(monto) as total_adelantos')
             ->pluck('total_adelantos', 'proveedor_id');
 
-        return $proveedores->map(function ($p) use ($litrosMap, $adelantosMap, $precioLitro) {
-            $litros = (float) ($litrosMap[$p->id] ?? 0);
-            $bruto = round($litros * $precioLitro, 2);
+        $quincenasQuery = Liquidacion::whereIn('proveedor_id', $ids)
+            ->where('tipo', 'quincena')
+            ->when($plantaId !== null, fn ($q) => $q->where('planta_id', $plantaId));
+        $this->aplicarRangoFecha($quincenasQuery, $desde, $hasta);
+
+        $quincenasMap = $quincenasQuery
+            ->orderByDesc('id')
+            ->get(['proveedor_id', 'estado_pago'])
+            ->unique('proveedor_id')
+            ->keyBy('proveedor_id');
+
+        $filas = $proveedores->map(function (Proveedor $p) use ($acopiosPorProveedor, $adelantosMap, $quincenasMap, $precioLitro): object {
+            $acopio = $acopiosPorProveedor->get($p->id);
+            $litros = (float) ($acopio->total_litros ?? 0);
+            $rawBruto = (float) ($acopio->total_bruto ?? 0);
+            $bruto = round($rawBruto, 2);
             $adelanto = (float) ($adelantosMap[$p->id] ?? 0);
             $comision = 0.00;
             $neto = max(0, round($bruto - $adelanto, 2));
+
+            $quincena = $quincenasMap->get($p->id);
+            if ($quincena !== null && in_array($quincena->estado_pago, Liquidacion::ESTADOS_PAGO, true)) {
+                $estadoPago = (string) $quincena->estado_pago;
+            } elseif ($bruto > 0 && $neto <= 0.0) {
+                $estadoPago = 'pagado';
+            } elseif ($adelanto > 0 && $bruto > 0) {
+                $estadoPago = 'parcial';
+            } else {
+                $estadoPago = 'pendiente';
+            }
 
             return (object) [
                 'proveedor_id' => $p->id,
@@ -129,107 +207,92 @@ class LacteoService
                 'nombre' => $p->nombre,
                 'sector' => $p->sector,
                 'litros' => $litros,
-                'precio_litro' => $precioLitro,
+                'precio_litro' => $litros > 0 ? round($rawBruto / $litros, 2) : $precioLitro,
                 'bruto' => $bruto,
                 'adelantos' => $adelanto,
                 'comision' => $comision,
                 'neto' => $neto,
+                'estado_pago' => $estadoPago,
             ];
         });
+
+        if (! empty($filtros['estado_pago'])) {
+            $estadoBuscado = (string) $filtros['estado_pago'];
+            $filas = $filas->where('estado_pago', $estadoBuscado)->values();
+        }
+
+        return $filas;
     }
 
     /**
-     * ESTADÍSTICAS COMPARATIVAS DE PLANTAS ("¿QUIÉN VENDE MÁS?") Y MÉTRICAS DE PLANTA
+     * Estadísticas operativas agregadas directamente en SQL para evitar hidratación masiva.
+     *
+     * @param  Collection<int, Planta>|null  $plantasPrecalculadas
+     * @return array<string, mixed>
      */
-    public function obtenerEstadisticas(int $plantaActivaId, string $desde, string $hasta): array
+    public function obtenerEstadisticas(int $plantaActivaId, string $desde, string $hasta, bool $incluirRed = true, ?Collection $plantasPrecalculadas = null): array
     {
-        $plantas = Planta::orderBy('nombre')->get(['id', 'codigo', 'nombre', 'ubicacion', 'precio_litro', 'activa']);
+        $rankingData = $this->obtenerRankingPlantas($desde, $hasta, $incluirRed ? null : $plantaActivaId, $plantasPrecalculadas);
+        $rankingPlantas = $rankingData['ranking_plantas'];
+        $moldesPorPlanta = $rankingData['moldes_por_planta'];
 
-        // Agregados por planta en el período en el rango de fechas (compatible MySQL y SQLite)
-        $ventasPorPlanta = Liquidacion::where('tipo', 'venta_producto')
-            ->whereDate('fecha', '>=', $desde)
-            ->whereDate('fecha', '<=', $hasta)
-            ->groupBy('planta_id')
-            ->selectRaw('planta_id, SUM(monto) as total_ventas, SUM(cantidad_unidades) as total_unidades, COUNT(*) as num_ventas')
-            ->get()
-            ->keyBy('planta_id');
-
-        $acopiosPorPlanta = Acopio::whereDate('fecha', '>=', $desde)
-            ->whereDate('fecha', '<=', $hasta)
-            ->groupBy('planta_id')
-            ->selectRaw('planta_id, SUM(litros) as total_litros, COUNT(*) as num_entregas')
-            ->get()
-            ->keyBy('planta_id');
-
-        $moldesPorPlanta = Lote::whereDate('fecha', '>=', $desde)
-            ->whereDate('fecha', '<=', $hasta)
-            ->groupBy('planta_id')
-            ->selectRaw('planta_id, SUM(moldes_producidos) as total_moldes')
-            ->pluck('total_moldes', 'planta_id');
-
-        $totalVentasRed = (float) $ventasPorPlanta->sum('total_ventas');
-
-        $rankingPlantas = $plantas->map(function ($planta) use ($ventasPorPlanta, $acopiosPorPlanta, $moldesPorPlanta, $totalVentasRed) {
-            $v = $ventasPorPlanta->get($planta->id);
-            $a = $acopiosPorPlanta->get($planta->id);
-            $ventasMonto = round((float) ($v->total_ventas ?? 0), 2);
-            $litros = round((float) ($a->total_litros ?? 0), 1);
-
-            return (object) [
-                'planta_id' => $planta->id,
-                'codigo' => $planta->codigo,
-                'nombre' => $planta->nombre,
-                'ubicacion' => $planta->ubicacion,
-                'activa' => (bool) $planta->activa,
-                'ventas_monto' => $ventasMonto,
-                'ventas_unidades' => (int) ($v->total_unidades ?? 0),
-                'num_ventas' => (int) ($v->num_ventas ?? 0),
-                'litros_acopiados' => $litros,
-                'num_entregas' => (int) ($a->num_entregas ?? 0),
-                'moldes_producidos' => (int) ($moldesPorPlanta[$planta->id] ?? 0),
-                'participacion_pct' => $totalVentasRed > 0 ? round(($ventasMonto / $totalVentasRed) * 100, 1) : 0.0,
-            ];
-        })->sortByDesc(fn ($p) => [$p->ventas_monto, $p->litros_acopiados])->values();
-
-        // Estadísticas detalladas de la planta activa
-        $acopiosPlanta = Acopio::with('proveedor:id,codigo,nombre,sector')
-            ->where('planta_id', $plantaActivaId)
-            ->whereDate('fecha', '>=', $desde)
-            ->whereDate('fecha', '<=', $hasta)
+        $resumenAcopioQuery = Acopio::where('planta_id', $plantaActivaId);
+        $this->aplicarRangoFecha($resumenAcopioQuery, $desde, $hasta);
+        $resumenAcopio = $resumenAcopioQuery
+            ->groupBy('calidad', 'metodo')
+            ->selectRaw('calidad, metodo, SUM(litros) as total_litros, COUNT(*) as total_entregas')
             ->get();
 
-        $totalLitrosPlanta = (float) $acopiosPlanta->sum('litros');
-        $litrosBuena = (float) $acopiosPlanta->where('calidad', 'buena')->sum('litros');
-        $litrosAcida = (float) $acopiosPlanta->where('calidad', 'acida')->sum('litros');
-        $litrosPendiente = (float) $acopiosPlanta->where('calidad', 'pendiente')->sum('litros');
+        $litrosBuena = (float) $resumenAcopio->where('calidad', 'buena')->sum('total_litros');
+        $litrosAcida = (float) $resumenAcopio->where('calidad', 'acida')->sum('total_litros');
+        $litrosPendiente = (float) $resumenAcopio->where('calidad', 'pendiente')->sum('total_litros');
+        $totalLitrosPlanta = $litrosBuena + $litrosAcida + $litrosPendiente;
 
-        $vozCount = $acopiosPlanta->where('metodo', 'voz')->count();
-        $manualCount = $acopiosPlanta->where('metodo', 'manual')->count();
-        $totalEntregas = max(1, $acopiosPlanta->count());
+        $vozCount = (int) $resumenAcopio->where('metodo', 'voz')->sum('total_entregas');
+        $manualCount = (int) $resumenAcopio->where('metodo', 'manual')->sum('total_entregas');
+        $totalEntregas = max(1, $vozCount + $manualCount);
 
-        $topProductores = $acopiosPlanta->groupBy('proveedor_id')->map(function ($grupo) use ($totalLitrosPlanta) {
-            $prov = $grupo->first()->proveedor;
-            $litros = round((float) $grupo->sum('litros'), 1);
+        $topQuery = Acopio::with('proveedor:id,codigo,nombre,sector')
+            ->where('planta_id', $plantaActivaId);
+        $this->aplicarRangoFecha($topQuery, $desde, $hasta);
+        $topProductores = $topQuery
+            ->groupBy('proveedor_id')
+            ->selectRaw('proveedor_id, SUM(litros) as total_litros, COUNT(*) as entregas')
+            ->orderByDesc('total_litros')
+            ->limit(6)
+            ->get()
+            ->map(function (Acopio $row) use ($totalLitrosPlanta): object {
+                $prov = $row->proveedor;
+                $litros = round((float) $row->total_litros, 1);
 
-            return (object) [
-                'codigo' => $prov?->codigo ?? 'S/C',
-                'nombre' => $prov?->nombre ?? 'Productor',
-                'sector' => $prov?->sector ?? '',
-                'litros' => $litros,
-                'entregas' => $grupo->count(),
-                'porcentaje' => $totalLitrosPlanta > 0 ? round(($litros / $totalLitrosPlanta) * 100, 1) : 0.0,
-            ];
-        })->sortByDesc('litros')->values()->take(6);
+                return (object) [
+                    'codigo' => $prov?->codigo ?? __('lat.no_code'),
+                    'nombre' => $prov?->nombre ?? __('lat.producer_default'),
+                    'sector' => $prov?->sector ?? '',
+                    'litros' => $litros,
+                    'entregas' => (int) $row->entregas,
+                    'porcentaje' => $totalLitrosPlanta > 0 ? round(($litros / $totalLitrosPlanta) * 100, 1) : 0.0,
+                ];
+            });
 
-        $movsPlanta = Liquidacion::where('planta_id', $plantaActivaId)
-            ->whereDate('fecha', '>=', $desde)
-            ->whereDate('fecha', '<=', $hasta)
-            ->get();
+        $movQuery = Liquidacion::where('planta_id', $plantaActivaId);
+        $this->aplicarRangoFecha($movQuery, $desde, $hasta);
+        $movsPorTipo = $movQuery
+            ->groupBy('tipo')
+            ->selectRaw('tipo, SUM(monto) as total_monto, SUM(cantidad_unidades) as total_unidades')
+            ->get()
+            ->keyBy('tipo');
+
+        $ventasRow = $movsPorTipo->get('venta_producto');
+        $gastosMonto = (float) ($movsPorTipo->get('ayuda_del_dia')?->total_monto ?? 0)
+            + (float) ($movsPorTipo->get('gasto_operativo')?->total_monto ?? 0);
+        $adelantosMonto = (float) ($movsPorTipo->get('adelanto_efectivo')?->total_monto ?? 0)
+            + (float) ($movsPorTipo->get('adelanto_queso')?->total_monto ?? 0);
 
         return [
             'ranking_plantas' => $rankingPlantas,
             'planta_lider' => $rankingPlantas->first(),
-            'total_ventas_red' => round($totalVentasRed, 2),
+            'total_ventas_red' => $rankingData['total_ventas_red'],
             'top_productores' => $topProductores,
             'calidad' => [
                 'buena_litros' => round($litrosBuena, 1),
@@ -245,32 +308,41 @@ class LacteoService
             ],
             'totales_planta' => [
                 'litros_periodo' => round($totalLitrosPlanta, 1),
-                'ventas_monto' => round((float) $movsPlanta->where('tipo', 'venta_producto')->sum('monto'), 2),
-                'ventas_unidades' => (int) $movsPlanta->where('tipo', 'venta_producto')->sum('cantidad_unidades'),
-                'gastos_monto' => round((float) $movsPlanta->whereIn('tipo', ['ayuda_del_dia', 'gasto_operativo'])->sum('monto'), 2),
-                'adelantos_monto' => round((float) $movsPlanta->whereIn('tipo', ['adelanto_efectivo', 'adelanto_queso'])->sum('monto'), 2),
+                'ventas_monto' => round((float) ($ventasRow?->total_monto ?? 0), 2),
+                'ventas_unidades' => (int) ($ventasRow?->total_unidades ?? 0),
+                'gastos_monto' => round($gastosMonto, 2),
+                'adelantos_monto' => round($adelantosMonto, 2),
                 'moldes_producidos' => (int) ($moldesPorPlanta[$plantaActivaId] ?? 0),
             ],
         ];
     }
 
     /**
-     * ANALÍTICA PARA EL NUEVO DASHBOARD: SERIES TEMPORALES, DELTAS Y TIMELINE
+     * Genera las métricas, series temporales y eventos recientes para el dashboard.
      *
+     * @param  array<string, mixed>|null  $statsPrecalculadas
+     * @param  Collection<int, Tina>|null  $tinasPrecalculadas
+     * @param  Collection<int, Planta>|null  $plantasPrecalculadas
      * @return array<string, mixed>
      */
-    public function obtenerDatosDashboard(int $plantaId, string $rango = '7d', bool $incluirRed = true): array
-    {
+    public function obtenerDatosDashboard(
+        int $plantaId,
+        string $rango = '7d',
+        bool $incluirRed = true,
+        ?array $statsPrecalculadas = null,
+        ?Collection $tinasPrecalculadas = null,
+        ?Collection $plantasPrecalculadas = null
+    ): array {
         $hoy = Carbon::today();
         [$inicio, $fin, $etiquetaRango] = match ($rango) {
-            'hoy' => [$hoy->copy(), $hoy->copy(), 'Hoy'],
+            'hoy' => [$hoy->copy(), $hoy->copy(), __('lat.range_today')],
             'quincena' => [
                 $hoy->day <= 15 ? $hoy->copy()->startOfMonth() : $hoy->copy()->startOfMonth()->addDays(15),
                 $hoy->day <= 15 ? $hoy->copy()->startOfMonth()->addDays(14) : $hoy->copy()->endOfMonth(),
-                'Quincena actual',
+                __('lat.range_fortnight'),
             ],
-            'mes' => [$hoy->copy()->startOfMonth(), $hoy->copy()->endOfMonth(), 'Este mes'],
-            default => [$hoy->copy()->subDays(6), $hoy->copy(), 'Últimos 7 días'],
+            'mes' => [$hoy->copy()->startOfMonth(), $hoy->copy()->endOfMonth(), __('lat.range_month')],
+            default => [$hoy->copy()->subDays(6), $hoy->copy(), __('lat.range_7d')],
         };
 
         $dias = max(1, (int) $inicio->diffInDays($fin) + 1);
@@ -282,54 +354,41 @@ class LacteoService
         $prevDesde = $prevInicio->toDateString();
         $prevHasta = $prevFin->toDateString();
 
-        // Acopios período actual y anterior
-        $acopiosActual = Acopio::with('proveedor:id,codigo,nombre,sector')
-            ->where('planta_id', $plantaId)
-            ->whereDate('fecha', '>=', $desde)
-            ->whereDate('fecha', '<=', $hasta)
-            ->get();
+        $acopiosQuery = Acopio::with('proveedor:id,codigo,nombre,sector')->where('planta_id', $plantaId);
+        $this->aplicarRangoFecha($acopiosQuery, $desde, $hasta);
+        $acopiosActual = $acopiosQuery->get();
 
-        $acopiosPrevLitros = (float) Acopio::where('planta_id', $plantaId)
-            ->whereDate('fecha', '>=', $prevDesde)
-            ->whereDate('fecha', '<=', $prevHasta)
-            ->sum('litros');
+        $acopiosPrevQuery = Acopio::where('planta_id', $plantaId);
+        $this->aplicarRangoFecha($acopiosPrevQuery, $prevDesde, $prevHasta);
+        $acopiosPrevLitros = (float) $acopiosPrevQuery->sum('litros');
 
         $litrosTotal = round((float) $acopiosActual->sum('litros'), 1);
         $litrosBuena = round((float) $acopiosActual->where('calidad', 'buena')->sum('litros'), 1);
         $litrosAcida = round((float) $acopiosActual->where('calidad', 'acida')->sum('litros'), 1);
         $litrosPendiente = round((float) $acopiosActual->where('calidad', 'pendiente')->sum('litros'), 1);
-        $buenaPct = $litrosTotal > 0 ? round(($litrosBuena / $litrosTotal) * 100, 1) : 100.0;
+        $buenaPct = $litrosTotal > 0 ? round(($litrosBuena / $litrosTotal) * 100, 1) : 0.0;
 
-        // Movimientos período actual y anterior
-        $movsActual = Liquidacion::with('proveedor:id,nombre')
-            ->where('planta_id', $plantaId)
-            ->whereDate('fecha', '>=', $desde)
-            ->whereDate('fecha', '<=', $hasta)
-            ->get();
+        $movsQuery = Liquidacion::with('proveedor:id,nombre')->where('planta_id', $plantaId);
+        $this->aplicarRangoFecha($movsQuery, $desde, $hasta);
+        $movsActual = $movsQuery->get();
 
         $ventasActual = round((float) $movsActual->where('tipo', 'venta_producto')->sum('monto'), 2);
         $unidadesActual = (int) $movsActual->where('tipo', 'venta_producto')->sum('cantidad_unidades');
         $gastosActual = round((float) $movsActual->whereIn('tipo', ['ayuda_del_dia', 'gasto_operativo'])->sum('monto'), 2);
 
-        $ventasPrev = (float) Liquidacion::where('planta_id', $plantaId)
-            ->where('tipo', 'venta_producto')
-            ->whereDate('fecha', '>=', $prevDesde)
-            ->whereDate('fecha', '<=', $prevHasta)
-            ->sum('monto');
+        $ventasPrevQuery = Liquidacion::where('planta_id', $plantaId)->where('tipo', 'venta_producto');
+        $this->aplicarRangoFecha($ventasPrevQuery, $prevDesde, $prevHasta);
+        $ventasPrev = (float) $ventasPrevQuery->sum('monto');
 
-        // Lotes / moldes período actual y anterior
-        $lotesActual = Lote::where('planta_id', $plantaId)
-            ->whereDate('fecha', '>=', $desde)
-            ->whereDate('fecha', '<=', $hasta)
-            ->get();
+        $lotesQuery = Lote::where('planta_id', $plantaId);
+        $this->aplicarRangoFecha($lotesQuery, $desde, $hasta);
+        $lotesActual = $lotesQuery->get();
 
         $moldesActual = (int) $lotesActual->sum('moldes_producidos');
-        $moldesPrev = (int) Lote::where('planta_id', $plantaId)
-            ->whereDate('fecha', '>=', $prevDesde)
-            ->whereDate('fecha', '<=', $prevHasta)
-            ->sum('moldes_producidos');
+        $lotesPrevQuery = Lote::where('planta_id', $plantaId);
+        $this->aplicarRangoFecha($lotesPrevQuery, $prevDesde, $prevHasta);
+        $moldesPrev = (int) $lotesPrevQuery->sum('moldes_producidos');
 
-        // Series diarias para Chart.js
         $acopiosPorDia = $acopiosActual->groupBy(fn (Acopio $a) => $a->fecha?->format('Y-m-d') ?? substr((string) $a->fecha, 0, 10));
         $movsPorDia = $movsActual->groupBy(fn (Liquidacion $m) => $m->fecha?->format('Y-m-d') ?? substr((string) $m->fecha, 0, 10));
         $lotesPorDia = $lotesActual->groupBy(fn (Lote $l) => $l->fecha?->format('Y-m-d') ?? substr((string) $l->fecha, 0, 10));
@@ -357,39 +416,47 @@ class LacteoService
             $serieMoldes[] = (int) $grupoLote->sum('moldes_producidos');
         }
 
-        // Resumen de tinas de la planta
-        $tinasResumen = Tina::dePlanta($plantaId)
+        $tinas = $tinasPrecalculadas ?? Tina::dePlanta($plantaId)
             ->with('loteActivo')
             ->orderBy('codigo')
-            ->get()
-            ->map(function (Tina $tina): object {
-                $lote = $tina->loteActivo;
-                $ocupacion = $lote && $tina->capacidad_litros > 0
-                    ? min(100, (int) round(($lote->litros / $tina->capacidad_litros) * 100))
-                    : 0;
-                $termica = $lote ? $this->evaluarTermica($lote->temperatura_actual) : null;
+            ->get();
 
-                return (object) [
-                    'codigo' => $tina->codigo,
-                    'nombre' => $tina->nombre,
-                    'capacidad' => (float) $tina->capacidad_litros,
-                    'activa' => (bool) $tina->activa,
-                    'lote' => $lote?->codigo,
-                    'litros' => (float) ($lote?->litros ?? 0),
-                    'ocupacion' => $ocupacion,
-                    'temp' => $lote?->temperatura_actual,
-                    'estado' => $termica['estado'] ?? 'libre',
-                    'apta_cuajo' => $termica['apta'] ?? false,
-                ];
-            });
+        $tinasResumen = $tinas->map(function (Tina $tina): object {
+            $lote = $tina->loteActivo;
+            $ocupacion = $lote && $tina->capacidad_litros > 0
+                ? min(100, (int) round(($lote->litros / $tina->capacidad_litros) * 100))
+                : 0;
+            $termica = $lote ? $this->evaluarTermica($lote->temperatura_actual) : null;
 
-        // Feed de actividad reciente (últimos 8 eventos operativos)
+            return (object) [
+                'codigo' => $tina->codigo,
+                'nombre' => $tina->nombre,
+                'capacidad' => (float) $tina->capacidad_litros,
+                'activa' => (bool) $tina->activa,
+                'lote' => $lote?->codigo,
+                'litros' => (float) ($lote?->litros ?? 0),
+                'ocupacion' => $ocupacion,
+                'temp' => $lote?->temperatura_actual,
+                'estado' => $termica['estado'] ?? 'libre',
+                'apta_cuajo' => $termica['apta'] ?? false,
+            ];
+        });
+
         $eventos = collect();
         foreach (Acopio::with('proveedor:id,nombre')->where('planta_id', $plantaId)->latest('id')->limit(4)->get() as $ac) {
+            $metodoClave = 'lat.method_'.$ac->metodo;
+            $metodoTrad = __($metodoClave);
+            $metodoLabel = $metodoTrad !== $metodoClave ? $metodoTrad : $ac->metodo;
+            $detalle = match ($ac->calidad) {
+                'acida' => __('lat.quality_diverted'),
+                'pendiente' => __('lat.quality_pending'),
+                default => __('lat.quality_approved', ['method' => $metodoLabel]),
+            };
+
             $eventos->push((object) [
                 'tipo' => $ac->calidad === 'acida' ? 'alerta' : 'acopio',
-                'titulo' => ($ac->proveedor?->nombre ?? 'Productor').' · '.number_format($ac->litros, 1).' L',
-                'detalle' => $ac->calidad === 'acida' ? 'Derivada a quesillo 4 días' : 'Aprobada en recepción ('.$ac->metodo.')',
+                'titulo' => ($ac->proveedor?->nombre ?? __('lat.producer_default')).' · '.number_format($ac->litros, 1).' L',
+                'detalle' => $detalle,
                 'timestamp' => $ac->created_at ?? Carbon::parse($ac->fecha),
                 'fecha_txt' => ($ac->fecha?->format('d/m') ?? '').' '.substr((string) $ac->hora, 0, 5),
             ]);
@@ -404,7 +471,16 @@ class LacteoService
             ]);
         }
 
-        $statsRed = $this->obtenerEstadisticas($plantaId, $desde, $hasta);
+        $topProductores = $this->calcularTopProductores($acopiosActual, (float) $acopiosActual->sum('litros'));
+
+        $rankingPlantas = collect();
+        if ($incluirRed) {
+            if ($statsPrecalculadas !== null && isset($statsPrecalculadas['ranking_plantas']) && $rango === 'quincena') {
+                $rankingPlantas = $statsPrecalculadas['ranking_plantas'];
+            } else {
+                $rankingPlantas = $this->obtenerRankingPlantas($desde, $hasta, null, $plantasPrecalculadas)['ranking_plantas'];
+            }
+        }
 
         return [
             'rango' => $rango,
@@ -450,10 +526,103 @@ class LacteoService
                 'pendiente' => $litrosPendiente,
             ],
             'tinas_resumen' => $tinasResumen,
-            'top_productores' => $statsRed['top_productores'],
-            'ranking_plantas' => $incluirRed ? $statsRed['ranking_plantas'] : collect(),
+            'top_productores' => $topProductores,
+            'ranking_plantas' => $rankingPlantas,
             'actividad_reciente' => $eventos->sortByDesc('timestamp')->values()->take(7),
         ];
+    }
+
+    /**
+     * @param  Collection<int, Planta>|null  $plantasPrecalculadas
+     * @return array{ranking_plantas: Collection<int, object>, total_ventas_red: float, moldes_por_planta: Collection<int, int|string>}
+     */
+    private function obtenerRankingPlantas(
+        string $desde,
+        string $hasta,
+        ?int $soloPlantaId = null,
+        ?Collection $plantasPrecalculadas = null
+    ): array {
+        $plantas = $plantasPrecalculadas !== null
+            ? ($soloPlantaId !== null
+                ? $plantasPrecalculadas->where('id', $soloPlantaId)->values()
+                : $plantasPrecalculadas->sortBy('nombre')->values())
+            : Planta::query()
+                ->when($soloPlantaId !== null, fn ($q) => $q->where('id', $soloPlantaId))
+                ->orderBy('nombre')
+                ->get(['id', 'codigo', 'nombre', 'ubicacion', 'precio_litro', 'activa']);
+
+        $ventasQuery = Liquidacion::where('tipo', 'venta_producto')
+            ->when($soloPlantaId !== null, fn ($q) => $q->where('planta_id', $soloPlantaId));
+        $this->aplicarRangoFecha($ventasQuery, $desde, $hasta);
+        $ventasPorPlanta = $ventasQuery
+            ->groupBy('planta_id')
+            ->selectRaw('planta_id, SUM(monto) as total_ventas, SUM(cantidad_unidades) as total_unidades, COUNT(*) as num_ventas')
+            ->get()
+            ->keyBy('planta_id');
+
+        $acopiosQuery = Acopio::query()
+            ->when($soloPlantaId !== null, fn ($q) => $q->where('planta_id', $soloPlantaId));
+        $this->aplicarRangoFecha($acopiosQuery, $desde, $hasta);
+        $acopiosPorPlanta = $acopiosQuery
+            ->groupBy('planta_id')
+            ->selectRaw('planta_id, SUM(litros) as total_litros, COUNT(*) as num_entregas')
+            ->get()
+            ->keyBy('planta_id');
+
+        $moldesQuery = Lote::query()
+            ->when($soloPlantaId !== null, fn ($q) => $q->where('planta_id', $soloPlantaId));
+        $this->aplicarRangoFecha($moldesQuery, $desde, $hasta);
+        $moldesPorPlanta = $moldesQuery
+            ->groupBy('planta_id')
+            ->selectRaw('planta_id, SUM(moldes_producidos) as total_moldes')
+            ->pluck('total_moldes', 'planta_id');
+
+        $totalVentasRed = (float) $ventasPorPlanta->sum('total_ventas');
+
+        $rankingPlantas = $plantas->map(function (Planta $planta) use ($ventasPorPlanta, $acopiosPorPlanta, $moldesPorPlanta, $totalVentasRed): object {
+            $v = $ventasPorPlanta->get($planta->id);
+            $a = $acopiosPorPlanta->get($planta->id);
+            $ventasMonto = round((float) ($v->total_ventas ?? 0), 2);
+            $litros = round((float) ($a->total_litros ?? 0), 1);
+
+            return (object) [
+                'planta_id' => $planta->id,
+                'codigo' => $planta->codigo,
+                'nombre' => $planta->nombre,
+                'ubicacion' => $planta->ubicacion,
+                'activa' => (bool) $planta->activa,
+                'ventas_monto' => $ventasMonto,
+                'ventas_unidades' => (int) ($v->total_unidades ?? 0),
+                'num_ventas' => (int) ($v->num_ventas ?? 0),
+                'litros_acopiados' => $litros,
+                'num_entregas' => (int) ($a->num_entregas ?? 0),
+                'moldes_producidos' => (int) ($moldesPorPlanta[$planta->id] ?? 0),
+                'participacion_pct' => $totalVentasRed > 0 ? round(($ventasMonto / $totalVentasRed) * 100, 1) : 0.0,
+            ];
+        })->sortByDesc(fn (object $p): array => [$p->ventas_monto, $p->litros_acopiados])->values();
+
+        return [
+            'ranking_plantas' => $rankingPlantas,
+            'total_ventas_red' => round($totalVentasRed, 2),
+            'moldes_por_planta' => $moldesPorPlanta,
+        ];
+    }
+
+    private function calcularTopProductores(Collection $acopios, float $totalLitros): Collection
+    {
+        return $acopios->groupBy('proveedor_id')->map(function (Collection $grupo) use ($totalLitros): object {
+            $prov = $grupo->first()?->proveedor;
+            $litros = round((float) $grupo->sum('litros'), 1);
+
+            return (object) [
+                'codigo' => $prov?->codigo ?? __('lat.no_code'),
+                'nombre' => $prov?->nombre ?? __('lat.producer_default'),
+                'sector' => $prov?->sector ?? '',
+                'litros' => $litros,
+                'entregas' => $grupo->count(),
+                'porcentaje' => $totalLitros > 0 ? round(($litros / $totalLitros) * 100, 1) : 0.0,
+            ];
+        })->sortByDesc('litros')->values()->take(6);
     }
 
     private function calcularDeltaPct(float $actual, float $anterior): ?float
@@ -463,29 +632,5 @@ class LacteoService
         }
 
         return round((($actual - $anterior) / $anterior) * 100, 1);
-    }
-
-    /**
-     * Mantiene método CSV legado por compatibilidad si alguna prueba o ruta lo invoca.
-     */
-    public function exportarCsv(Collection $liquidaciones): string
-    {
-        $salida = "CODIGO,GANADERO,SECTOR,LITROS,PRECIO_LITRO,BRUTO,ADELANTOS,COMISION_LAT,NETO_A_PAGAR\n";
-        foreach ($liquidaciones as $fila) {
-            $salida .= sprintf(
-                "\"%s\",\"%s\",\"%s\",%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n",
-                $fila->codigo,
-                $fila->nombre,
-                $fila->sector ?? 'Cusco Provincia',
-                $fila->litros,
-                $fila->precio_litro,
-                $fila->bruto,
-                $fila->adelantos,
-                $fila->comision,
-                $fila->neto
-            );
-        }
-
-        return $salida;
     }
 }

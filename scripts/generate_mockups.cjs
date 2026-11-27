@@ -4,8 +4,7 @@ const fs = require('fs');
 
 const BASE_URL = 'http://127.0.0.1:8000';
 const OUT_DIRS = [
-  path.resolve(__dirname, '../mockups'),
-  path.resolve('d:/Programación WEB/LAT/mockups')
+  path.resolve(__dirname, '../docs/mockups')
 ];
 
 OUT_DIRS.forEach(dir => {

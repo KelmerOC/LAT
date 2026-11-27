@@ -8,21 +8,21 @@
   <title>@yield('titulo', 'LAT · Plataforma Láctea Comunitaria')</title>
 
   <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
+  <link rel="manifest" href="{{ asset('manifest.json') }}">
   <link rel="preload" href="{{ asset('fonts/inter-var-latin.woff2') }}" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="{{ asset('css/lat-design-system.css') }}">
   <script src="{{ asset('js/lat-i18n.js') }}"></script>
+  <script src="{{ asset('js/lat-offline.js') }}" defer></script>
   @stack('styles')
 </head>
-<body class="@yield('body_class')">
+<body class="@yield('body_class')" data-title-i18n="@yield('title_i18n', 'title.home')">
   <a href="#contenido-principal" class="skip-link" data-i18n="nav.skip">Saltar al contenido principal</a>
 
   @unless(View::hasSection('sin_chrome_publico'))
   <div class="header-sitio">
-    <!-- Navegación principal Swiss-Grid (altura 68px, borde 1px inferior, barra única unificada) -->
     <header class="nav-principal">
       <div class="contenedor nav-principal-inner">
-        <!-- Izquierda: Logotipo y marca LAT -->
-        <a href="{{ route('inicio') }}" class="logo-lat" aria-label="LAT Lácteos, ir al inicio">
+        <a href="{{ route('inicio') }}" class="logo-lat" aria-label="LAT Lácteos, ir al inicio" data-i18n-aria="nav.logo_aria">
           <img src="{{ asset('brand/isotipo_queso_frasco.svg') }}" alt="" width="40" height="40" onerror="this.src='{{ asset('favicon.svg') }}'">
           <span>
             <strong>LAT</strong>
@@ -30,18 +30,11 @@
           </span>
         </a>
 
-        <!-- Centro: Enlaces horizontales perfectamente centrados en el eje 50% con chevrons (⌄) -->
-        <nav aria-label="Principal" class="menu-links" id="menu-links">
+        <nav aria-label="Principal" data-i18n-aria="nav.main_aria" class="menu-links" id="menu-links">
           <div class="menu-links-list">
             <a class="enlace-nav" href="{{ route('inicio') }}" @if(request()->routeIs('inicio')) aria-current="page" @endif data-i18n="nav.home">Inicio</a>
-            <a class="enlace-nav" href="{{ route('inicio') }}#soluciones">
-              <span data-i18n="nav.tools">Herramientas</span>
-              <svg class="chevron-nav" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
-            </a>
-            <a class="enlace-nav" href="{{ route('inicio') }}#empresas-familiares">
-              <span data-i18n="nav.families">Empresas Familiares</span>
-              <svg class="chevron-nav" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
-            </a>
+            <a class="enlace-nav" href="{{ route('inicio') }}#soluciones" data-i18n="nav.tools">Herramientas</a>
+            <a class="enlace-nav" href="{{ route('inicio') }}#empresas-familiares" data-i18n="nav.families">Empresas Familiares</a>
             <a class="enlace-nav" href="{{ route('inicio') }}#nosotros" data-i18n="nav.about">Nosotros</a>
           </div>
 
@@ -49,7 +42,7 @@
           <div class="menu-mobile-session">
             <div class="mobile-lang-section">
               <span class="mobile-lang-title" data-i18n="nav.lang_title">Idioma de la plataforma</span>
-              <div class="mobile-lang-grid" role="group" aria-label="Seleccionar idioma">
+              <div class="mobile-lang-grid" role="group" aria-label="Seleccionar idioma" data-i18n-aria="nav.select_lang_aria">
                 <button type="button" class="btn-lang-choice activo" data-lang="es" aria-pressed="true">
                   <strong>ES</strong>
                   <span>Español</span>
@@ -68,7 +61,7 @@
             @auth
               <div class="mobile-user-card">
                 <span class="mobile-user-name">{{ Auth::user()->name }}</span>
-                <span class="mobile-user-role">{{ strtoupper(str_replace('_', ' ', Auth::user()->cargo)) }}</span>
+                <span class="mobile-user-role" data-i18n="m6.role_{{ Auth::user()->cargo }}">{{ Auth::user()->etiquetaCargo() }}</span>
               </div>
               <a href="{{ route('panel') }}" class="btn btn-ember btn-bloque" @if(request()->routeIs('panel')) aria-current="page" @endif>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
@@ -91,16 +84,14 @@
           </div>
         </nav>
 
-        <!-- Derecha: Selector de Idioma Desplegable + Enlace Auth + Botón rectangular -->
         <div class="nav-acciones nav-acciones-desktop">
-          <!-- Selector de idioma desplegable [ 🌐 ES ▾ ] -->
           <div class="lang-dropdown" id="lang-dropdown">
-            <button type="button" class="btn-lang-trigger" id="btn-lang-trigger" aria-haspopup="listbox" aria-expanded="false" aria-label="Cambiar idioma de la plataforma">
+            <button type="button" class="btn-lang-trigger" id="btn-lang-trigger" aria-haspopup="listbox" aria-expanded="false" aria-label="Cambiar idioma de la plataforma" data-i18n-aria="nav.change_lang_aria">
               <svg class="lang-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20M2 12h20"/></svg>
               <span id="lang-current-label">ES</span>
               <svg class="chevron-nav" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
             </button>
-            <div class="lang-dropdown-menu" id="lang-dropdown-menu" role="listbox" aria-label="Idiomas disponibles">
+            <div class="lang-dropdown-menu" id="lang-dropdown-menu" role="listbox" aria-label="Idiomas disponibles" data-i18n-aria="nav.langs_aria">
               <button type="button" class="lang-opt activo" role="option" aria-selected="true" data-lang="es">
                 <strong>ES</strong> · Español
               </button>
@@ -116,7 +107,7 @@
           @auth
             <form method="POST" action="{{ route('logout') }}" style="display: inline;">
               @csrf
-              <button type="submit" class="enlace-auth-texto" aria-label="Salir de la sesión de {{ Auth::user()->name }}" data-i18n="nav.logout">Cerrar Sesión</button>
+              <button type="submit" class="enlace-auth-texto" aria-label="Salir de la sesión de {{ Auth::user()->name }}" data-i18n-aria="nav.logout_aria" data-i18n="nav.logout">Cerrar Sesión</button>
             </form>
             <a href="{{ route('panel') }}" class="btn btn-ember btn-cta-nav" @if(request()->routeIs('panel')) aria-current="page" @endif data-i18n="nav.panel">Mi Panel</a>
           @else
@@ -128,12 +119,12 @@
         <!-- Controles Móvil: Dropdown de Idioma + Menú Hamburguesa (<= 860px) -->
         <div class="nav-controles-mobile">
           <div class="lang-dropdown" id="lang-dropdown-mobile">
-            <button type="button" class="btn-lang-trigger btn-lang-compact" id="btn-lang-trigger-mobile" aria-haspopup="listbox" aria-expanded="false" aria-label="Cambiar idioma">
+            <button type="button" class="btn-lang-trigger btn-lang-compact" id="btn-lang-trigger-mobile" aria-haspopup="listbox" aria-expanded="false" aria-label="Cambiar idioma" data-i18n-aria="nav.change_lang_aria">
               <svg class="lang-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20M2 12h20"/></svg>
               <span class="lang-mobile-current">ES</span>
               <svg class="chevron-nav" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
             </button>
-            <div class="lang-dropdown-menu" id="lang-dropdown-menu-mobile" role="listbox" aria-label="Idiomas disponibles">
+            <div class="lang-dropdown-menu" id="lang-dropdown-menu-mobile" role="listbox" aria-label="Idiomas disponibles" data-i18n-aria="nav.langs_aria">
               <button type="button" class="lang-opt activo" role="option" aria-selected="true" data-lang="es">
                 <strong>ES</strong> · Español
               </button>
@@ -146,7 +137,7 @@
             </div>
           </div>
 
-          <button type="button" class="btn-menu-hamburguesa" id="btn-menu" aria-expanded="false" aria-controls="menu-links" aria-label="Abrir menú de navegación">
+          <button type="button" class="btn-menu-hamburguesa" id="btn-menu" aria-expanded="false" aria-controls="menu-links" aria-label="Abrir menú de navegación" data-i18n-aria="nav.open_menu_aria">
             <span class="hamb-box" aria-hidden="true">
               <span class="hamb-line"></span>
               <span class="hamb-line"></span>
@@ -179,7 +170,7 @@
         <div class="alerta alerta-roja" role="alert">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 2 20h20L12 3Z"/><path d="M12 10v4M12 17h.01"/></svg>
           <div>
-            <strong>Revise los siguientes campos:</strong>
+            <strong data-i18n="common.review_errors">Revise los siguientes campos:</strong>
             <ul>
               @foreach($errors->all() as $err)
                 <li>{{ $err }}</li>
@@ -195,24 +186,23 @@
     @yield('contenido')
   </main>
 
-  <!-- Pie de página monumental -->
   @unless(View::hasSection('sin_chrome_publico'))
   <footer class="footer-sitio">
     <div class="aguada" aria-hidden="true"></div>
     <div class="contenedor">
       <div class="footer-grid">
         <div>
-          <h2 class="footer-col-tit" style="font-size: 1.25rem;">LAT Lácteos</h2>
-          <p data-i18n="footer.desc">Software universitario comunitario para microempresas queseras y asociaciones ganaderas de Cusco Provincia. Comisión S/ 0.00 por principio de diseño.</p>
+          <h2 class="footer-col-tit" style="font-size: 1.25rem;" data-i18n="footer.brand_title">LAT Lácteos</h2>
+          <p data-i18n="footer.desc">Herramienta de registro diario para queserías artesanales y asociaciones ganaderas de Cusco Provincia.</p>
         </div>
-        <nav aria-label="Pie de página">
+        <nav aria-label="Pie de página" data-i18n-aria="footer.nav_aria">
           <h2 class="footer-col-tit" data-i18n="footer.explore">Explorar</h2>
           <ul class="footer-links-list">
             <li><a href="{{ route('inicio') }}" data-i18n="nav.home">Inicio</a></li>
-            <li><a href="{{ route('inicio') }}#soluciones" data-i18n="nav.tools">Herramientas de campo</a></li>
-            <li><a href="{{ route('inicio') }}#empresas-familiares" data-i18n="nav.families">Empresas familiares</a></li>
+            <li><a href="{{ route('inicio') }}#soluciones" data-i18n="nav.tools">Herramientas</a></li>
+            <li><a href="{{ route('inicio') }}#empresas-familiares" data-i18n="nav.families">Empresas Familiares</a></li>
             <li><a href="{{ route('inicio') }}#nosotros" data-i18n="nav.about">Nosotros</a></li>
-            <li><a href="{{ route('login') }}" data-i18n="nav.login">Iniciar sesión</a></li>
+            <li><a href="{{ route('login') }}" data-i18n="nav.login">Iniciar Sesión</a></li>
           </ul>
         </nav>
         <div>
@@ -225,7 +215,7 @@
           </ul>
         </div>
       </div>
-      <p class="footer-bottom" data-i18n="footer.bottom">&copy; {{ date('Y') }} LAT Comunitario · Código libre académico</p>
+      <p class="footer-bottom" data-i18n="footer.bottom">&copy; {{ date('Y') }} LAT · Gestión Láctea Rural · Cusco</p>
     </div>
     <span class="footer-wordmark" aria-hidden="true">LAT</span>
   </footer>
@@ -246,6 +236,7 @@
       }
       cerrarTodosDropdownsIdioma();
       if (persistServer) {
+        document.cookie = 'lat_locale=' + encodeURIComponent(lang) + '; path=/; max-age=31536000; SameSite=Lax';
         fetch('{{ url('/idioma') }}/' + encodeURIComponent(lang), {
           headers: { 'Accept': 'application/json' },
           credentials: 'same-origin'
@@ -256,7 +247,19 @@
     // Aplicar idioma guardado al cargar la vista
     document.addEventListener('DOMContentLoaded', () => {
       if (window.LAT_I18N) {
-        window.LAT_I18N.apply(window.LAT_I18N.getLang());
+        const params = new URLSearchParams(window.location.search);
+        const urlLang = params.get('lang') || params.get('locale');
+        const serverLocale = document.documentElement.dataset.serverLocale;
+        let targetLang = window.LAT_I18N.getLang();
+        if (!urlLang) {
+          try {
+            const saved = localStorage.getItem('lat_lang');
+            if (saved && ['es', 'qu', 'en'].includes(saved) && !serverLocale) {
+              targetLang = saved;
+            }
+          } catch (_) {}
+        }
+        window.LAT_I18N.apply(targetLang);
       }
     });
 
@@ -291,18 +294,24 @@
     // Menú móvil desplegable (drawer)
     const btnMenu = document.getElementById('btn-menu');
     const menu = document.getElementById('menu-links');
+    const getMenuAria = (abierto) => {
+      if (window.LAT_I18N) {
+        return window.LAT_I18N.t(abierto ? 'nav.close_menu_aria' : 'nav.open_menu_aria');
+      }
+      return abierto ? 'Cerrar menú de navegación' : 'Abrir menú de navegación';
+    };
     if (btnMenu && menu) {
       btnMenu.addEventListener('click', () => {
         const abierto = menu.classList.toggle('abierto');
         btnMenu.setAttribute('aria-expanded', abierto ? 'true' : 'false');
-        btnMenu.setAttribute('aria-label', abierto ? 'Cerrar menú de navegación' : 'Abrir menú de navegación');
+        btnMenu.setAttribute('aria-label', getMenuAria(abierto));
       });
       // Cerrar al hacer clic en un enlace de navegación
       menu.addEventListener('click', e => {
         if (e.target.closest('a')) {
           menu.classList.remove('abierto');
           btnMenu.setAttribute('aria-expanded', 'false');
-          btnMenu.setAttribute('aria-label', 'Abrir menú de navegación');
+          btnMenu.setAttribute('aria-label', getMenuAria(false));
         }
       });
     }
@@ -315,7 +324,7 @@
           menu.classList.remove('abierto');
           if (btnMenu) {
             btnMenu.setAttribute('aria-expanded', 'false');
-            btnMenu.setAttribute('aria-label', 'Abrir menú de navegación');
+            btnMenu.setAttribute('aria-label', getMenuAria(false));
             btnMenu.focus();
           }
         }

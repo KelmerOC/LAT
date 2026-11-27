@@ -156,3 +156,40 @@ This project has domain-specific skills available in `**/skills/**`. You MUST ac
 - Run `vendor/bin/phpunit` to call the test runner directly. It accepts the same file path and `--filter=testName` arguments.
 
 </laravel-boost-guidelines>
+
+---
+
+# LAT Compacto — Reglas Específicas del Proyecto
+
+## Arquitectura Frontend y Diseño (`DESIGN.md`)
+- **Activos estáticos en `public/`**: la aplicación carga directamente `public/css/lat-design-system.css`, `public/css/lat-dashboard.css`, `public/js/lat-i18n.js`, `public/js/lat-offline.js`, `public/js/lat-notificaciones.js`, `public/js/lat-finanzas-grid.js`, `public/js/lat-qr.js` (solo en la landing page `/`) y `public/sw.js` (no usa `@vite` en las vistas activas).
+- **Sistema visual Swiss-Grid (`DESIGN.md`)**: mantener esquinas rectas (`border-radius: 0px` o `2px`), `box-shadow: none`, hairlines `1px solid var(--color-hairline)` y contraste accesible (`#c2410c` para botones primarios).
+- **Accesibilidad de formularios**: todo `<input>` (salvo `hidden`) y `<select>` visible DEBE tener un `<label for="...">` coincidente o envolvente (verificado por `tests/e2e/visual-standards.cjs`).
+- **Selector de idioma en Dashboard**: el selector `ES | QU | EN` vive únicamente en la barra lateral (`resources/views/panel/partials/sidebar.blade.php`, `.dash-lang-row`); no duplicarlo en la barra superior (`topbar.blade.php`).
+- **Paridad trilingüe (`es`, `qu`, `en`)**: toda etiqueta, aviso inline, mensaje de confirmación o flash debe existir simultáneamente en `public/js/lat-i18n.js` (`es`, `qu` Qusqu-Qullaw trivocálico, `en`) y en `lang/{es,qu,en}/lat.php`.
+
+## Reglas Operativas del Panel (`/panel`)
+- **Gobierno del Administrador Total y Aislamiento de Administradores de Planta**:
+  - Por defecto, el Administrador Total (`cargo = 'administracion'`) puede **visualizar todo**, pero NO tiene permisos de escritura en `1. Acopio`, `2. Calidad sanitaria` ni `3. Tinas y receta`; opera normalmente en `4. Liquidación y ventas`, `5. Estadísticas` y `6. Plantas y usuarios`. Puede habilitar/deshabilitar temporalmente las funciones operativas en sesión (`session('admin_modo_operativo')`) desde el botón `#btn-toggle-modo-operativo` del topbar con confirmación modal (`POST /panel/admin/modo-operativo`).
+  - Cada Administrador/Encargado de planta (`encargado_planta`) está aislado estrictamente a su propia planta (`planta_id`), solo gestiona usuarios de su planta y nunca tiene `admin.plantas` ni `dashboard.ver_red`.
+  - `App\Services\InformePlantaService` registra bitácora (`actividades_planta`) y genera informes en texto plano (`informes_actividad_planta`) automáticamente cada 24h (`lat:generar-informes-planta` / polling admin) o manualmente (`POST /panel/informes-planta/enviar`). El historial completo con filtros y descarga `.txt` (`GET /panel/estadisticas/informes/{id}/descargar`) en `#sec-estadisticas` es **exclusivo del Administrador Total**.
+- **Flujo obligatorio `1. Acopio → 2. Calidad Sanitaria → 3. Tinas`**:
+  - Todo acopio nuevo (`POST /panel/acopio` y `POST /panel/acopio/sync`) nace con `calidad = 'pendiente'` y `destino = 'pendiente'`.
+  - El rol `recolector_ruta` incluye `acopio.editar` para corregir o eliminar acopios con confirmación modal.
+  - Cuando Web Speech API reconoce productor y litros válidos (`1..5000`), `#form-acopio` se envía automáticamente (online con flash `acopio_voz_reciente`, offline vía `lat-offline.js`) mostrando `#aviso-acopio-voz`.
+  - Tanto editar (`#form-edit-acopio`, `data-confirm-kind="edit_acopio"`) como eliminar acopios requieren pasar por `#modal-confirmacion-lat` (`.modal-overlay-confirm` con `z-index: 1200`). Al pulsar `Escape` en modales apilados, primero se cierra únicamente el modal de confirmación.
+- **Control Sanitario (3 acciones con confirmación coloreada)**:
+  - `POST /panel/calidad/{id}` admite `buena` (aprobar), `acida` (desviar a quesillo) y `descartada` (eliminar por completo), guardando `evaluado_en` y emitiendo una notificación en `notificaciones_panel` hacia Tinas (dirigida únicamente a `encargado_planta` y `control_tina`). Si `acopios.lote_id !== null`, se bloquea la reclasificación/descarte.
+  - En `#modal-confirmacion-lat`, `#confirm-modal-badge` muestra siempre un aviso en negrita coloreado (`.is-verde`, `.is-amarillo`, `.is-rojo`) antes de confirmar.
+- **Tinas trazables, recetas/cronómetro editables y notificaciones segmentadas (`App\Services\TinaWorkflowService`)**:
+  - `#sec-tina` muestra `#aviso-calidad-tinas` (aviso inline permanente sobre leche disponible sin asignar) y un único modal reutilizable `#modal-iniciar-tina` (`data-confirm-kind="start_batch"`) con selección múltiple de `acopio_ids[]` clasificados (`lote_id IS NULL`), filtros por calidad/día/fecha/orden, recetas base configurables en `plantas.recetas_base` (`PUT /panel/tinas/recetas-base`), proporciones (`cuajo_ml`, `sal_kg`, `cultivo_g`) y cronómetro (`duracion_minutos`) editables al iniciar y durante el lote.
+  - `tinas.tipo` es `string(80)` (sugerencias en `<datalist>` + texto libre); el prefijo del código de tina sigue el idioma activo (`TINA-` en `es`/`qu`, `VAT-` en `en`) y el de plantas es siempre fijo `PLT-`.
+  - Notificaciones segmentadas: las alertas de Tinas/Calidad llegan **únicamente** a `encargado_planta` y `control_tina` (`personalizado` solo si posee `tinas.operar`); las comunicaciones entre Contador y Administradores (envío/revisión Excel o `POST /panel/notificaciones/contable`) llegan con `color_tema = 'verde'` (`.is-color-verde`, sombreado verde); las alertas de informes de planta llegan únicamente al Administrador Total (`alcance_global = true`).
+- **Área de Liquidación estilo Excel (`#sec-quincena`, `public/js/lat-finanzas-grid.js`)**:
+  - Tablas separadas con filtros propios, barra `fx` y descargas `.xlsx` exclusivas (`?solo=liquidacion`, `?solo=ventas`, `?solo=sueldos`): Liquidación de proveedores editable inline (`PUT /panel/finanzas/liquidacion-grid`), Ventas de productos (`venta_producto`) y Sueldos/Jornales/Pagos (`sueldo_personal`, `ayuda_del_dia` sin DNI, adelantos y gastos). Sin tabla combinada de movimientos recientes.
+  - Envío y revisión de Excel al Contador pasan por `#modal-confirmacion-lat` con aviso en negritas y generan notificación sombreada en verde.
+- **QR Público en Landing Page (sin QR interno en `/panel`)**:
+  - El antiguo módulo QR interno (`admin.qr`, `/panel/admin/qr*`, `/acceso-qr/*`) fue eliminado. `public/js/lat-qr.js` se utiliza en la portada `/` (`#anuncio-qr-registro`, `#landing-qr-svg`) como anuncio público **"Puedes registrarte ahora"** hacia `/registrarse`.
+- **Service Worker (`public/sw.js`)**: en `lat-compacto-v6`; nunca cachear endpoints dinámicos con efectos de sesión, descarga o polling (`exportar`, `reportes-excel`, `/idioma`, `/panel/notificaciones`, `/estadisticas/informes`, `/admin/modo-operativo`). Al modificar assets estáticos o reglas de caché, incrementar `CACHE_VERSION`.
+- **Presupuesto de consultas y entorno local Windows**: mantener el techo N+1 de `GET /panel` en `<= 42` consultas (reutilizar colecciones ya cargadas como `$plantas`). En Windows donde `php.ini` no habilita SQLite por defecto, ejecutar PHPUnit con `php -d extension=pdo_sqlite -d extension=sqlite3 vendor/bin/phpunit`.
+

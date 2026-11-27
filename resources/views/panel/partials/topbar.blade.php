@@ -1,6 +1,6 @@
 <header class="dash-topbar">
   <div class="dash-topbar-left">
-    <button type="button" class="dash-burger" id="btn-sidebar-open" aria-label="Abrir menú lateral" aria-controls="dash-sidebar" aria-expanded="false">
+    <button type="button" class="dash-burger" id="btn-sidebar-open" aria-label="Abrir menú lateral" data-i18n-aria="topbar.open_sidebar_aria" aria-controls="dash-sidebar" aria-expanded="false">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
     </button>
     <div class="dash-breadcrumb">
@@ -10,14 +10,50 @@
   </div>
 
   <div class="dash-topbar-right">
-    <div class="dash-topbar-lang" role="group" aria-label="Idioma de la plataforma">
-      <button type="button" class="dash-lang-pill btn-lang-choice" data-lang="es" title="Español">ES</button>
-      <button type="button" class="dash-lang-pill btn-lang-choice" data-lang="qu" title="Runasimi (Quechua)">QU</button>
-      <button type="button" class="dash-lang-pill btn-lang-choice" data-lang="en" title="English">EN</button>
+    <div class="lat-net-status">
+      <span id="lat-net-badge" class="chip chip-verde is-online" role="status" aria-live="polite">
+        <span class="lat-net-dot" aria-hidden="true"></span>
+        <span id="lat-net-text">En línea</span>
+      </span>
+      <button type="button" id="btn-sync-offline" class="btn-micro" hidden>Sincronizar ahora</button>
+    </div>
+
+    @php
+      $notifData = $notificacionesPanel ?? ['items' => [], 'no_leidas' => 0, 'ultimo_id' => 0];
+      $notifNoLeidas = (int) ($notifData['no_leidas'] ?? 0);
+    @endphp
+    <div class="lat-notif-wrap">
+      <button type="button" id="btn-notificaciones" class="btn btn-outline lat-notif-btn" aria-expanded="false" aria-controls="tray-notificaciones" aria-label="Bandeja de notificaciones" data-i18n-aria="notif.tray_aria">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <span class="lat-notif-label" data-i18n="notif.tray_btn">Bandeja</span>
+        <span id="notif-badge-count" class="chip chip-ember lat-notif-count" @if($notifNoLeidas === 0) hidden @endif>{{ $notifNoLeidas }}</span>
+      </button>
+      <div id="tray-notificaciones" class="lat-notif-tray" hidden
+        data-poll-url="{{ route('panel.notificaciones.poll') }}"
+        data-read-url="{{ route('panel.notificaciones.leer') }}"
+        data-last-id="{{ (int) ($notifData['ultimo_id'] ?? 0) }}">
+        <div class="lat-notif-tray-head">
+          <strong data-i18n="notif.tray_title">Alertas y bandeja operativa</strong>
+          <button type="button" id="btn-notif-marcar-todas" class="btn-micro" data-i18n="notif.mark_all_read">Marcar leídas</button>
+        </div>
+        <ul id="notif-tray-list" class="lat-notif-list">
+          @forelse(($notifData['items'] ?? []) as $nf)
+            <li class="lat-notif-item {{ !empty($nf['leida']) ? 'is-read' : 'is-unread' }} is-{{ $nf['tipo'] ?? 'info' }} is-color-{{ $nf['color_tema'] ?? 'default' }}" data-notif-id="{{ $nf['id'] }}" data-modulo="{{ $nf['modulo_destino'] ?? 'general' }}" data-color-tema="{{ $nf['color_tema'] ?? 'default' }}">
+              <div class="lat-notif-item-head">
+                <strong>{{ $nf['titulo'] }}</strong>
+                <small class="num-tabular">{{ $nf['creada_en'] ?? '' }}</small>
+              </div>
+              <p>{{ $nf['mensaje'] }}</p>
+            </li>
+          @empty
+            <li class="lat-notif-empty" data-i18n="notif.empty">Sin alertas nuevas en esta planta.</li>
+          @endforelse
+        </ul>
+      </div>
     </div>
 
     @if($usuario->puedeVerSeccion('dashboard'))
-      <nav class="dash-range-pills" aria-label="Filtro de período del dashboard">
+      <nav class="dash-range-pills" id="dash-range-pills" aria-label="Filtro de período del dashboard" data-i18n-aria="topbar.range_aria">
         @foreach(['hoy' => 'Hoy', '7d' => '7 días', 'quincena' => 'Quincena', 'mes' => 'Mes'] as $claveRango => $etqRango)
           <a href="{{ route('panel', ['rango' => $claveRango]) }}" class="dash-range-pill {{ $rango === $claveRango ? 'activo' : '' }}" data-i18n="dash.range_{{ $claveRango }}">
             {{ $etqRango }}
@@ -40,6 +76,16 @@
       </form>
     @endif
 
+    @if($usuario->esAdmin())
+      <form method="POST" action="{{ route('panel.admin.modo_operativo') }}" id="form-toggle-modo-operativo" class="js-confirm-form" data-confirm-kind="toggle_admin_ops" data-activar="{{ !empty($modoOperativoAdmin) ? '0' : '1' }}" style="margin: 0;">
+        @csrf
+        <input type="hidden" name="activar" value="{{ !empty($modoOperativoAdmin) ? '0' : '1' }}">
+        <button type="submit" id="btn-toggle-modo-operativo" class="btn {{ !empty($modoOperativoAdmin) ? 'btn-verde' : 'btn-outline' }} btn-compacto" data-i18n="{{ !empty($modoOperativoAdmin) ? 'topbar.admin_ops_disable' : 'topbar.admin_ops_enable' }}">
+          {{ !empty($modoOperativoAdmin) ? 'Modo operativo: Activo' : 'Activar modo operativo' }}
+        </button>
+      </form>
+    @endif
+
     @if($usuario->tieneAlgunPermiso(['acopio.editar', 'finanzas.editar', 'acopio.proveedores']))
       <button type="button" id="btn-abrir-editar-datos" class="btn btn-outline" data-open-modal="modal-editar-datos">
         {!! $icoEditar !!} <span data-i18n="panel.btn_edit_data">Editar datos</span>
@@ -53,3 +99,4 @@
     @endif
   </div>
 </header>
+<div id="lat-live-alert-stack" class="lat-live-alert-stack" aria-live="polite"></div>

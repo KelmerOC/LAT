@@ -1,9 +1,9 @@
 @extends('layouts.app')
 
-@section('titulo', 'LAT · Plataforma Láctea Comunitaria · Cusco Provincia')
+@section('titulo', 'LAT · Gestión Láctea Rural · Cusco Provincia')
+@section('title_i18n', 'title.home')
 
 @section('contenido')
-  <!-- HERO: Lienzo acuarela + Grilla editorial suiza + Carrusel con botón (+) -->
   <section class="hero-farm-wrap hero-acuarela lienzo-acuarela" aria-labelledby="hero-titular">
     <div class="aguada aguada-cielo" aria-hidden="true"></div>
     <div class="contenedor hero-grid">
@@ -13,7 +13,7 @@
         </h1>
 
         <p id="hero-sub" class="hero-bajada" data-i18n="hero.sub">
-          Digitalización accesible para centros de acopio rural, control sanitario de porongo en recepción, monitoreo térmico de tina y liquidaciones transparentes al 0% de comisión.
+          Registro diario para centros de acopio rural, control de leche en recepción, seguimiento térmico de tinas y liquidaciones quincenales claras para el productor.
         </p>
 
         <div class="hero-acciones">
@@ -26,40 +26,39 @@
           </a>
         </div>
 
-        <ul class="hero-sellos" aria-label="Compromisos de la plataforma">
+        <ul class="hero-sellos" aria-label="Características principales" data-i18n-aria="hero.seals_aria">
           <li class="sello"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg><span data-i18n="hero.seal_1">S/ 0.00 comisión</span></li>
           <li class="sello"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg><span data-i18n="hero.seal_2">Dictado por voz y modo una mano</span></li>
-          <li class="sello"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg><span data-i18n="hero.seal_3">Triage sanitario 74°</span></li>
+          <li class="sello"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg><span data-i18n="hero.seal_3">Prueba de alcohol 74°</span></li>
           <li class="sello"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg><span data-i18n="hero.seal_4">Ley N.° 29733 (sin DNI)</span></li>
         </ul>
       </div>
 
       <div>
-        <!-- Tarjeta de Medios: border-radius 8px, overflow: hidden, botón (+) en esquina -->
-        <div class="hero-banner-frame" id="hero-carousel" role="group" aria-roledescription="carrusel" aria-label="Galería fotográfica referencial de actividades lácteas">
+        <div class="hero-banner-frame" id="hero-carousel" role="group" aria-roledescription="carrusel" aria-label="Galería fotográfica de actividades lácteas" data-i18n-aria="hero.carousel_aria">
           <div class="hero-gradiente-mask"></div>
 
-          <img src="https://images.unsplash.com/photo-1500595046743-cd271d694d30?auto=format&fit=crop&w=1200&q=80"
-               alt="Ganado lechero en pasturas andinas" class="crossfade-img activa"
+          <img src="{{ asset('brand/hero_pasturas.jpg') }}"
+               alt="Ganado lechero en pasturas andinas" data-i18n-alt="hero.alt_1" class="crossfade-img activa"
                data-caption="Ganado lechero en pasturas andinas" data-caption-key="hero.cap_1" loading="eager">
-          <img src="https://images.unsplash.com/photo-1596733430284-f7437764b1a9?auto=format&fit=crop&w=1200&q=80"
-               alt="Establo lechero familiar" class="crossfade-img"
+          <img src="{{ asset('brand/hero_establo.jpg') }}"
+               alt="Establo lechero familiar" data-i18n-alt="hero.alt_2" class="crossfade-img"
                data-caption="Establo lechero familiar" data-caption-key="hero.cap_2" loading="lazy">
-          <img src="https://images.unsplash.com/photo-1486297678162-eb2a19b0a32d?auto=format&fit=crop&w=1200&q=80"
-               alt="Bodega de maduración de quesos artesanales" class="crossfade-img"
+          <img src="{{ asset('brand/hero_quesos.jpg') }}"
+               alt="Bodega de maduración de quesos artesanales" data-i18n-alt="hero.alt_3" class="crossfade-img"
                data-caption="Maduración de quesos artesanales" data-caption-key="hero.cap_3" loading="lazy">
-          <img src="https://images.unsplash.com/photo-1589923188900-85dae523342b?auto=format&fit=crop&w=1200&q=80"
-               alt="Tina de cuajado en una quesería" class="crossfade-img"
+          <img src="{{ asset('brand/hero_tina.jpg') }}"
+               alt="Tina de cuajado en una quesería" data-i18n-alt="hero.alt_4" class="crossfade-img"
                data-caption="Cuajado en tina" data-caption-key="hero.cap_4" loading="lazy">
 
           <div class="hero-banner-pie">
             <span id="banner-caption" aria-live="off" data-i18n="hero.cap_1">Ganado lechero en pasturas andinas</span>
-            <div style="display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0; margin-right: 36px;">
+            <div style="display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0;">
               <div class="banner-dots" id="banner-dots">
-                <button type="button" class="banner-dot activo" onclick="irASlide(0)" aria-label="Ver foto 1 de 4"></button>
-                <button type="button" class="banner-dot" onclick="irASlide(1)" aria-label="Ver foto 2 de 4"></button>
-                <button type="button" class="banner-dot" onclick="irASlide(2)" aria-label="Ver foto 3 de 4"></button>
-                <button type="button" class="banner-dot" onclick="irASlide(3)" aria-label="Ver foto 4 de 4"></button>
+                <button type="button" class="banner-dot activo" onclick="irASlide(0)" aria-label="Ver foto 1 de 4" data-i18n-aria="hero.dot_1"></button>
+                <button type="button" class="banner-dot" onclick="irASlide(1)" aria-label="Ver foto 2 de 4" data-i18n-aria="hero.dot_2"></button>
+                <button type="button" class="banner-dot" onclick="irASlide(2)" aria-label="Ver foto 3 de 4" data-i18n-aria="hero.dot_3"></button>
+                <button type="button" class="banner-dot" onclick="irASlide(3)" aria-label="Ver foto 4 de 4" data-i18n-aria="hero.dot_4"></button>
               </div>
               <button type="button" id="btn-pausa-banner" class="btn-banner-control" onclick="togglePausaBanner()" aria-pressed="false">
                 <svg id="icono-pausa" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
@@ -68,27 +67,23 @@
             </div>
           </div>
 
-          <!-- Botón cuadrado (+) anclado en esquina inferior derecha -->
-          <button type="button" class="btn-plus-corner" aria-label="Información de la imagen referencial" title="Fotografía referencial">+</button>
+          <button type="button" class="btn-plus-corner" id="btn-next-slide" aria-label="Siguiente fotografía" title="Siguiente fotografía" data-i18n-aria="hero.next_slide_aria" data-i18n-title="hero.next_slide_aria">+</button>
         </div>
-        <p class="nota-fotos" data-i18n="hero.photo_note">Fotografías referenciales de stock, no de socios de la plataforma.</p>
       </div>
     </div>
   </section>
 
-  <!-- FRANJA: principios operativos reales en celdas Swiss Grid -->
-  <section class="franja stats-strip-wrap" aria-label="Principios operativos">
+  <section class="franja stats-strip-wrap" aria-label="Indicadores operativos" data-i18n-aria="hero.strip_aria">
     <div class="contenedor">
       <ul class="franja-grid">
-        <li class="franja-item"><strong data-i18n="strip.s1_val">S/ 0.00</strong><span data-i18n="strip.s1_lbl">Comisión comunitaria</span></li>
-        <li class="franja-item"><strong data-i18n="strip.s2_val">74° alcohol</strong><span data-i18n="strip.s2_lbl">Triage con cero desperdicio</span></li>
+        <li class="franja-item"><strong data-i18n="strip.s1_val">S/ 0.00</strong><span data-i18n="strip.s1_lbl">Comisión por uso</span></li>
+        <li class="franja-item"><strong data-i18n="strip.s2_val">74° alcohol</strong><span data-i18n="strip.s2_lbl">Leche clasificada al recibir</span></li>
         <li class="franja-item"><strong data-i18n="strip.s3_val">36–40 °C</strong><span data-i18n="strip.s3_lbl">Control térmico de tina</span></li>
         <li class="franja-item"><strong data-i18n="strip.s4_val">Modo 1 mano</strong><span data-i18n="strip.s4_lbl">Voz y botonera táctil de 54 px</span></li>
       </ul>
     </div>
   </section>
 
-  <!-- HERRAMIENTAS: Proceso con Eje Central Vertical (Spine Timeline) -->
   <section id="soluciones" class="seccion" aria-labelledby="titulo-soluciones">
     <div class="contenedor">
       <div class="seccion-cabecera">
@@ -109,8 +104,7 @@
               <div class="demo-card">
                 <p class="demo-etq" data-i18n="steps.p1_card_lbl">Frase dictada</p>
                 <div class="waveform-anim" aria-hidden="true"><span class="waveform-bar"></span><span class="waveform-bar"></span><span class="waveform-bar"></span><span class="waveform-bar"></span><span class="waveform-bar"></span></div>
-                <p class="demo-valor" style="font-size: 1.25rem; font-weight: 600;">“Don Eloy Condori, 35 litros”</p>
-                <p class="demo-nota" data-i18n="steps.p1_card_note">Ejemplo ilustrativo del comando de voz.</p>
+                <p class="demo-valor" style="font-size: 1.25rem; font-weight: 600;" data-i18n="steps.p1_sample">“Don Eloy Condori, 35 litros”</p>
               </div>
             </div>
           </li>
@@ -118,7 +112,7 @@
           <li class="arbol-fila">
             <div class="arbol-texto">
               <span class="arbol-paso" data-i18n="steps.p2_tag">Paso 2</span>
-              <h3 data-i18n="steps.p2_title">Triage sanitario ético</h3>
+              <h3 data-i18n="steps.p2_title">Prueba de alcohol al recibir</h3>
               <p data-i18n="steps.p2_desc">Prueba rápida de alcohol a 74° al vaciar el porongo. La leche conforme va a queso maduro o yogur; la que presenta acidez se deriva a quesillos frescos de 4 días en lugar de descartarse.</p>
             </div>
             <div class="arbol-demo">
@@ -161,7 +155,6 @@
               <div class="demo-card">
                 <p class="demo-etq" data-i18n="steps.p4_card_lbl">Cálculo del bruto por entrega</p>
                 <p class="demo-valor">35 L × S/ 1.65 = S/ 57.75</p>
-                <p class="demo-nota" data-i18n="steps.p4_card_note">Ejemplo ilustrativo. Comisión de la plataforma: S/ 0.00.</p>
               </div>
             </div>
           </li>
@@ -170,7 +163,6 @@
     </div>
   </section>
 
-  <!-- EMPRESAS FAMILIARES Y PROCESO: Bento Grid con Hairlines Expuestas -->
   <section id="empresas-familiares" class="banda-cielo lienzo-acuarela" aria-labelledby="titulo-empresas">
     <div class="aguada aguada-nube" aria-hidden="true"></div>
     <div class="contenedor">
@@ -186,13 +178,13 @@
             <h3 data-i18n="bento.how_title">Cómo funciona</h3>
             <ol class="pasos">
               <li><strong data-i18n="bento.how1_t">Captura en ruta sin papel</strong><span data-i18n="bento.how1_d">El recolector dicta o toca la cantidad; el registro queda con hora y productor.</span></li>
-              <li><strong data-i18n="bento.how2_t">Triage y receta en planta</strong><span data-i18n="bento.how2_d">Se clasifica la leche y se calculan los insumos de cada tina.</span></li>
+              <li><strong data-i18n="bento.how2_t">Clasificación y receta en planta</strong><span data-i18n="bento.how2_d">Se clasifica la leche y se calculan los insumos de cada tina.</span></li>
               <li><strong data-i18n="bento.how3_t">Liquidación y Excel</strong><span data-i18n="bento.how3_d">La quincena se cierra con adelantos descontados y balance descargable.</span></li>
             </ol>
           </div>
           <div class="bento-card">
-            <h3 data-i18n="bento.comm_title">Compromiso comunitario</h3>
-            <p data-i18n="bento.comm_desc">Software sin fines de lucro: comisión S/ 0.00, el mismo trato para quien entrega 5 litros que para quien entrega 150.</p>
+            <h3 data-i18n="bento.comm_title">Trato parejo en ruta</h3>
+            <p data-i18n="bento.comm_desc">El mismo precio por litro y registro inmediato para quien entrega 5 litros y para quien entrega 150.</p>
           </div>
         </div>
 
@@ -231,19 +223,18 @@
             </li>
           </ul>
           <p class="compromiso" style="margin-top: 1rem; font-size: 0.8125rem; color: var(--color-graphite);" data-i18n="bento.fam_note">
-            Sin cuotas de suscripción ni cobros por litro procesado (Comisión S/ 0.00).
+            Sin cuotas de suscripción ni cobros por litro procesado.
           </p>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- NOSOTROS Y PILARES -->
   <section id="nosotros" class="seccion nosotros" aria-labelledby="titulo-nosotros">
     <div class="contenedor">
       <div class="nosotros-intro">
         <h2 id="titulo-nosotros" data-i18n="home.about_title">La realidad de nuestras microempresas familiares</h2>
-        <p data-i18n="about.intro">LAT no es una startup de intermediación financiera ni una franquicia de software comercial. Nace para defender el trabajo lechero de padres e hijos en Cusco Provincia, eliminando las disputas en la liquidación quincenal y cuidando la soberanía de los datos productivos.</p>
+        <p data-i18n="about.intro">LAT apoya el trabajo lechero de padres e hijos en Cusco Provincia, evitando enredos en la liquidación quincenal y dando a cada planta control directo de sus registros.</p>
         <hr class="hairline-rule-dashed" style="margin-top: 1.5rem;">
       </div>
 
@@ -255,13 +246,13 @@
         </li>
         <li class="pilar">
           <span class="marca" aria-hidden="true"></span>
-          <h3 data-i18n="about.p2_t">Trato justo y sin sesgo</h3>
+          <h3 data-i18n="about.p2_t">El mismo precio para todos</h3>
           <p data-i18n="about.p2_d">Mismo respeto, tarifa y precisión de pesaje para quien entrega 5 litros que para quien entrega 150.</p>
         </li>
         <li class="pilar">
           <span class="marca" aria-hidden="true"></span>
           <h3 data-i18n="about.p3_t">Privacidad según la Ley N.° 29733</h3>
-          <p data-i18n="about.p3_d">Minimización de datos: no se exige DNI a colaboradores de faena eventual de lavado o volteo.</p>
+          <p data-i18n="about.p3_d">Sin pedir DNI para jornales: no se exige documento a colaboradores de faena eventual de lavado o volteo.</p>
         </li>
         <li class="pilar">
           <span class="marca" aria-hidden="true"></span>
@@ -272,7 +263,22 @@
     </div>
   </section>
 
-  <!-- CIERRE: Llamado a la acción recto Swiss -->
+  <section id="anuncio-qr-registro" class="seccion landing-qr-banner" aria-labelledby="titulo-qr-registro">
+    <div class="contenedor">
+      <div class="landing-qr-card">
+        <div class="landing-qr-copy">
+          <span class="chip chip-ember" data-i18n="home.qr_badge">Puedes registrarte ahora</span>
+          <h2 id="titulo-qr-registro" data-i18n="home.qr_title">Puedes registrarte ahora</h2>
+          <p data-i18n="home.qr_sub">Escanea el código QR desde tu celular o regístrate directamente para crear tu planta lechera y operar el panel sin costo (S/ 0.00).</p>
+          <a href="{{ route('registro') }}" class="btn btn-ember btn-grande" data-i18n="home.qr_cta">Registrarse ahora</a>
+        </div>
+        <div class="landing-qr-visual">
+          <div id="landing-qr-svg" class="landing-qr-box" data-qr-url="{{ route('registro') }}" role="img" aria-label="Código QR para registrarse en LAT"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <section class="cierre lienzo-acuarela" aria-labelledby="titulo-cierre">
     <div class="aguada aguada-cielo" aria-hidden="true" style="transform: scaleX(-1) scale(1.12);"></div>
     <div class="contenedor">
@@ -289,8 +295,8 @@
 @endsection
 
 @push('scripts')
+  <script src="{{ asset('js/lat-qr.js') }}"></script>
   <script>
-    // Carrusel con desvanecimiento, pausa accesible (WCAG 2.2.2) y soporte trilingüe
     let indiceActual = 0;
     let intervaloBanner = null;
     const reducirMovimiento = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -359,11 +365,20 @@
       mostrarSlide(0);
       actualizarBotonPausa();
       iniciarIntervalo();
+      const btnNextSlide = document.getElementById('btn-next-slide');
+      if (btnNextSlide) {
+        btnNextSlide.addEventListener('click', () => irASlide(indiceActual + 1));
+      }
       if (window.LAT_I18N && window.LAT_I18N.onChange) {
         window.LAT_I18N.onChange(() => {
           mostrarSlide(indiceActual);
           actualizarBotonPausa();
         });
+      }
+      const landingQrBox = document.getElementById('landing-qr-svg');
+      if (landingQrBox && window.LAT_QR) {
+        const qrUrl = landingQrBox.dataset.qrUrl || window.location.origin + '/registrarse';
+        window.LAT_QR.renderTo(landingQrBox, qrUrl, 190);
       }
     });
   </script>

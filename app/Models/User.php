@@ -2,23 +2,20 @@
 
 namespace App\Models;
 
+use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
 /**
- * ============================================================================
- * MODELO DE DATOS: USUARIO, RANGO Y CONTROL DE ACCESO GRANULAR (RBAC)
- * ============================================================================
- * Representa al personal de la microempresa quesera.
- * Los operadores se autentican mediante su identificador 'usuario' o 'email'.
- * Cada usuario puede usar un cargo predefinido o un perfil 'personalizado'
- * con permisos granulares por sección y control específico.
+ * Usuario del sistema con cargo, rango y permisos granulares por planta.
  */
 class User extends Authenticatable
 {
-    use Notifiable;
+    /** @use HasFactory<UserFactory> */
+    use HasFactory, Notifiable;
 
     /** @var list<string> */
     public const CARGOS_VALIDOS = [
@@ -87,6 +84,7 @@ class User extends Authenticatable
                 'finanzas.registrar' => ['label' => 'Registrar movimientos y ventas', 'desc' => 'Asentar ventas, adelantos, ayuda del día y gastos.'],
                 'finanzas.editar' => ['label' => 'Editar / eliminar movimientos', 'desc' => 'Corregir o borrar registros financieros.'],
                 'finanzas.exportar' => ['label' => 'Exportar balance Excel (.xlsx)', 'desc' => 'Descargar reportes financieros de la planta.'],
+                'finanzas.enviar_excel' => ['label' => 'Enviar reportes Excel al contador', 'desc' => 'Generar y remitir reportes Excel ordenados a la bandeja del contador.'],
             ],
         ],
         'estadisticas' => [
@@ -101,9 +99,19 @@ class User extends Authenticatable
             'descripcion' => 'Gestión de cuentas personalizadas y configuración de plantas.',
             'permisos' => [
                 'admin.usuarios' => ['label' => 'Gestionar usuarios (Rango)', 'desc' => 'Crear/editar usuarios con credenciales y permisos propios.'],
-                'admin.plantas' => ['label' => 'Gestionar y cambiar plantas', 'desc' => 'Crear/editar plantas lácteas y alternar planta activa.'],
+                'admin.plantas' => ['label' => 'Gestionar y cambiar plantas', 'desc' => 'Crear/editar/eliminar plantas lácteas y alternar planta activa.'],
             ],
         ],
+    ];
+
+    /** @var list<string> */
+    public const PERMISOS_OPERATIVOS_ADMIN = [
+        'acopio.crear',
+        'acopio.editar',
+        'acopio.proveedores',
+        'calidad.evaluar',
+        'tinas.operar',
+        'tinas.gestionar',
     ];
 
     /**
@@ -114,10 +122,10 @@ class User extends Authenticatable
     public const PLANTILLAS_CARGO = [
         'administracion' => [
             'dashboard.ver', 'dashboard.ver_red',
-            'acopio.ver', 'acopio.crear', 'acopio.editar', 'acopio.proveedores',
-            'calidad.ver', 'calidad.evaluar',
-            'tinas.ver', 'tinas.operar', 'tinas.gestionar',
-            'finanzas.ver', 'finanzas.registrar', 'finanzas.editar', 'finanzas.exportar',
+            'acopio.ver',
+            'calidad.ver',
+            'tinas.ver',
+            'finanzas.ver', 'finanzas.registrar', 'finanzas.editar', 'finanzas.exportar', 'finanzas.enviar_excel',
             'estadisticas.ver',
             'admin.usuarios', 'admin.plantas',
         ],
@@ -126,11 +134,12 @@ class User extends Authenticatable
             'acopio.ver', 'acopio.crear', 'acopio.editar', 'acopio.proveedores',
             'calidad.ver', 'calidad.evaluar',
             'tinas.ver', 'tinas.operar', 'tinas.gestionar',
-            'finanzas.ver', 'finanzas.registrar',
+            'finanzas.ver', 'finanzas.registrar', 'finanzas.editar', 'finanzas.exportar', 'finanzas.enviar_excel',
             'estadisticas.ver',
+            'admin.usuarios',
         ],
         'recolector_ruta' => [
-            'acopio.ver', 'acopio.crear', 'acopio.proveedores',
+            'acopio.ver', 'acopio.crear', 'acopio.editar', 'acopio.proveedores',
         ],
         'control_tina' => [
             'calidad.ver', 'calidad.evaluar',
@@ -181,7 +190,7 @@ class User extends Authenticatable
         return $this->belongsTo(self::class, 'creado_por');
     }
 
-    /** Scope de optimización: Solo usuarios autorizados y activos */
+    /** Solo usuarios autorizados y activos. */
     public function scopeActivos(Builder $query): Builder
     {
         return $query->where('activo', true);
@@ -205,14 +214,28 @@ class User extends Authenticatable
     }
 
     /**
+     * Indica si el usuario administrador activó el modo operativo de planta en sesión.
+     */
+    public function modoOperativoActivo(): bool
+    {
+        return $this->esAdmin() && session('admin_modo_operativo', false) === true;
+    }
+
+    /**
      * Resuelve la lista efectiva de permisos activos del usuario.
      *
      * @return list<string>
      */
     public function permisosEfectivos(): array
     {
+        if (! $this->activo) {
+            return [];
+        }
+
         if ($this->cargo === 'administracion') {
-            return self::todasLasClavesPermisos();
+            return $this->modoOperativoActivo()
+                ? array_values(array_unique(array_merge(self::PLANTILLAS_CARGO['administracion'], self::PERMISOS_OPERATIVOS_ADMIN)))
+                : self::PLANTILLAS_CARGO['administracion'];
         }
 
         $validos = self::todasLasClavesPermisos();
@@ -262,7 +285,7 @@ class User extends Authenticatable
             'acopio' => ['acopio.ver', 'acopio.crear', 'acopio.editar', 'acopio.proveedores'],
             'calidad' => ['calidad.ver', 'calidad.evaluar'],
             'tinas' => ['tinas.ver', 'tinas.operar', 'tinas.gestionar'],
-            'finanzas' => ['finanzas.ver', 'finanzas.registrar', 'finanzas.editar', 'finanzas.exportar'],
+            'finanzas' => ['finanzas.ver', 'finanzas.registrar', 'finanzas.editar', 'finanzas.exportar', 'finanzas.enviar_excel'],
             'estadisticas' => ['estadisticas.ver'],
             'admin' => ['admin.usuarios', 'admin.plantas'],
         ];
@@ -317,14 +340,21 @@ class User extends Authenticatable
             return [];
         }
 
-        return $this->permisosEfectivos();
+        return array_values(array_diff(
+            $this->permisosEfectivos(),
+            ['admin.plantas', 'dashboard.ver_red', 'admin.usuarios']
+        ));
     }
 
     /**
-     * Verifica jerarquía para evitar escalamiento de privilegios entre plantas o hacia admin.
+     * Verifica jerarquía para evitar escalamiento de privilegios o edición horizontal entre supervisores.
      */
     public function puedeGestionarUsuario(self $objetivo): bool
     {
+        if (! $this->activo) {
+            return false;
+        }
+
         if ($this->esAdmin()) {
             return true;
         }
@@ -333,59 +363,45 @@ class User extends Authenticatable
             return false;
         }
 
-        if ($objetivo->esAdmin()) {
+        if ($objetivo->id === $this->id || $objetivo->esAdmin() || $objetivo->cargo === 'encargado_planta') {
             return false;
         }
 
-        return (int) $objetivo->planta_id === (int) $this->planta_id;
+        if (! in_array($objetivo->rango, ['operador', 'personalizado'], true)) {
+            return false;
+        }
+
+        if ($objetivo->tienePermiso('admin.usuarios')) {
+            return false;
+        }
+
+        return $this->planta_id !== null
+            && $objetivo->planta_id !== null
+            && (int) $objetivo->planta_id === (int) $this->planta_id;
     }
 
     public function etiquetaCargo(): string
     {
-        return match ($this->cargo) {
-            'administracion' => 'Administración',
-            'encargado_planta' => 'Encargado de planta',
-            'recolector_ruta' => 'Recolector en ruta',
-            'control_tina' => 'Control de tina / calidad',
-            'contador_externo' => 'Contador externo',
-            'personalizado' => 'Personalizado',
-            default => ucfirst(str_replace('_', ' ', (string) $this->cargo)),
-        };
+        $clave = 'lat.cargo_'.$this->cargo;
+        $trad = __($clave);
+
+        return $trad !== $clave
+            ? $trad
+            : ucfirst(str_replace('_', ' ', (string) $this->cargo));
     }
 
     public function etiquetaRango(): string
     {
-        return match ($this->rango) {
-            'administrador' => 'Administrador Total',
-            'supervisor' => 'Supervisor con Rango',
-            'personalizado' => 'Acceso Personalizado',
-            default => 'Operador',
-        };
+        $clave = 'lat.rango_'.$this->rango;
+        $trad = __($clave);
+
+        return $trad !== $clave
+            ? $trad
+            : __('lat.rango_operador');
     }
 
-    // Métodos semánticos para verificación rápida de permisos (compatibilidad + granularidad)
     public function esAdmin(): bool
     {
         return $this->cargo === 'administracion';
-    }
-
-    public function puedeRegistrarAcopio(): bool
-    {
-        return $this->tienePermiso('acopio.crear');
-    }
-
-    public function puedeEvaluarCalidad(): bool
-    {
-        return $this->tienePermiso('calidad.evaluar');
-    }
-
-    public function puedeGestionarTina(): bool
-    {
-        return $this->tieneAlgunPermiso(['tinas.operar', 'tinas.gestionar']);
-    }
-
-    public function puedeVerFinanzas(): bool
-    {
-        return $this->tieneAlgunPermiso(['finanzas.ver', 'finanzas.registrar', 'finanzas.exportar']);
     }
 }

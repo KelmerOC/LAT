@@ -3,9 +3,7 @@ const path = require('path');
 const fs = require('fs');
 
 const OUT_DIRS = [
-  path.resolve(__dirname, '../mockups'),
-  path.resolve('d:/Programación WEB/LAT/mockups'),
-  path.resolve('C:/Users/kelme/.gemini/antigravity/brain/f120c463-6b44-45b5-afab-c5c013980892/mockups')
+  path.resolve(__dirname, '../docs/mockups')
 ];
 
 OUT_DIRS.forEach(dir => {

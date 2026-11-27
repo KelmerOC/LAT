@@ -1,0 +1,23 @@
+{
+  "name": "LAT · Plataforma Láctea Comunitaria",
+  "short_name": "LAT Lácteos",
+  "description": "Acopio diario, control sanitario 74°, tinas y liquidaciones para queserías rurales con soporte sin conexión.",
+  "start_url": "/panel",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f4f7fa",
+  "theme_color": "#0a2f4d",
+  "icons": [
+    {
+      "src": "/brand/isotipo_queso_frasco.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

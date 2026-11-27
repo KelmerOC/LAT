@@ -1,6 +1,7 @@
 @extends('layouts.app')
 
 @section('titulo', 'LAT · Registro de Planta y Usuario')
+@section('title_i18n', 'title.register')
 
 @section('contenido')
   <section class="login-wrap lienzo-acuarela" aria-labelledby="titulo-registro">
@@ -19,25 +20,25 @@
             <input type="text" id="reg-name" name="name" class="input-lat" value="{{ old('name') }}" required placeholder="Ej: Rosaura Quispe" data-i18n-placeholder="register.ph_name">
           </div>
 
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+          <div class="grid-form-2">
             <div class="form-grupo">
               <label for="reg-usuario" class="form-label" data-i18n="register.username">Usuario de acceso</label>
-              <input type="text" id="reg-usuario" name="usuario" class="input-lat" value="{{ old('usuario') }}" required placeholder="rosaura.anta">
+              <input type="text" id="reg-usuario" name="usuario" class="input-lat" value="{{ old('usuario') }}" required placeholder="rosaura.anta" data-i18n-placeholder="register.ph_user">
             </div>
             <div class="form-grupo">
               <label for="reg-email" class="form-label" data-i18n="register.email">Correo electrónico (opcional)</label>
-              <input type="email" id="reg-email" name="email" class="input-lat" value="{{ old('email') }}" placeholder="contacto@planta.pe">
+              <input type="email" id="reg-email" name="email" class="input-lat" value="{{ old('email') }}" placeholder="contacto@planta.pe" data-i18n-placeholder="register.ph_email">
             </div>
           </div>
 
-          <hr style="border: none; border-top: 1px dashed var(--color-panel-dashed); margin: 1rem 0;">
+          <hr style="border: none; border-top: 1px solid var(--color-hairline); margin: 1rem 0;">
 
           <div class="form-grupo">
             <label for="reg-planta" class="form-label" data-i18n="register.plant_name">Nombre de la planta o quesería</label>
             <input type="text" id="reg-planta" name="planta_nombre" class="input-lat" value="{{ old('planta_nombre') }}" required placeholder="Ej: Quesería Familiar Santa Rosa" data-i18n-placeholder="register.ph_plant">
           </div>
 
-          <div style="display: grid; grid-template-columns: 1.4fr 1fr; gap: 0.75rem;">
+          <div class="grid-form-2-wide">
             <div class="form-grupo">
               <label for="reg-ubicacion" class="form-label" data-i18n="register.plant_loc">Ubicación / Provincia</label>
               <input type="text" id="reg-ubicacion" name="planta_ubicacion" class="input-lat" value="{{ old('planta_ubicacion', 'Cusco Provincia') }}" required>
@@ -48,14 +49,14 @@
             </div>
           </div>
 
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+          <div class="grid-form-2">
             <div class="form-grupo">
-              <label for="reg-pass" class="form-label" data-i18n="register.pass">Contraseña (mín. 6 caracteres)</label>
-              <input type="password" id="reg-pass" name="password" class="input-lat" required autocomplete="new-password">
+              <label for="reg-pass" class="form-label" data-i18n="register.pass">Contraseña (mín. 8 caracteres)</label>
+              <input type="password" id="reg-pass" name="password" class="input-lat" required minlength="8" autocomplete="new-password">
             </div>
             <div class="form-grupo">
               <label for="reg-pass2" class="form-label" data-i18n="register.pass_confirm">Confirmar contraseña</label>
-              <input type="password" id="reg-pass2" name="password_confirmation" class="input-lat" required autocomplete="new-password">
+              <input type="password" id="reg-pass2" name="password_confirmation" class="input-lat" required minlength="8" autocomplete="new-password">
             </div>
           </div>
 

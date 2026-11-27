@@ -8,16 +8,13 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * ============================================================================
- * MODELO DE DATOS: ACOPIO DIARIO DE LECHE Y TRIAGE DE CALIDAD
- * ============================================================================
- * Registra cada entrega de leche (por voz o manual) y su evaluación sanitaria
- * mediante la prueba rápida de alcohol (buena -> tina queso / ácida -> quesillos).
+ * Entrega diaria de leche y evaluación sanitaria por prueba de alcohol.
  */
 class Acopio extends Model
 {
     protected $fillable = [
         'planta_id',
+        'lote_id',
         'proveedor_id',
         'registrado_por',
         'uuid_offline',
@@ -29,17 +26,24 @@ class Acopio extends Model
         'frase_dictada',
         'calidad',
         'destino',
+        'evaluado_en',
     ];
 
     protected $casts = [
         'fecha' => 'date',
         'litros' => 'float',
         'precio_litro' => 'float',
+        'evaluado_en' => 'datetime',
     ];
 
     public function planta(): BelongsTo
     {
         return $this->belongsTo(Planta::class);
+    }
+
+    public function lote(): BelongsTo
+    {
+        return $this->belongsTo(Lote::class);
     }
 
     public function proveedor(): BelongsTo
@@ -52,17 +56,28 @@ class Acopio extends Model
         return $this->belongsTo(User::class, 'registrado_por');
     }
 
-    /** Scope: Entregas correspondientes al día de hoy */
+    /** Scope: Entregas correspondientes a una fecha usando índice B-Tree */
     public function scopeDelDia(Builder $query, ?string $fecha = null): Builder
     {
-        return $query->whereDate('fecha', $fecha ?? Carbon::today()->toDateString());
+        $dia = $fecha ?? Carbon::today()->toDateString();
+
+        return $this->scopeDelPeriodo($query, $dia, $dia);
     }
 
-    /** Scope: Rango de fechas para cálculo quincenal */
+    /** Scope: Rango de fechas para cálculo quincenal sin invalidez de índices */
     public function scopeDelPeriodo(Builder $query, string $desde, string $hasta): Builder
     {
-        return $query->whereDate('fecha', '>=', $desde)
-            ->whereDate('fecha', '<=', $hasta);
+        $driver = $query->getConnection()->getDriverName();
+        if ($driver === 'sqlite') {
+            return $query->where('fecha', '>=', $desde)
+                ->where('fecha', '<=', $hasta.' 23:59:59');
+        }
+
+        if ($desde === $hasta) {
+            return $query->where('fecha', $desde);
+        }
+
+        return $query->whereBetween('fecha', [$desde, $hasta]);
     }
 
     /** Scope: Solo leche apta para pasteurización en tina */
@@ -74,5 +89,10 @@ class Acopio extends Model
     public function scopeDePlanta(Builder $query, int $plantaId): Builder
     {
         return $query->where('planta_id', $plantaId);
+    }
+
+    public function scopeDisponiblesParaTina(Builder $q): Builder
+    {
+        return $q->whereNull('lote_id')->whereIn('calidad', ['buena', 'acida']);
     }
 }

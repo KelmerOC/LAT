@@ -2,29 +2,16 @@
 
 namespace App\Services;
 
-use App\Models\Acopio;
-use App\Models\Liquidacion;
 use App\Models\Planta;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
+use RuntimeException;
 
 /**
- * ============================================================================
- * SERVICIO DE EXPORTACIÓN EXCEL NATIVA (.XLSX / OOXML)
- * ============================================================================
- * Genera libros Excel (.xlsx) reales, ordenados y entendibles sin depender de
- * extensiones opcionales (funciona con zlib estándar en PHP/XAMPP y ZipArchive).
- * Incluye 4 hojas estructuradas:
- *  1. Liquidación Quincenal (con fórmulas SUM y moneda S/)
- *  2. Detalle de Acopios
- *  3. Movimientos y Ventas
- *  4. Comparativa de Plantas
+ * Genera archivos Excel (.xlsx / OOXML) en memoria sin dependencias externas.
  */
 class ExcelExportService
 {
-    /**
-     * Construye el binario .xlsx completo para descarga directa.
-     */
     public function generarBalanceXlsx(
         Planta $planta,
         string $desde,
@@ -34,31 +21,78 @@ class ExcelExportService
         Collection $movimientos,
         Collection $rankingPlantas
     ): string {
-        $sheets = [
+        return $this->buildWorkbookFromSheets([
             [
-                'name' => 'Liquidacion Quincenal',
-                'xml'  => $this->buildLiquidacionSheet($planta, $desde, $hasta, $liquidaciones),
+                'name' => $this->sanitizeSheetName(__('lat.excel_sheet_settlement')),
+                'xml' => $this->buildLiquidacionSheet($planta, $desde, $hasta, $liquidaciones),
             ],
             [
-                'name' => 'Detalle Acopios',
-                'xml'  => $this->buildAcopiosSheet($planta, $desde, $hasta, $acopios),
+                'name' => $this->sanitizeSheetName(__('lat.excel_sheet_intake')),
+                'xml' => $this->buildAcopiosSheet($planta, $desde, $hasta, $acopios),
             ],
             [
-                'name' => 'Movimientos y Ventas',
-                'xml'  => $this->buildMovimientosSheet($planta, $desde, $hasta, $movimientos),
+                'name' => $this->sanitizeSheetName(__('lat.excel_sheet_movements')),
+                'xml' => $this->buildMovimientosSheet($planta, $desde, $hasta, $movimientos),
             ],
             [
-                'name' => 'Comparativa Plantas',
-                'xml'  => $this->buildPlantasSheet($desde, $hasta, $rankingPlantas),
+                'name' => $this->sanitizeSheetName(__('lat.excel_sheet_plants')),
+                'xml' => $this->buildPlantasSheet($desde, $hasta, $rankingPlantas),
             ],
-        ];
+        ]);
+    }
 
+    /**
+     * Genera un libro .xlsx de una sola hoja para Liquidación Quincenal.
+     */
+    public function generarSoloLiquidacionXlsx(Planta $planta, string $desde, string $hasta, Collection $liquidaciones): string
+    {
+        return $this->buildWorkbookFromSheets([
+            [
+                'name' => $this->sanitizeSheetName(__('lat.excel_sheet_settlement')),
+                'xml' => $this->buildLiquidacionSheet($planta, $desde, $hasta, $liquidaciones),
+            ],
+        ]);
+    }
+
+    /**
+     * Genera un libro .xlsx de una sola hoja para Ventas de productos lácteos.
+     */
+    public function generarSoloVentasXlsx(Planta $planta, string $desde, string $hasta, Collection $ventas): string
+    {
+        return $this->buildWorkbookFromSheets([
+            [
+                'name' => $this->sanitizeSheetName('Ventas'),
+                'xml' => $this->buildVentasSheet($planta, $desde, $hasta, $ventas),
+            ],
+        ]);
+    }
+
+    /**
+     * Genera un libro .xlsx de una sola hoja para Sueldos y Pagos operativos.
+     */
+    public function generarSoloSueldosXlsx(Planta $planta, string $desde, string $hasta, Collection $sueldos): string
+    {
+        return $this->buildWorkbookFromSheets([
+            [
+                'name' => $this->sanitizeSheetName('Sueldos y Pagos'),
+                'xml' => $this->buildSueldosSheet($planta, $desde, $hasta, $sueldos),
+            ],
+        ]);
+    }
+
+    /**
+     * Ensambla un paquete OOXML (.xlsx) completo a partir de sus hojas XML.
+     *
+     * @param  array<int, array{name: string, xml: string}>  $sheets
+     */
+    private function buildWorkbookFromSheets(array $sheets): string
+    {
         $entries = [
-            '[Content_Types].xml'        => $this->buildContentTypes(count($sheets)),
-            '_rels/.rels'                => $this->buildRootRels(),
-            'xl/workbook.xml'            => $this->buildWorkbookXml($sheets),
+            '[Content_Types].xml' => $this->buildContentTypes(count($sheets)),
+            '_rels/.rels' => $this->buildRootRels(),
+            'xl/workbook.xml' => $this->buildWorkbookXml($sheets),
             'xl/_rels/workbook.xml.rels' => $this->buildWorkbookRels(count($sheets)),
-            'xl/styles.xml'              => $this->buildStylesXml(),
+            'xl/styles.xml' => $this->buildStylesXml(),
         ];
 
         foreach ($sheets as $idx => $sheet) {
@@ -72,23 +106,28 @@ class ExcelExportService
     {
         $rows = [];
         $rows[] = $this->rowXml(1, [
-            $this->cellText('A1', 'REPORTE DE LIQUIDACIÓN QUINCENAL · '.$planta->nombre, 1),
+            $this->cellText('A1', __('lat.excel_s1_title', ['plant' => $planta->nombre]), 1),
         ], 26);
         $rows[] = $this->rowXml(2, [
-            $this->cellText('A2', "Ubicación: {$planta->ubicacion} | Período: {$desde} al {$hasta} | Comisión LAT: S/ 0.00 | Generado: ".Carbon::now()->format('d/m/Y H:i'), 2),
+            $this->cellText('A2', __('lat.excel_s1_subtitle', [
+                'location' => $planta->ubicacion,
+                'from' => $desde,
+                'to' => $hasta,
+                'date' => Carbon::now()->format('d/m/Y H:i'),
+            ]), 2),
         ], 18);
         $rows[] = $this->rowXml(3, [], 8);
 
         $headers = [
-            'Código',
-            'Ganadero / Productor',
-            'Sector / Comunidad',
-            'Litros Entregados',
-            'Precio / Litro (S/)',
-            'Monto Bruto (S/)',
-            'Adelantos Descontados (S/)',
-            'Comisión LAT (S/)',
-            'Neto a Pagar (S/)',
+            __('lat.excel_col_code'),
+            __('lat.excel_col_producer'),
+            __('lat.excel_col_sector'),
+            __('lat.excel_col_liters_delivered'),
+            __('lat.excel_col_price_liter'),
+            __('lat.excel_col_gross_amount'),
+            __('lat.excel_col_advances_deducted'),
+            __('lat.excel_col_lat_commission'),
+            __('lat.excel_col_net_payable'),
         ];
         $rows[] = $this->headerRowXml(4, $headers);
 
@@ -115,44 +154,216 @@ class ExcelExportService
                 $this->cellText("C{$r}", (string) ($fila->sector ?? $planta->ubicacion), $sTxt),
                 $this->cellNum("D{$r}", (float) $fila->litros, $sNum),
                 $this->cellNum("E{$r}", (float) $fila->precio_litro, $sCur),
-                $this->cellNum("F{$r}", (float) $fila->bruto, $sCur),
+                $this->cellFormula("F{$r}", "ROUND(D{$r}*E{$r},2)", (float) $fila->bruto, $sCur),
                 $this->cellNum("G{$r}", (float) $fila->adelantos, $sCur),
                 $this->cellNum("H{$r}", (float) $fila->comision, $sCur),
-                $this->cellNum("I{$r}", (float) $fila->neto, $sCur),
+                $this->cellFormula("I{$r}", "MAX(0,F{$r}-G{$r}-H{$r})", (float) $fila->neto, $sCur),
             ], 20);
             $r++;
         }
 
-        if ($r === 5) {
-            $rows[] = $this->rowXml($r, [$this->cellText("A{$r}", 'Sin registros en este período.', 4)], 20);
-            $r++;
+        $lastDataRow = $r - 1;
+        if ($lastDataRow < 5) {
+            $rows[] = $this->rowXml($r, [$this->cellText("A{$r}", __('lat.excel_s1_empty'), 4)], 20);
+            $autoFilterRef = null;
         } else {
-            $last = $r - 1;
             $rows[] = $this->rowXml($r, [
-                $this->cellText("A{$r}", 'TOTALES', 10),
-                $this->cellText("B{$r}", ($last - 4).' productores', 10),
+                $this->cellText("A{$r}", __('lat.excel_totals'), 10),
+                $this->cellText("B{$r}", __('lat.excel_producers_count', ['count' => $lastDataRow - 4]), 10),
                 $this->cellText("C{$r}", '', 10),
-                $this->cellFormula("D{$r}", "SUM(D5:D{$last})", $sumLitros, 12),
+                $this->cellFormula("D{$r}", "SUM(D5:D{$lastDataRow})", $sumLitros, 12),
                 $this->cellText("E{$r}", '-', 10),
-                $this->cellFormula("F{$r}", "SUM(F5:F{$last})", $sumBruto, 11),
-                $this->cellFormula("G{$r}", "SUM(G5:G{$last})", $sumAdelantos, 11),
-                $this->cellFormula("H{$r}", "SUM(H5:H{$last})", 0.0, 11),
-                $this->cellFormula("I{$r}", "SUM(I5:I{$last})", $sumNeto, 11),
+                $this->cellFormula("F{$r}", "SUM(F5:F{$lastDataRow})", $sumBruto, 11),
+                $this->cellFormula("G{$r}", "SUM(G5:G{$lastDataRow})", $sumAdelantos, 11),
+                $this->cellFormula("H{$r}", "SUM(H5:H{$lastDataRow})", 0.0, 11),
+                $this->cellFormula("I{$r}", "SUM(I5:I{$lastDataRow})", $sumNeto, 11),
             ], 22);
+            $autoFilterRef = "A4:I{$lastDataRow}";
         }
 
-        return $this->wrapWorksheet($rows, [14, 28, 22, 18, 18, 18, 22, 18, 20], 4, "A4:I{$r}");
+        return $this->wrapWorksheet($rows, [14, 28, 22, 18, 18, 18, 22, 18, 20], 4, $autoFilterRef);
+    }
+
+    private function buildVentasSheet(Planta $planta, string $desde, string $hasta, Collection $ventas): string
+    {
+        $productos = [
+            'queso_andino' => 'Queso andino',
+            'quesillo_fresco' => 'Quesillo fresco',
+            'yogur_natural' => 'Yogur natural',
+            'mantequilla' => 'Mantequilla',
+            'otro' => 'Otro producto',
+        ];
+        $canales = [
+            'feria_local' => 'Feria local',
+            'tienda_bodega' => 'Tienda / Bodega',
+            'cliente_directo' => 'Cliente directo',
+            'planta_interno' => 'Planta interno',
+            'otro' => 'Otro canal',
+        ];
+
+        $filas = $ventas->map(function (object $venta) use ($productos, $canales): array {
+            $cantidad = max(0, (int) ($venta->cantidad_unidades ?? 0));
+            $monto = round((float) ($venta->monto ?? 0), 2);
+            if ($cantidad === 0 && $monto > 0) {
+                $cantidad = 1;
+            }
+            $pUnit = $venta->precio_unitario !== null
+                ? round((float) $venta->precio_unitario, 2)
+                : ($cantidad > 0 ? round($monto / $cantidad, 2) : 0.0);
+
+            $prodClave = (string) ($venta->producto_categoria ?? '');
+            $canalClave = (string) ($venta->canal_referencia ?? '');
+
+            return [
+                'fecha' => $venta->fecha?->format('d/m/Y') ?? (string) $venta->fecha,
+                'col2' => $productos[$prodClave] ?? ($prodClave !== '' ? ucfirst(str_replace('_', ' ', $prodClave)) : 'Producto lácteo'),
+                'col3' => $canales[$canalClave] ?? ($canalClave !== '' ? $canalClave : ($venta->proveedor?->nombre ?? '-')),
+                'concepto' => (string) $venta->concepto,
+                'cantidad' => $cantidad,
+                'tarifa' => $pUnit,
+                'total' => round($cantidad * $pUnit, 2),
+            ];
+        })->all();
+
+        return $this->buildTablaConceptoTarifaSheet(
+            "REPORTE DE VENTAS · {$planta->nombre}",
+            "Ubicación: {$planta->ubicacion} | Período: {$desde} al {$hasta} | Generado: ".Carbon::now()->format('d/m/Y H:i'),
+            ['Fecha', 'Producto', 'Canal/Cliente', 'Concepto', 'Cantidad', 'P.Unit.', 'Total'],
+            $filas,
+            'Sin ventas registradas en este período.',
+            [13, 20, 24, 36, 14, 16, 18]
+        );
+    }
+
+    private function buildSueldosSheet(Planta $planta, string $desde, string $hasta, Collection $sueldos): string
+    {
+        $categorias = [
+            'sueldo_personal' => 'Sueldo de personal',
+            'ayuda_del_dia' => __('lat.mov_ayuda_del_dia'),
+            'adelanto_efectivo' => __('lat.mov_adelanto_efectivo'),
+            'adelanto_queso' => __('lat.mov_adelanto_queso'),
+            'gasto_operativo' => __('lat.mov_gasto_operativo'),
+        ];
+
+        $filas = $sueldos->map(function (object $mov) use ($categorias): array {
+            $cantidad = max(0, (int) ($mov->cantidad_unidades ?? 0));
+            $monto = round((float) ($mov->monto ?? 0), 2);
+            if ($cantidad === 0 && $monto > 0) {
+                $cantidad = 1;
+            }
+            $tarifa = $mov->precio_unitario !== null
+                ? round((float) $mov->precio_unitario, 2)
+                : ($cantidad > 0 ? round($monto / $cantidad, 2) : 0.0);
+
+            $beneficiario = trim((string) ($mov->canal_referencia ?? ''));
+            if ($beneficiario === '') {
+                $beneficiario = (string) ($mov->proveedor?->nombre ?? __('lat.excel_external_labor'));
+            }
+
+            return [
+                'fecha' => $mov->fecha?->format('d/m/Y') ?? (string) $mov->fecha,
+                'col2' => $categorias[$mov->tipo] ?? (string) $mov->tipo,
+                'col3' => $beneficiario,
+                'concepto' => (string) $mov->concepto,
+                'cantidad' => $cantidad,
+                'tarifa' => $tarifa,
+                'total' => round($cantidad * $tarifa, 2),
+            ];
+        })->all();
+
+        return $this->buildTablaConceptoTarifaSheet(
+            "SUELDOS, PAGOS Y ADELANTOS · {$planta->nombre}",
+            "Ubicación: {$planta->ubicacion} | Período: {$desde} al {$hasta} | Generado: ".Carbon::now()->format('d/m/Y H:i'),
+            ['Fecha', 'Categoría', 'Beneficiario', 'Concepto', 'Días/Cant.', 'Tarifa', 'Total'],
+            $filas,
+            'Sin sueldos ni pagos registrados en este período.',
+            [13, 24, 24, 36, 14, 16, 18]
+        );
+    }
+
+    /**
+     * Construye una hoja tabular de 7 columnas (A..G) con fórmula Total = E*F y fila SUM.
+     *
+     * @param  list<string>  $headers
+     * @param  array<int, array{fecha: string, col2: string, col3: string, concepto: string, cantidad: int, tarifa: float, total: float}>  $filas
+     * @param  list<int>  $widths
+     */
+    private function buildTablaConceptoTarifaSheet(
+        string $titulo,
+        string $subtitulo,
+        array $headers,
+        array $filas,
+        string $emptyLabel,
+        array $widths
+    ): string {
+        $rows = [];
+        $rows[] = $this->rowXml(1, [$this->cellText('A1', $titulo, 1)], 26);
+        $rows[] = $this->rowXml(2, [$this->cellText('A2', $subtitulo, 2)], 18);
+        $rows[] = $this->rowXml(3, [], 8);
+        $rows[] = $this->headerRowXml(4, $headers);
+
+        $r = 5;
+        $sumCant = 0;
+        $sumTotal = 0.0;
+
+        foreach (array_values($filas) as $idx => $fila) {
+            $zebra = ($idx % 2 === 1);
+            $sTxt = $zebra ? 5 : 4;
+            $sInt = $zebra ? 14 : 13;
+            $sCur = $zebra ? 9 : 8;
+
+            $sumCant += $fila['cantidad'];
+            $sumTotal += $fila['total'];
+
+            $rows[] = $this->rowXml($r, [
+                $this->cellText("A{$r}", $fila['fecha'], $sTxt),
+                $this->cellText("B{$r}", $fila['col2'], $sTxt),
+                $this->cellText("C{$r}", $fila['col3'], $sTxt),
+                $this->cellText("D{$r}", $fila['concepto'], $sTxt),
+                $this->cellNum("E{$r}", $fila['cantidad'], $sInt),
+                $this->cellNum("F{$r}", $fila['tarifa'], $sCur),
+                $this->cellFormula("G{$r}", "E{$r}*F{$r}", $fila['total'], $sCur),
+            ], 20);
+            $r++;
+        }
+
+        $lastDataRow = $r - 1;
+        if ($lastDataRow < 5) {
+            $rows[] = $this->rowXml($r, [$this->cellText("A{$r}", $emptyLabel, 4)], 20);
+            $autoFilterRef = null;
+        } else {
+            $rows[] = $this->rowXml($r, [
+                $this->cellText("A{$r}", __('lat.excel_totals'), 10),
+                $this->cellText("B{$r}", ($lastDataRow - 4).' registros', 10),
+                $this->cellText("C{$r}", '', 10),
+                $this->cellText("D{$r}", '', 10),
+                $this->cellFormula("E{$r}", "SUM(E5:E{$lastDataRow})", $sumCant, 12),
+                $this->cellText("F{$r}", '-', 10),
+                $this->cellFormula("G{$r}", "SUM(G5:G{$lastDataRow})", round($sumTotal, 2), 11),
+            ], 22);
+            $autoFilterRef = "A4:G{$lastDataRow}";
+        }
+
+        return $this->wrapWorksheet($rows, $widths, 4, $autoFilterRef);
     }
 
     private function buildAcopiosSheet(Planta $planta, string $desde, string $hasta, Collection $acopios): string
     {
         $rows = [];
-        $rows[] = $this->rowXml(1, [$this->cellText('A1', 'DETALLE DE ACOPIOS DIARIOS · '.$planta->nombre, 1)], 26);
-        $rows[] = $this->rowXml(2, [$this->cellText('A2', "Período: {$desde} al {$hasta} | Registros de campo (Voz y Manual) y Triage 74°", 2)], 18);
+        $rows[] = $this->rowXml(1, [$this->cellText('A1', __('lat.excel_s2_title', ['plant' => $planta->nombre]), 1)], 26);
+        $rows[] = $this->rowXml(2, [$this->cellText('A2', __('lat.excel_s2_subtitle', ['from' => $desde, 'to' => $hasta]), 2)], 18);
         $rows[] = $this->rowXml(3, [], 8);
 
         $rows[] = $this->headerRowXml(4, [
-            'Fecha', 'Hora', 'Código', 'Productor', 'Sector', 'Litros (L)', 'Método', 'Calidad Sanitaria', 'Destino Operativo',
+            __('lat.excel_col_date'),
+            __('lat.excel_col_time'),
+            __('lat.excel_col_code'),
+            __('lat.excel_col_producer_short'),
+            __('lat.excel_col_sector_short'),
+            __('lat.excel_col_liters_unit'),
+            __('lat.excel_col_method'),
+            __('lat.excel_col_sanitary_quality'),
+            __('lat.excel_col_operational_dest'),
         ]);
 
         $r = 5;
@@ -164,66 +375,81 @@ class ExcelExportService
 
             $sumLitros += (float) $acopio->litros;
             $calidadTxt = match ($acopio->calidad) {
-                'buena' => 'Aprobada (Óptima)',
-                'acida' => 'Con acidez (74°)',
-                default => 'Pendiente',
+                'buena' => __('lat.excel_quality_good'),
+                'acida' => __('lat.excel_quality_acid'),
+                default => __('lat.excel_quality_pending'),
             };
-            $destinoTxt = $acopio->destino === 'quesillo_4_dias' ? 'Quesillo fresco 4 días' : 'Tina principal (Queso/Yogur)';
+            $destinoTxt = match ($acopio->calidad) {
+                'acida' => __('lat.excel_dest_acid'),
+                'pendiente' => __('lat.excel_dest_pending'),
+                default => __('lat.excel_dest_good'),
+            };
 
             $rows[] = $this->rowXml($r, [
                 $this->cellText("A{$r}", $acopio->fecha?->format('d/m/Y') ?? (string) $acopio->fecha, $sTxt),
                 $this->cellText("B{$r}", substr((string) $acopio->hora, 0, 5), $sTxt),
                 $this->cellText("C{$r}", (string) ($acopio->proveedor?->codigo ?? '-'), $sTxt),
-                $this->cellText("D{$r}", (string) ($acopio->proveedor?->nombre ?? 'Productor'), $sTxt),
+                $this->cellText("D{$r}", (string) ($acopio->proveedor?->nombre ?? __('lat.producer_default')), $sTxt),
                 $this->cellText("E{$r}", (string) ($acopio->proveedor?->sector ?? '-'), $sTxt),
                 $this->cellNum("F{$r}", (float) $acopio->litros, $sNum),
-                $this->cellText("G{$r}", $acopio->metodo === 'voz' ? 'Dictado por voz' : 'Manual / Táctil', $sTxt),
+                $this->cellText("G{$r}", $acopio->metodo === 'voz' ? __('lat.excel_method_voice') : __('lat.excel_method_manual'), $sTxt),
                 $this->cellText("H{$r}", $calidadTxt, $sTxt),
                 $this->cellText("I{$r}", $destinoTxt, $sTxt),
             ], 20);
             $r++;
         }
 
-        if ($r > 5) {
-            $last = $r - 1;
+        $lastDataRow = $r - 1;
+        if ($lastDataRow < 5) {
+            $rows[] = $this->rowXml($r, [$this->cellText("A{$r}", __('lat.excel_s2_empty'), 4)], 20);
+            $autoFilterRef = null;
+        } else {
             $rows[] = $this->rowXml($r, [
-                $this->cellText("A{$r}", 'TOTAL LITROS', 10),
+                $this->cellText("A{$r}", __('lat.excel_total_liters'), 10),
                 $this->cellText("B{$r}", '', 10),
                 $this->cellText("C{$r}", '', 10),
-                $this->cellText("D{$r}", ($last - 4).' entregas', 10),
+                $this->cellText("D{$r}", __('lat.excel_deliveries_count', ['count' => $lastDataRow - 4]), 10),
                 $this->cellText("E{$r}", '', 10),
-                $this->cellFormula("F{$r}", "SUM(F5:F{$last})", $sumLitros, 12),
+                $this->cellFormula("F{$r}", "SUM(F5:F{$lastDataRow})", $sumLitros, 12),
                 $this->cellText("G{$r}", '', 10),
                 $this->cellText("H{$r}", '', 10),
                 $this->cellText("I{$r}", '', 10),
             ], 22);
+            $autoFilterRef = "A4:I{$lastDataRow}";
         }
 
-        return $this->wrapWorksheet($rows, [13, 10, 12, 26, 18, 14, 18, 20, 26], 4, "A4:I{$r}");
+        return $this->wrapWorksheet($rows, [13, 10, 12, 26, 18, 14, 18, 20, 26], 4, $autoFilterRef);
     }
 
     private function buildMovimientosSheet(Planta $planta, string $desde, string $hasta, Collection $movimientos): string
     {
         $rows = [];
-        $rows[] = $this->rowXml(1, [$this->cellText('A1', 'MOVIMIENTOS FINANCIEROS, ADELANTOS Y VENTAS · '.$planta->nombre, 1)], 26);
-        $rows[] = $this->rowXml(2, [$this->cellText('A2', "Período: {$desde} al {$hasta} | Ley N.° 29733: Ayuda del día sin DNI", 2)], 18);
+        $rows[] = $this->rowXml(1, [$this->cellText('A1', __('lat.excel_s3_title', ['plant' => $planta->nombre]), 1)], 26);
+        $rows[] = $this->rowXml(2, [$this->cellText('A2', __('lat.excel_s3_subtitle', ['from' => $desde, 'to' => $hasta]), 2)], 18);
         $rows[] = $this->rowXml(3, [], 8);
 
         $rows[] = $this->headerRowXml(4, [
-            'Fecha', 'Tipo de Movimiento', 'Productor / Referencia', 'Concepto / Descripción', 'Unidades / Moldes', 'Monto (S/)',
+            __('lat.excel_col_date'),
+            __('lat.excel_col_movement_type'),
+            __('lat.excel_col_producer_ref'),
+            __('lat.excel_col_concept'),
+            __('lat.excel_col_units_molds'),
+            __('lat.excel_col_amount'),
         ]);
 
         $r = 5;
-        $sumMonto = 0.0;
-        $sumUnidades = 0;
+        $sumIngresos = 0.0;
+        $sumEgresos = 0.0;
+        $sumUnidadesIngresos = 0;
+        $sumUnidadesEgresos = 0;
 
         $tipoLabels = [
-            'adelanto_efectivo' => 'Adelanto en efectivo',
-            'adelanto_queso'    => 'Adelanto en queso',
-            'ayuda_del_dia'     => 'Ayuda del día (sin DNI)',
-            'gasto_operativo'   => 'Gasto operativo',
-            'venta_producto'    => 'Venta de producto lácteo',
-            'quincena'          => 'Liquidación quincenal',
+            'adelanto_efectivo' => __('lat.mov_adelanto_efectivo'),
+            'adelanto_queso' => __('lat.mov_adelanto_queso'),
+            'ayuda_del_dia' => __('lat.mov_ayuda_del_dia'),
+            'gasto_operativo' => __('lat.mov_gasto_operativo'),
+            'venta_producto' => __('lat.mov_venta_producto'),
+            'quincena' => __('lat.mov_quincena'),
         ];
 
         foreach ($movimientos as $idx => $mov) {
@@ -232,44 +458,88 @@ class ExcelExportService
             $sInt = $zebra ? 14 : 13;
             $sCur = $zebra ? 9 : 8;
 
-            $sumMonto += (float) $mov->monto;
-            $sumUnidades += (int) ($mov->cantidad_unidades ?? 0);
+            $monto = (float) $mov->monto;
+            $unidades = (int) ($mov->cantidad_unidades ?? 0);
+
+            if ($mov->tipo === 'venta_producto') {
+                $sumIngresos += $monto;
+                $sumUnidadesIngresos += $unidades;
+            } else {
+                $sumEgresos += $monto;
+                $sumUnidadesEgresos += $unidades;
+            }
 
             $rows[] = $this->rowXml($r, [
                 $this->cellText("A{$r}", $mov->fecha?->format('d/m/Y') ?? (string) $mov->fecha, $sTxt),
                 $this->cellText("B{$r}", $tipoLabels[$mov->tipo] ?? $mov->tipo, $sTxt),
-                $this->cellText("C{$r}", (string) ($mov->proveedor?->nombre ?? 'Planta / Faena externa'), $sTxt),
+                $this->cellText("C{$r}", (string) ($mov->proveedor?->nombre ?? __('lat.excel_external_labor')), $sTxt),
                 $this->cellText("D{$r}", (string) $mov->concepto, $sTxt),
-                $this->cellNum("E{$r}", (int) ($mov->cantidad_unidades ?? 0), $sInt),
-                $this->cellNum("F{$r}", (float) $mov->monto, $sCur),
+                $this->cellNum("E{$r}", $unidades, $sInt),
+                $this->cellNum("F{$r}", $monto, $sCur),
             ], 20);
             $r++;
         }
 
-        if ($r > 5) {
-            $last = $r - 1;
-            $rows[] = $this->rowXml($r, [
-                $this->cellText("A{$r}", 'TOTAL MOVIMIENTOS', 10),
-                $this->cellText("B{$r}", ($last - 4).' registros', 10),
-                $this->cellText("C{$r}", '', 10),
-                $this->cellText("D{$r}", '', 10),
-                $this->cellFormula("E{$r}", "SUM(E5:E{$last})", $sumUnidades, 12),
-                $this->cellFormula("F{$r}", "SUM(F5:F{$last})", $sumMonto, 11),
+        $lastDataRow = $r - 1;
+        if ($lastDataRow < 5) {
+            $rows[] = $this->rowXml($r, [$this->cellText("A{$r}", __('lat.excel_s3_empty'), 4)], 20);
+            $autoFilterRef = null;
+        } else {
+            $ventaFormula = str_replace('"', '""', $tipoLabels['venta_producto']);
+            $filaIngresos = $r;
+            $filaEgresos = $r + 1;
+            $filaNeto = $r + 2;
+
+            $rows[] = $this->rowXml($filaIngresos, [
+                $this->cellText("A{$filaIngresos}", __('lat.excel_total_income'), 10),
+                $this->cellText("B{$filaIngresos}", __('lat.excel_income_desc'), 10),
+                $this->cellText("C{$filaIngresos}", '', 10),
+                $this->cellText("D{$filaIngresos}", __('lat.excel_movements_count', ['count' => $lastDataRow - 4]), 10),
+                $this->cellFormula("E{$filaIngresos}", "SUMIF(B5:B{$lastDataRow},\"{$ventaFormula}\",E5:E{$lastDataRow})", $sumUnidadesIngresos, 12),
+                $this->cellFormula("F{$filaIngresos}", "SUMIF(B5:B{$lastDataRow},\"{$ventaFormula}\",F5:F{$lastDataRow})", round($sumIngresos, 2), 11),
             ], 22);
+
+            $rows[] = $this->rowXml($filaEgresos, [
+                $this->cellText("A{$filaEgresos}", __('lat.excel_total_expenses'), 10),
+                $this->cellText("B{$filaEgresos}", __('lat.excel_expenses_desc'), 10),
+                $this->cellText("C{$filaEgresos}", '', 10),
+                $this->cellText("D{$filaEgresos}", '', 10),
+                $this->cellFormula("E{$filaEgresos}", "SUMIF(B5:B{$lastDataRow},\"<>{$ventaFormula}\",E5:E{$lastDataRow})", $sumUnidadesEgresos, 12),
+                $this->cellFormula("F{$filaEgresos}", "SUMIF(B5:B{$lastDataRow},\"<>{$ventaFormula}\",F5:F{$lastDataRow})", round($sumEgresos, 2), 11),
+            ], 22);
+
+            $rows[] = $this->rowXml($filaNeto, [
+                $this->cellText("A{$filaNeto}", __('lat.excel_net_balance'), 10),
+                $this->cellText("B{$filaNeto}", __('lat.excel_net_balance_desc'), 10),
+                $this->cellText("C{$filaNeto}", '', 10),
+                $this->cellText("D{$filaNeto}", '', 10),
+                $this->cellText("E{$filaNeto}", '-', 10),
+                $this->cellFormula("F{$filaNeto}", "F{$filaIngresos}-F{$filaEgresos}", round($sumIngresos - $sumEgresos, 2), 11),
+            ], 22);
+
+            $autoFilterRef = "A4:F{$lastDataRow}";
         }
 
-        return $this->wrapWorksheet($rows, [13, 24, 24, 42, 18, 18], 4, "A4:F{$r}");
+        return $this->wrapWorksheet($rows, [13, 24, 24, 42, 18, 18], 4, $autoFilterRef);
     }
 
     private function buildPlantasSheet(string $desde, string $hasta, Collection $rankingPlantas): string
     {
         $rows = [];
-        $rows[] = $this->rowXml(1, [$this->cellText('A1', 'ESTADÍSTICAS COMPARATIVAS DE PLANTAS (¿QUIÉN VENDE MÁS?)', 1)], 26);
-        $rows[] = $this->rowXml(2, [$this->cellText('A2', "Período evaluado: {$desde} al {$hasta} | Ranking ordenado por ventas totales", 2)], 18);
+        $rows[] = $this->rowXml(1, [$this->cellText('A1', __('lat.excel_s4_title'), 1)], 26);
+        $rows[] = $this->rowXml(2, [$this->cellText('A2', __('lat.excel_s4_subtitle', ['from' => $desde, 'to' => $hasta]), 2)], 18);
         $rows[] = $this->rowXml(3, [], 8);
 
         $rows[] = $this->headerRowXml(4, [
-            'Puesto', 'Código', 'Planta Láctea', 'Ubicación', 'Ventas Totales (S/)', 'Participación (%)', 'Unidades Vendidas', 'Litros Acopiados', 'Moldes Producidos',
+            __('lat.excel_col_rank'),
+            __('lat.excel_col_code'),
+            __('lat.excel_col_dairy_plant'),
+            __('lat.excel_col_location'),
+            __('lat.excel_col_total_sales'),
+            __('lat.excel_col_share_pct'),
+            __('lat.excel_col_units_sold'),
+            __('lat.excel_col_liters_collected'),
+            __('lat.excel_col_molds_produced'),
         ]);
 
         $r = 5;
@@ -302,24 +572,39 @@ class ExcelExportService
             $r++;
         }
 
-        if ($r > 5) {
-            $last = $r - 1;
+        $lastDataRow = $r - 1;
+        if ($lastDataRow < 5) {
+            $rows[] = $this->rowXml($r, [$this->cellText("A{$r}", __('lat.excel_s4_empty'), 4)], 20);
+            $autoFilterRef = null;
+        } else {
+            $etiquetaTotal = $rankingPlantas->count() === 1 ? __('lat.excel_total_plant') : __('lat.excel_total_network');
             $rows[] = $this->rowXml($r, [
-                $this->cellText("A{$r}", 'RED', 10),
+                $this->cellText("A{$r}", __('lat.excel_network_badge'), 10),
                 $this->cellText("B{$r}", '', 10),
-                $this->cellText("C{$r}", 'TOTAL RED DE PLANTAS', 10),
+                $this->cellText("C{$r}", $etiquetaTotal, 10),
                 $this->cellText("D{$r}", '', 10),
-                $this->cellFormula("E{$r}", "SUM(E5:E{$last})", $sumVentas, 11),
-                $this->cellNum("F{$r}", 100.0, 12),
-                $this->cellFormula("G{$r}", "SUM(G5:G{$last})", (int) $rankingPlantas->sum('ventas_unidades'), 12),
-                $this->cellFormula("H{$r}", "SUM(H5:H{$last})", $sumLitros, 12),
-                $this->cellFormula("I{$r}", "SUM(I5:I{$last})", $sumMoldes, 12),
+                $this->cellFormula("E{$r}", "SUM(E5:E{$lastDataRow})", $sumVentas, 11),
+                $this->cellNum("F{$r}", $sumVentas > 0 ? 100.0 : 0.0, 12),
+                $this->cellFormula("G{$r}", "SUM(G5:G{$lastDataRow})", (int) $rankingPlantas->sum('ventas_unidades'), 12),
+                $this->cellFormula("H{$r}", "SUM(H5:H{$lastDataRow})", $sumLitros, 12),
+                $this->cellFormula("I{$r}", "SUM(I5:I{$lastDataRow})", $sumMoldes, 12),
             ], 22);
+            $autoFilterRef = "A4:I{$lastDataRow}";
         }
 
-        return $this->wrapWorksheet($rows, [10, 12, 30, 24, 20, 16, 18, 18, 18], 4, "A4:I{$r}");
+        return $this->wrapWorksheet($rows, [10, 12, 30, 24, 20, 16, 18, 18, 18], 4, $autoFilterRef);
     }
 
+    private function sanitizeSheetName(string $name): string
+    {
+        $clean = str_replace([':', '\\', '/', '?', '*', '[', ']'], '', $name);
+
+        return mb_substr(trim($clean), 0, 31);
+    }
+
+    /**
+     * @param  array<int, string>  $headers
+     */
     private function headerRowXml(int $rowNum, array $headers): string
     {
         $cells = [];
@@ -331,6 +616,9 @@ class ExcelExportService
         return $this->rowXml($rowNum, $cells, 24);
     }
 
+    /**
+     * @param  array<int, string>  $cells
+     */
     private function rowXml(int $rowNum, array $cells, int $height = 19): string
     {
         return '<row r="'.$rowNum.'" ht="'.$height.'" customHeight="1">'.implode('', $cells).'</row>';
@@ -338,7 +626,28 @@ class ExcelExportService
 
     private function cellText(string $ref, string $value, int $style): string
     {
-        return '<c r="'.$ref.'" t="inlineStr" s="'.$style.'"><is><t>'.$this->esc($value).'</t></is></c>';
+        return '<c r="'.$ref.'" t="inlineStr" s="'.$style.'"><is><t xml:space="preserve">'.$this->esc($this->sanitizeFormulaInjection($value)).'</t></is></c>';
+    }
+
+    /**
+     * Neutraliza prefijos de fórmula (=, +, -, @, tab, cr) contra Formula Injection (OWASP A03).
+     */
+    private function sanitizeFormulaInjection(string $value): string
+    {
+        if ($value === '') {
+            return '';
+        }
+
+        $primer = $value[0];
+        if (in_array($primer, ['=', '+', '-', '@', "\t", "\r"], true)) {
+            if (is_numeric($value) && $primer === '-') {
+                return $value;
+            }
+
+            return "'".$value;
+        }
+
+        return $value;
     }
 
     private function cellNum(string $ref, float|int $value, int $style): string
@@ -351,7 +660,11 @@ class ExcelExportService
         return '<c r="'.$ref.'" s="'.$style.'"><f>'.$this->esc($formula).'</f><v>'.$cached.'</v></c>';
     }
 
-    private function wrapWorksheet(array $rows, array $widths, int $freezeRow, string $autoFilterRef): string
+    /**
+     * @param  array<int, string>  $rows
+     * @param  array<int, int>  $widths
+     */
+    private function wrapWorksheet(array $rows, array $widths, int $freezeRow, ?string $autoFilterRef = null): string
     {
         $colsXml = '<cols>';
         foreach ($widths as $i => $w) {
@@ -359,6 +672,8 @@ class ExcelExportService
             $colsXml .= '<col min="'.$idx.'" max="'.$idx.'" width="'.$w.'" customWidth="1"/>';
         }
         $colsXml .= '</cols>';
+
+        $autoFilterXml = $autoFilterRef !== null ? '<autoFilter ref="'.$autoFilterRef.'"/>' : '';
 
         return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
             .'<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
@@ -368,7 +683,7 @@ class ExcelExportService
             .'<sheetFormatPr defaultRowHeight="19"/>'
             .$colsXml
             .'<sheetData>'.implode('', $rows).'</sheetData>'
-            .'<autoFilter ref="'.$autoFilterRef.'"/>'
+            .$autoFilterXml
             .'</worksheet>';
     }
 
@@ -385,7 +700,11 @@ class ExcelExportService
 
     private function esc(string $text): string
     {
-        $clean = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F]/u', '', $text) ?? '';
+        $utf8 = mb_check_encoding($text, 'UTF-8')
+            ? $text
+            : mb_convert_encoding($text, 'UTF-8', 'UTF-8');
+
+        $clean = preg_replace('/[^\x09\x0A\x0D\x20-\x{D7FF}\x{E000}-\x{FFFD}\x{10000}-\x{10FFFF}]/u', '', $utf8) ?? '';
 
         return htmlspecialchars($clean, ENT_XML1 | ENT_QUOTES, 'UTF-8');
     }
@@ -415,6 +734,9 @@ class ExcelExportService
             .'</Relationships>';
     }
 
+    /**
+     * @param  array<int, array{name: string, xml: string}>  $sheets
+     */
     private function buildWorkbookXml(array $sheets): string
     {
         $sheetNodes = '';
@@ -427,6 +749,7 @@ class ExcelExportService
             .'<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" '
             .'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
             .'<sheets>'.$sheetNodes.'</sheets>'
+            .'<calcPr fullCalcOnLoad="1"/>'
             .'</workbook>';
     }
 
@@ -474,21 +797,21 @@ class ExcelExportService
             .'</borders>'
             .'<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'
             .'<cellXfs count="15">'
-            .'<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'                                                                 // 0: default
-            .'<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/>'                                                   // 1: title
-            .'<xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1"/>'                                                   // 2: subtitle
-            .'<xf numFmtId="0" fontId="3" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center" wrapText="1"/></xf>' // 3: header
-            .'<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1"><alignment vertical="center"/></xf>'                // 4: text
-            .'<xf numFmtId="0" fontId="0" fillId="3" borderId="1" xfId="0" applyFill="1" applyBorder="1"><alignment vertical="center"/></xf>'  // 5: text zebra
-            .'<xf numFmtId="164" fontId="0" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyBorder="1"><alignment horizontal="right" vertical="center"/></xf>' // 6: num
-            .'<xf numFmtId="164" fontId="0" fillId="3" borderId="1" xfId="0" applyNumberFormat="1" applyFill="1" applyBorder="1"><alignment horizontal="right" vertical="center"/></xf>' // 7: num zebra
-            .'<xf numFmtId="165" fontId="0" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyBorder="1"><alignment horizontal="right" vertical="center"/></xf>' // 8: currency
-            .'<xf numFmtId="165" fontId="0" fillId="3" borderId="1" xfId="0" applyNumberFormat="1" applyFill="1" applyBorder="1"><alignment horizontal="right" vertical="center"/></xf>' // 9: currency zebra
-            .'<xf numFmtId="0" fontId="4" fillId="4" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1"><alignment vertical="center"/></xf>' // 10: total text
-            .'<xf numFmtId="165" fontId="4" fillId="4" borderId="2" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1"><alignment horizontal="right" vertical="center"/></xf>' // 11: total currency
-            .'<xf numFmtId="164" fontId="4" fillId="4" borderId="2" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1"><alignment horizontal="right" vertical="center"/></xf>' // 12: total num
-            .'<xf numFmtId="166" fontId="0" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyBorder="1"><alignment horizontal="right" vertical="center"/></xf>' // 13: int
-            .'<xf numFmtId="166" fontId="0" fillId="3" borderId="1" xfId="0" applyNumberFormat="1" applyFill="1" applyBorder="1"><alignment horizontal="right" vertical="center"/></xf>' // 14: int zebra
+            .'<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'
+            .'<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/>'
+            .'<xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1"/>'
+            .'<xf numFmtId="0" fontId="3" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center" wrapText="1"/></xf>'
+            .'<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1"><alignment vertical="center"/></xf>'
+            .'<xf numFmtId="0" fontId="0" fillId="3" borderId="1" xfId="0" applyFill="1" applyBorder="1"><alignment vertical="center"/></xf>'
+            .'<xf numFmtId="164" fontId="0" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyBorder="1"><alignment horizontal="right" vertical="center"/></xf>'
+            .'<xf numFmtId="164" fontId="0" fillId="3" borderId="1" xfId="0" applyNumberFormat="1" applyFill="1" applyBorder="1"><alignment horizontal="right" vertical="center"/></xf>'
+            .'<xf numFmtId="165" fontId="0" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyBorder="1"><alignment horizontal="right" vertical="center"/></xf>'
+            .'<xf numFmtId="165" fontId="0" fillId="3" borderId="1" xfId="0" applyNumberFormat="1" applyFill="1" applyBorder="1"><alignment horizontal="right" vertical="center"/></xf>'
+            .'<xf numFmtId="0" fontId="4" fillId="4" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1"><alignment vertical="center"/></xf>'
+            .'<xf numFmtId="165" fontId="4" fillId="4" borderId="2" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1"><alignment horizontal="right" vertical="center"/></xf>'
+            .'<xf numFmtId="164" fontId="4" fillId="4" borderId="2" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1"><alignment horizontal="right" vertical="center"/></xf>'
+            .'<xf numFmtId="166" fontId="0" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyBorder="1"><alignment horizontal="right" vertical="center"/></xf>'
+            .'<xf numFmtId="166" fontId="0" fillId="3" borderId="1" xfId="0" applyNumberFormat="1" applyFill="1" applyBorder="1"><alignment horizontal="right" vertical="center"/></xf>'
             .'</cellXfs>'
             .'</styleSheet>';
     }
@@ -496,10 +819,18 @@ class ExcelExportService
     /**
      * Empaqueta archivos XML en un contenedor PKZIP estándar sin requerir ext-zip.
      *
-     * @param array<string, string> $files
+     * @param  array<string, string>  $files
      */
     private function packZip(array $files): string
     {
+        $now = Carbon::now();
+        $dosTime = (($now->hour & 0x1F) << 11)
+            | (($now->minute & 0x3F) << 5)
+            | (intdiv($now->second, 2) & 0x1F);
+        $dosDate = ((max(0, $now->year - 1980) & 0x7F) << 9)
+            | (($now->month & 0x0F) << 5)
+            | ($now->day & 0x1F);
+
         $data = '';
         $central = '';
         $offset = 0;
@@ -510,17 +841,19 @@ class ExcelExportService
             $uncompressed = strlen($content);
             $crc = crc32($content) & 0xFFFFFFFF;
             $compressed = gzdeflate($content, 6);
+            if ($compressed === false) {
+                throw new RuntimeException(__('lat.excel_zip_error', ['name' => $name]));
+            }
             $compLen = strlen($compressed);
 
-            // Local file header (30 bytes + name)
             $localHeader = pack(
                 'VvvvvvVVVvv',
                 0x04034B50,
-                20,       // version needed
-                0x0800,   // UTF-8 flag
-                8,        // deflate
-                0,
-                0,
+                20,
+                0x0800,
+                8,
+                $dosTime,
+                $dosDate,
                 $crc,
                 $compLen,
                 $uncompressed,
@@ -530,7 +863,6 @@ class ExcelExportService
 
             $data .= $localHeader.$name.$compressed;
 
-            // Central directory header (46 bytes + name)
             $central .= pack(
                 'VvvvvvvVVVvvvvvVV',
                 0x02014B50,
@@ -538,8 +870,8 @@ class ExcelExportService
                 20,
                 0x0800,
                 8,
-                0,
-                0,
+                $dosTime,
+                $dosDate,
                 $crc,
                 $compLen,
                 $uncompressed,

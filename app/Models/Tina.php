@@ -9,14 +9,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
- * ============================================================================
- * MODELO DE DATOS: TINA DE PASTEURIZACIÓN Y TRANSFORMACIÓN
- * ============================================================================
- * Permite gestionar múltiples tinas por planta (queso, quesillo, yogur, etc.),
- * controlar lotes independientes y calcular recetas según capacidad/volumen.
+ * Tina de pasteurización y transformación láctea por planta.
  */
 class Tina extends Model
 {
+    /** @var list<string> */
+    public const TIPOS_PREESTABLECIDOS = ['principal_queso', 'quesillo', 'yogur', 'multiproposito'];
+
     protected $table = 'tinas';
 
     protected $fillable = [
@@ -30,7 +29,7 @@ class Tina extends Model
 
     protected $casts = [
         'capacidad_litros' => 'float',
-        'activa'           => 'boolean',
+        'activa' => 'boolean',
     ];
 
     public function planta(): BelongsTo
@@ -47,7 +46,7 @@ class Tina extends Model
     {
         return $this->hasOne(Lote::class)
             ->whereIn('estado', ['pasteurizando', 'enfriando', 'lista_para_cuajo'])
-            ->orderByDesc('id');
+            ->latestOfMany('id');
     }
 
     public function scopeActivas(Builder $query): Builder
@@ -58,5 +57,10 @@ class Tina extends Model
     public function scopeDePlanta(Builder $query, int $plantaId): Builder
     {
         return $query->where('planta_id', $plantaId);
+    }
+
+    public function esTipoPreestablecido(): bool
+    {
+        return in_array($this->tipo, self::TIPOS_PREESTABLECIDOS, true);
     }
 }

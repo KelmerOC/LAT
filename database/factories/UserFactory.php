@@ -25,21 +25,23 @@ class UserFactory extends Factory
     public function definition(): array
     {
         return [
+            'planta_id' => null,
             'name' => fake()->name(),
+            'usuario' => strtolower(fake()->unique()->userName()),
             'email' => fake()->unique()->safeEmail(),
-            'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
+            'cargo' => 'recolector_ruta',
+            'rango' => 'operador',
+            'permisos' => User::PLANTILLAS_CARGO['recolector_ruta'],
+            'activo' => true,
             'remember_token' => Str::random(10),
         ];
     }
 
-    /**
-     * Indicate that the model's email address should be unverified.
-     */
-    public function unverified(): static
+    public function inactivo(): static
     {
-        return $this->state(fn (array $attributes) => [
-            'email_verified_at' => null,
+        return $this->state(fn (array $attributes): array => [
+            'activo' => false,
         ]);
     }
 }

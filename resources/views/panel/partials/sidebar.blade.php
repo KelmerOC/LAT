@@ -1,16 +1,16 @@
-<aside class="dash-sidebar" id="dash-sidebar" aria-label="Navegación de módulos">
+<aside class="dash-sidebar" id="dash-sidebar" aria-label="Navegación de módulos" data-i18n-aria="sidebar.aria">
   <div class="dash-brand">
-    <a href="{{ route('inicio') }}" class="dash-brand-link" title="Ir al portal público LAT">
+    <a href="{{ route('inicio') }}" class="dash-brand-link" title="Ir al portal público LAT" data-i18n-title="sidebar.home_title">
       <img src="{{ asset('brand/isotipo_queso_frasco.svg') }}" alt="" width="36" height="36" onerror="this.src='{{ asset('favicon.svg') }}'">
       <span>
         <strong>LAT Panel</strong>
         <small>{{ $plantaActiva->codigo }} · {{ $plantaActiva->nombre }}</small>
       </span>
     </a>
-    <button type="button" class="dash-sidebar-close" id="btn-sidebar-close" aria-label="Cerrar menú lateral">&times;</button>
+    <button type="button" class="dash-sidebar-close" id="btn-sidebar-close" aria-label="Cerrar menú lateral" data-i18n-aria="sidebar.close_aria">&times;</button>
   </div>
 
-  <nav class="dash-nav" id="dash-nav-list" aria-label="Secciones autorizadas">
+  <nav class="dash-nav" id="dash-nav-list" aria-label="Secciones autorizadas" data-i18n-aria="sidebar.nav_aria">
     @if($usuario->puedeVerSeccion('dashboard'))
       <div class="dash-nav-group" data-i18n="nav_group.main">Resumen</div>
       <button type="button" class="dash-nav-btn" data-section="sec-dashboard" data-titulo="Dashboard general" data-titulo-key="tab.dashboard">
@@ -78,11 +78,11 @@
       <div class="dash-user-avatar" aria-hidden="true">{{ strtoupper(substr($usuario->name, 0, 2)) }}</div>
       <div class="dash-user-meta">
         <strong>{{ $usuario->name }}</strong>
-        <span>{{ $usuario->etiquetaCargo() }} · {{ $usuario->etiquetaRango() }}</span>
+        <span><span data-i18n="m6.role_{{ $usuario->cargo }}">{{ $usuario->etiquetaCargo() }}</span> · <span data-i18n="m6.rank_{{ $usuario->rango }}">{{ $usuario->etiquetaRango() }}</span></span>
       </div>
     </div>
 
-    <div class="dash-lang-row" role="group" aria-label="Idioma">
+    <div class="dash-lang-row" role="group" aria-label="Idioma" data-i18n-aria="sidebar.lang_aria">
       <button type="button" class="dash-lang-pill btn-lang-choice" data-lang="es">ES</button>
       <button type="button" class="dash-lang-pill btn-lang-choice" data-lang="qu">QU</button>
       <button type="button" class="dash-lang-pill btn-lang-choice" data-lang="en">EN</button>
